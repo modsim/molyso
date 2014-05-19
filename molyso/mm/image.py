@@ -6,6 +6,9 @@
 """
 from __future__ import division, unicode_literals, print_function
 
+import math
+from ..generic.rotation import find_rotation, apply_rotate_and_cleanup
+from ..generic.registration import translation_2x1d
 from .channel_detection import Channels
 from .. import DebugPlot
 
@@ -75,6 +78,12 @@ class BaseImage(object):
 
 
 class AutoRotationProvider(object):
+    def __init__(self):
+        super(AutoRotationProvider, self).__init__()
+        self.angle = float('NaN')
+        self.crop_height = 0.0
+        self.crop_width = 0.0
+
     def autorotate(self):
         """
         performs automatic rotation detection, rotation and cropping of the image
@@ -83,21 +92,28 @@ class AutoRotationProvider(object):
 
         if self.angle != self.angle:
             self.angle = find_rotation(self.image)
-        print(self.angle)
+
+        # noinspection PyAttributeOutsideInit
         self.image, self.angle, self.crop_height, self.crop_width = \
             apply_rotate_and_cleanup(self.image, self.angle)
 
 
+# noinspection PyUnresolvedReferences
 class AutoRegistrationProvider(object):
+    def __init__(self):
+        super(AutoRegistrationProvider, self).__init__()
+        self._fft_pair_cached = False
+        self.shift = [0.0, 0.0]
+
     @property
-    def _fft_pair(self):
+    def fft_pair(self):
         if not getattr(self, '_fft_pair_cached', False):
-            _, self._fft_pair_cached = translation_2x1d(self.original_image, self.original_image, returnA=True)
+            _, self._fft_pair_cached = translation_2x1d(self.original_image, self.original_image, return_a=True)
         return self._fft_pair_cached
 
     def autoregister(self, reference):
-        shift, self._fft_pair_cached = translation_2x1d(None, self.original_image, fftsA=reference._fft_pair,
-                                                        returnB=True)
+        shift, self._fft_pair_cached = translation_2x1d(None, self.original_image, ffts_a=reference.fft_pair,
+                                                        return_b=True)
 
         air = self.angle * (math.pi / 180)  # angle in rads
         asi, aco = math.sin(air), math.cos(air)

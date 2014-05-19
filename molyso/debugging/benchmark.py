@@ -12,6 +12,14 @@ import os
 
 
 class Timed(object):
+    def __init__(self):
+        self.ticks = None
+        self.start = None
+        self.last = None
+        self.what = None
+        self.quiet = None
+        self.stop = None
+
     def __enter__(self, what=""):
         self.ticks = []
         self.start = time.time()
@@ -27,12 +35,13 @@ class Timed(object):
     def elapsed(self):
         return time.time() - self.start
 
+    # noinspection PyUnusedLocal
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop = time.time()
         total = self.stop - self.start
         if not self.quiet:
             if self.what != "":
-                sys.stderr.write("[%s]: " % (what,))
+                sys.stderr.write("[%s]: " % (self.what,))
             sys.stderr.write("Took %.4fs " % (total,) + os.linesep)
             for step, newstop, what in self.ticks:
                 temp = step - newstop

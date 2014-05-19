@@ -23,7 +23,7 @@ class OMETiffStack(MultiImageStack):
         MultiImageStack.Fluorescence: 1,
     }
 
-    def _open(self, filename=""):
+    def __init__(self, filename=""):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.tiff = TiffFile(filename)

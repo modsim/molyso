@@ -4,11 +4,8 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
-from .highperformance import relative_maxima, relative_minima
-
-relative_maxima, relative_minima = relative_maxima, relative_minima
-
 import numpy
+import scipy.signal
 
 
 class NotReallyATree(list):
@@ -18,7 +15,7 @@ class NotReallyATree(list):
         self.na = numpy.array(iterable)
 
     def query(self, q):  # w_numpy
-        distances = numpy.sqrt(numpy.sum(numpy.square(self.na - q), 1))
+        distances = numpy.sqrt(numpy.sum(numpy.power(self.na - q, 2.0), 1))
         pos = numpy.argmin(distances, 0)
         return distances[pos], pos
 
@@ -29,6 +26,16 @@ def vertical_mean(im):
 
 def horizontal_mean(im):
     return numpy.average(im, axis=0)
+
+
+def relative_maxima(data, order=1):
+    value, = scipy.signal.argrelmax(data, order=order)
+    return value
+
+
+def relative_minima(data, order=1):
+    value, = scipy.signal.argrelmin(data, order=order)
+    return value
 
 
 def normalize(arr):
@@ -57,7 +64,7 @@ def threshold_outliers(arr, times_std=2.0):
 
 
 def outliers(arr, times_std=2.0):
-    return numpy.abs(arr - numpy.median(arr)) > (times_std * numpy.std(arr))
+    return numpy.absolute(arr - numpy.median(arr)) > (times_std * numpy.std(arr))
 
 
 def remove_outliers(arr, times_std=2.0):

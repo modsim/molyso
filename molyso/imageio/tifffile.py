@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 # tifffile.py
 
-# Copyright (c) 2008-2013, Christoph Gohlke
-# Copyright (c) 2008-2013, The Regents of the University of California
+# Copyright (c) 2008-2014, Christoph Gohlke
+# Copyright (c) 2008-2014, The Regents of the University of California
 # Produced at the Laboratory for Fluorescence Dynamics
 # All rights reserved.
 #
@@ -56,7 +56,7 @@ For command line usage run ``python tifffile.py --help``
 :Organization:
   Laboratory for Fluorescence Dynamics, University of California, Irvine
 
-:Version: 2013.11.03
+:Version: 2014.02.05
 
 Requirements
 ------------
@@ -107,6 +107,29 @@ References
 (9) Micro-Manager File Formats.
     http://www.micro-manager.org/wiki/Micro-Manager_File_Formats
 
+Examples
+--------
+>>> data = numpy.random.rand(301, 219)
+>>> imsave('temp.tif', data)
+>>> image = imread('temp.tif')
+>>> assert numpy.all(image == data)
+
+>>> tif = TiffFile('test.tif')
+>>> images = tif.asarray()
+>>> image0 = tif[0].asarray()
+>>> for page in tif:
+...     for tag in page.tags.values():
+...         t = tag.name, tag.value
+...     image = page.asarray()
+...     if page.is_rgb: pass
+...     if page.is_palette:
+...         t = page.color_map
+...     if page.is_stk:
+...         t = page.mm_uic_tags.number_planes
+...     if page.is_lsm:
+...         t = page.cz_lsm_info
+>>> tif.close()
+
 """
 
 from __future__ import division, print_function
@@ -128,7 +151,7 @@ from xml.etree import cElementTree as ElementTree
 
 import numpy
 
-__version__ = '2013.11.03'
+__version__ = '2014.02.05'
 __docformat__ = 'restructuredtext en'
 __all__ = ['imsave', 'imread', 'imshow', 'TiffFile', 'TiffSequence']
 
@@ -293,15 +316,17 @@ def imsave(filename, data, photometric=None, planarconfig=None,
         code = tifftags[code] if code in tifftags else int(code)
         if dtype not in tifftypes:
             raise ValueError("unknown dtype %s" % dtype)
+        tifftype = tifftypes[dtype]
+        rawcount = count
         if dtype == 's':
             value = bytestr(value) + b'\0'
-            count = len(value)
+            count = rawcount = len(value)
             value = (value, )
         if len(dtype) > 1:
             count *= int(dtype[:-1])
             dtype = dtype[-1]
-        ifdentry = [pack('HH', code, tifftypes[dtype]),
-                    pack(offset_format, count)]
+        ifdentry = [pack('HH', code, tifftype),
+                    pack(offset_format, rawcount)]
         ifdvalue = None
         if count == 1:
             if isinstance(value, (tuple, list)):
@@ -515,7 +540,6 @@ def imread(files, *args, **kwargs):
             return imseq.asarray(*args, **kwargs)
 
 
-# noinspection PyPep8Naming
 class lazyattr(object):
     """Lazy object attribute whose value is computed on first access."""
     __slots__ = ('func', )
@@ -561,7 +585,6 @@ class TiffFile(object):
     ...     tif.close()
 
     """
-
     def __init__(self, arg, name=None, multifile=False):
         """Initialize instance from file.
 
@@ -1007,7 +1030,6 @@ class TiffPage(object):
     All attributes are read-only.
 
     """
-
     def __init__(self, parent):
         """Initialize instance from file."""
         self.parent = parent
@@ -1173,7 +1195,7 @@ class TiffPage(object):
             if dmax < 256:
                 self.dtype = numpy.uint8
                 self.color_map = self.color_map.astype(self.dtype)
-                #else:
+            #else:
             #    self.dtype = numpy.uint8
             #    self.color_map >>= 8
             #    self.color_map = self.color_map.astype(self.dtype)
@@ -1699,7 +1721,7 @@ class TiffSequence(object):
         files = list(files)
         if not files:
             raise ValueError("no files found")
-            #if not os.path.isfile(files[0]):
+        #if not os.path.isfile(files[0]):
         #    raise ValueError("file not found")
         self.files = files
 
@@ -1848,7 +1870,6 @@ class Record(dict):
 
 class TiffTags(Record):
     """Dictionary of TiffTags with attribute access."""
-
     def __str__(self):
         """Return string with information about all tags."""
         s = []
@@ -2051,14 +2072,12 @@ def imagej_metadata(data, bytecounts, byteorder):
 
 def imagej_description(description):
     """Return dict from ImageJ image_description tag."""
-
     def _bool(val):
         return {b'true': True, b'false': False}[val.lower()]
 
     _str = str if sys.version_info[0] < 3 else lambda x: str(x, 'cp1252')
     result = {}
     for line in description.splitlines():
-        # noinspection PyBroadException
         try:
             key, val = line.split(b'=')
         except Exception:
@@ -2136,21 +2155,12 @@ def _replace_by(module_function, package=None, warn=True):
     except ImportError:
         warnings.warn('Could not import module importlib')
         return lambda func: func
-    try:
-        import inspect
-    except ImportError:
-        warnings.warn('Could not import module inspect')
-        return lambda func: func
 
     def decorate(func, module_function=module_function, warn=warn):
         try:
-            modpath = inspect.getmodule(_replace_by).__name__.split('.')
             module, function = module_function.split('.')
             if not package:
-                if len(modpath) > 1:
-                    module = import_module('.' + module, package=".".join(modpath[:-1]))
-                else:
-                    module = import_module(module)
+                module = import_module(module)
             else:
                 module = import_module('.' + module, package=package)
             func, oldfunc = getattr(module, function), func
@@ -2327,7 +2337,6 @@ def unpackints(data, dtype, itemsize, runlen=0):
     for i in range(len(result)):
         start = bitcount // 8
         s = data[start:start + itembytes]
-        # noinspection PyBroadException
         try:
             code = unpack(dtypestr, s)[0]
         except Exception:
@@ -2464,10 +2473,8 @@ def natural_sorted(iterable):
     ['f1', 'f2', 'f10']
 
     """
-
     def sortkey(x):
         return [(int(c) if c.isdigit() else c) for c in re.split(numbers, x)]
-
     numbers = re.compile('(\d+)')
     return sorted(iterable, key=sortkey)
 
@@ -2530,7 +2537,6 @@ def test_tifffile(directory='testimages', verbose=True):
             successful, successful + failed, time.time() - start))
 
 
-# noinspection PyPep8Naming
 class TIFF_SUBFILE_TYPES(object):
     def __getitem__(self, key):
         result = []
@@ -3531,7 +3537,6 @@ def main(argv=None):
 
     if settings.doctest:
         import doctest
-
         doctest.testmod()
         return 0
     if not path:
@@ -3545,7 +3550,7 @@ def main(argv=None):
         if not path:
             print('no files match the pattern')
             return 0
-            # TODO: handle image sequences
+        # TODO: handle image sequences
         #if len(path) == 1:
         path = path[0]
 
@@ -3570,7 +3575,6 @@ def main(argv=None):
 
         def notnone(x):
             return next(i for i in x if i is not None)
-
         start = time.time()
         try:
             if settings.page >= 0:
@@ -3625,7 +3629,6 @@ def main(argv=None):
     if images and not settings.noplot:
         try:
             import matplotlib
-
             matplotlib.use('TkAgg')
             from matplotlib import pyplot
         except ImportError as e:

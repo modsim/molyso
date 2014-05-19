@@ -10,11 +10,13 @@ __citation__ = "molyso: A software for mother machine analysis, working title. S
 import argparse
 import sys
 import os
+import multiprocessing
 
 from ..generic.etc import parse_range
 
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
+from .image import Image
 
 OMETiffStack = OMETiffStack
 
@@ -34,12 +36,7 @@ def banner():
     """ % {"citation": __citation__}
 
 
-ims = None
-
-
-def main():
-    global ims
-
+def create_argparser():
     argparser = argparse.ArgumentParser(description="molyso: MOther machine anaLYsis SOftware")
 
     def _error(message=""):
@@ -57,6 +54,70 @@ def main():
     argparser.add_argument("-cpu", "--cpus", dest="mp", default=-1, type=int)
     argparser.add_argument("-debug", "--debug", dest="debug", default=False, action="store_true")
     argparser.add_argument("-nc", "--no-cache", dest="nocache", default=False, action="store_true")
+
+    return argparser
+
+
+def setup_image(i, local_ims, t, pos):
+    img = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Phase_Contrast, float=True)
+
+    i.setup_image(img)
+
+    if local_ims.get_meta("channels") > 1:
+        fimg = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Fluorescence, float=True)
+
+        i.setup_fluorescence(fimg)
+
+    i.multipoint = int(pos)
+    i.timepoint_num = int(t)
+
+    i.timepoint = local_ims.get_meta("time", t=t, pos=pos)
+
+    i.calibration_px_to_mu = local_ims.get_meta("calibration", t=t, pos=pos)
+
+    i.metadata["x"], i.metadata["y"], i.metadata["z"] = local_ims.get_meta("position", t=t, pos=pos)
+
+    i.metadata["time"] = i.timepoint
+    i.metadata["timepoint"] = i.timepoint_num
+    i.metadata["multipoint"] = i.multipoint
+
+    i.metadata["calibration_px_to_mu"] = i.calibration_px_to_mu
+
+    i.metadata["tag"] = ""
+    i.metadata["tag_number"] = 0
+
+
+# globals
+
+ims = None
+
+
+def processing_frame(t, pos):
+    image = Image()
+
+    setup_image(image, ims, t, pos)
+
+    image.keep_channel_image = True
+
+    image.autorotate()
+    image.find_channels()
+    image.find_cells_in_channels()
+
+    image.clean()
+
+    return image
+
+
+def processing_setup(filename):
+    global ims
+    if ims is None:
+        ims = MultiImageStack.open(filename)
+
+
+def main():
+    global ims
+
+    argparser = create_argparser()
 
     args = argparser.parse_args()
 
@@ -85,4 +146,34 @@ def main():
     print("Processing:")
     print("Positions : [%s]" % (", ".join(map(str, positions_to_process))))
     print("Timepoints: [%s]" % (", ".join(map(str, timepoints_to_process))))
+
+    results = {pos: {} for pos in positions_to_process}
+
+    if args.mp == 0:
+        for t in timepoints_to_process:
+            for pos in positions_to_process:
+                results[pos][t] = processing_frame(t, pos)
+    else:
+        if args.mp < 0:
+            args.mp = multiprocessing.cpu_count()
+
+        pool = multiprocessing.Pool(args.mp, processing_setup, [args.input])
+
+        workerstates = []
+
+        for t in timepoints_to_process:
+            for pos in positions_to_process:
+                workerstates.append((t, pos, pool.apply_async(processing_frame, (t, pos))))
+
+        total = len(timepoints_to_process) * len(positions_to_process)
+        processed = 0
+
+        while len(workerstates) > 0:
+            for i, (t, pos, state) in reversed(list(enumerate(workerstates))):
+                if state.ready():
+                    results[pos][t] = state.get()
+                    del workerstates[i]
+                    processed += 1
+                    print("Processed %d/%d" % (processed, total))
+
 

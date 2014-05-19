@@ -11,7 +11,10 @@ import hashlib
 from .. import Debug, Timed
 
 try:
-    import cPickle as pickle
+    # noinspection PyUnresolvedReferences
+    import cPickle
+
+    pickle = cPickle
 except ImportError:
     import pickle
 
@@ -28,9 +31,10 @@ else:
         os.environ['PATH'] += os.path.pathsep + os.path.dirname(os.path.abspath(sys.executable))
 
         try:
+            # noinspection PyUnresolvedReferences
             import win32api
 
-            def handler(signal, hook=thread.interrupt_main):
+            def handler(_, hook=thread.interrupt_main):
                 hook()
                 return 1
 
@@ -67,7 +71,7 @@ def parse_range(s, allow_open_interval=True):
 
 
 def hash_filename(fname):
-    return hashlib.sha1(str(fname).encode("utf-8")).hexdigest()
+    return hashlib.sha1(str(fname).encode()).hexdigest()
 
 
 def does_pickled_hashed_exist(fname, suffix=""):

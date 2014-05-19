@@ -40,8 +40,6 @@
 # or tort (including negligence or otherwise) arising in any way out of
 # the use of this software, even if advised of the possibility of such damage.
 
-
-
 import numpy
 
 dft_sizes = numpy.array([
@@ -226,6 +224,7 @@ dft_sizes = numpy.array([
 ])
 
 # end of values from OpenCV
+
 
 def get_optimal_dft_size_w_numpy(n):
     if n > dft_sizes[-1]:

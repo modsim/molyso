@@ -6,6 +6,10 @@ from __future__ import division, unicode_literals, print_function
 import math
 import numpy
 
+from .util import each_image_slice_vertical, vertical_mean, numerical_differentiation, remove_outliers
+from .smoothing import smooth
+from .signal import find_phase
+
 
 def find_rotation(im, steps=10, smoothing_signal_length=15):
     """
@@ -48,6 +52,7 @@ def find_rotation(im, steps=10, smoothing_signal_length=15):
 
 
 try:
+    # noinspection PyUnresolvedReferences
     import cv2
 
     def rotate_image(image, angle):
@@ -62,6 +67,7 @@ try:
                               (image.shape[1], image.shape[0]))
 except ImportError:
     try:
+        # noinspection PyUnresolvedReferences
         from scipy.misc import imrotate
 
         def rotate_image(image, angle):
@@ -73,7 +79,7 @@ except ImportError:
             """
 
             return imrotate(image, angle)
-    except:
+    except ImportError:
         from scipy.ndimage.interpolation import rotate
 
         def rotate_image(image, angle):

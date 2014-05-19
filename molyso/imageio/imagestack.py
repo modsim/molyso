@@ -36,6 +36,9 @@ class MultiImageStack(object):
             return image
         return image
 
+    def _get_image(self, *args, **kwargs):
+        raise NotImplementedError("Virtual function")
+
     def _get_meta(self, *args, **kwargs):
         raise NotImplementedError("Virtual function")
 
@@ -51,8 +54,7 @@ class MultiImageStack(object):
 
         for k, v in cls.ExtensionRegistry.items():
             if filename.lower().endswith(k):
-                i = v()
-                i._open(filename)
+                i = v(filename)
                 return i
 
         raise Exception("Unknown format")

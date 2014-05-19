@@ -79,7 +79,6 @@ class DebugPlot(object):
             if DebugPlot.pp is None:
                 DebugPlot.pp = self.__class__.pdfopener('debug.pdf')
 
-
     def __getattr__(self, item):
         if self.active:
             if hasattr(self.pylab, item):
@@ -100,6 +99,7 @@ class DebugPlot(object):
             if self.__class__.throw_on_anything:
                 raise DebugPlotInterruptException()
             else:
+                # noinspection PyUnusedLocal
                 def proxy(*args, **kwargs):
                     pass
 
@@ -116,6 +116,7 @@ class DebugPlot(object):
 
     def __enter__(self):
         if self.active:
+            # noinspection PyPep8Naming,PyAttributeOutsideInit
             self.rcParams = self.pylab.rcParams
             self.clf()
             self.close()
@@ -127,6 +128,7 @@ class DebugPlot(object):
                       transform=self.gca().transAxes)
         return self
 
+    # noinspection PyUnusedLocal
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type == DebugPlotInterruptException:
             return True

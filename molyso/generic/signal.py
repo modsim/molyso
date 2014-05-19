@@ -10,6 +10,8 @@ import numpy
 import scipy.signal
 import scipy.interpolate
 
+import warnings
+
 from .fft import fft, ifft, fftfreq, get_optimal_dft_size
 from .util import relative_maxima, relative_minima
 from .smoothing import smooth
@@ -39,7 +41,7 @@ def find_phase(signal1=None, signal2=None,
 
     corr = ifft(fft1 * -fft2.conjugate())
 
-    corr = numpy.abs(corr)
+    corr = numpy.absolute(corr)
     themax = numpy.argmax(corr)
     #if themax > 2 and themax < (len(corr) - 2):
     #    sur = corr[themax-1:themax+2]
@@ -84,10 +86,10 @@ def find_extrema_and_prominence(signal, order=5):
         break
 
     maximaintpx = numpy.zeros(len(maxima) + 2)
-    maximaintpy = maximaintpx.copy()
+    maximaintpy = numpy.copy(maximaintpx)
 
     minimaintpx = numpy.zeros(len(minima) + 2)
-    minimaintpy = minimaintpx.copy()
+    minimaintpy = numpy.copy(minimaintpx)
 
     maximaintpx[0] = 0
     maximaintpx[1:-1] = maxima[:]
@@ -114,7 +116,9 @@ def find_extrema_and_prominence(signal, order=5):
             arg[:] = float("Inf")
             return arg
     else:
-        max_spline = scipy.interpolate.UnivariateSpline(maximaintpx, maximaintpy, bbox=[0, len(signal)], k=k)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            max_spline = scipy.interpolate.UnivariateSpline(maximaintpx, maximaintpy, bbox=[0, len(signal)], k=k)
 
     k = 3
     if len(minimaintpy) <= 3:
@@ -125,7 +129,9 @@ def find_extrema_and_prominence(signal, order=5):
             arg[:] = float("-Inf")
             return arg
     else:
-        min_spline = scipy.interpolate.UnivariateSpline(minimaintpx, minimaintpy, bbox=[0, len(signal)], k=k)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            min_spline = scipy.interpolate.UnivariateSpline(minimaintpx, minimaintpy, bbox=[0, len(signal)], k=k)
 
     xpts = numpy.linspace(0, len(signal) - 1, len(signal))
 
@@ -198,12 +204,12 @@ def powerspectrum(arr):
     :return:
     """
     freqs, fourier = spectrum(arr)
-    return freqs, numpy.abs(fourier)
+    return freqs, numpy.absolute(fourier)
 
 
-def hires_powerspectrum(arr, oversample=1):
+def hires_powerspectrum(arr, oversampling=1):
     arr_len = len(arr)
-    xsize = get_optimal_dft_size(oversample * arr_len)
+    xsize = get_optimal_dft_size(oversampling * arr_len)
 
     tmp_data = numpy.zeros(xsize)
     tmp_data[:arr_len] = arr

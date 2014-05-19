@@ -12,4 +12,5 @@ import molyso.mm.highlevel
 #sys.path.insert(0, os.path.split(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))[0])
 
 if __name__ == '__main__':
+    # noinspection PyUnresolvedReferences
     molyso.mm.highlevel.main()
