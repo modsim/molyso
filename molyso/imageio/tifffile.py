@@ -107,29 +107,6 @@ References
 (9) Micro-Manager File Formats.
     http://www.micro-manager.org/wiki/Micro-Manager_File_Formats
 
-Examples
---------
->>> data = numpy.random.rand(301, 219)
->>> imsave('temp.tif', data)
->>> image = imread('temp.tif')
->>> assert numpy.all(image == data)
-
->>> tif = TiffFile('test.tif')
->>> images = tif.asarray()
->>> image0 = tif[0].asarray()
->>> for page in tif:
-...     for tag in page.tags.values():
-...         t = tag.name, tag.value
-...     image = page.asarray()
-...     if page.is_rgb: pass
-...     if page.is_palette:
-...         t = page.color_map
-...     if page.is_stk:
-...         t = page.mm_uic_tags.number_planes
-...     if page.is_lsm:
-...         t = page.cz_lsm_info
->>> tif.close()
-
 """
 
 from __future__ import division, print_function
@@ -538,6 +515,7 @@ def imread(files, *args, **kwargs):
             return imseq.asarray(*args, **kwargs)
 
 
+# noinspection PyPep8Naming
 class lazyattr(object):
     """Lazy object attribute whose value is computed on first access."""
     __slots__ = ('func', )
@@ -2080,6 +2058,7 @@ def imagej_description(description):
     _str = str if sys.version_info[0] < 3 else lambda x: str(x, 'cp1252')
     result = {}
     for line in description.splitlines():
+        # noinspection PyBroadException
         try:
             key, val = line.split(b'=')
         except Exception:
@@ -2348,6 +2327,7 @@ def unpackints(data, dtype, itemsize, runlen=0):
     for i in range(len(result)):
         start = bitcount // 8
         s = data[start:start + itembytes]
+        # noinspection PyBroadException
         try:
             code = unpack(dtypestr, s)[0]
         except Exception:
@@ -2550,6 +2530,7 @@ def test_tifffile(directory='testimages', verbose=True):
             successful, successful + failed, time.time() - start))
 
 
+# noinspection PyPep8Naming
 class TIFF_SUBFILE_TYPES(object):
     def __getitem__(self, key):
         result = []
