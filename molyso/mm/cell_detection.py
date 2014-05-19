@@ -84,7 +84,7 @@ class Cells(list):
             return
 
         for b, e in find_cells_in_channel(self.imagedata):
-            self += [self.__class__.cell_type(b, e, self.channel)]
+            self.append(self.__class__.cell_type(b, e, self.channel))
 
     def clean(self):
         del self.imagedata
@@ -101,6 +101,7 @@ def find_cells_in_channel(im):
     # ma, mi = profile.max(), profile.min()
 
     # empty channel detection
+    # noinspection PyArgumentEqualDefault
     xprofile = threshold_outliers(profile, 2.0)
     if ((xprofile.max() - xprofile.min()) / xprofile.max()) < 0.5:
         return []
@@ -168,6 +169,7 @@ def find_cells_in_channel(im):
 
         diff = smooth(diff, signals(numpy.hamming, 5))
         diff /= diff.mean()
+        # noinspection PyArgumentEqualDefault
         dextrema = find_extrema_and_prominence(diff, order=5)
 
         p.plot(diff + 100)

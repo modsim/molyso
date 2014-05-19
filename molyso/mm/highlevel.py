@@ -12,11 +12,13 @@ import sys
 import os
 import multiprocessing
 
-from ..generic.etc import parse_range
+from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init
 
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
 from .image import Image
+
+from .tracking import track_complete_channel_timeline, analyze_tracking
 
 OMETiffStack = OMETiffStack
 
@@ -113,6 +115,8 @@ def processing_setup(filename):
     if ims is None:
         ims = MultiImageStack.open(filename)
 
+    correct_windows_signal_handlers()
+
 
 def main():
     global ims
@@ -123,6 +127,21 @@ def main():
 
     if not args.nb:
         print(banner())
+
+    try:
+        import matplotlib
+
+        matplotlib.use("TkAgg")
+    except ImportError:
+        if args.debug:
+            print("matplotlib could not be imported. Debugging was disabled.")
+            args.debug = False
+
+    if args.debug:
+        debug_init()
+        if args.mp != 0:
+            print("Debugging enabled, concurrent processing disabled!")
+            args.mp = 0
 
     ims = MultiImageStack.open(args.input)
 
@@ -149,10 +168,17 @@ def main():
 
     results = {pos: {} for pos in positions_to_process}
 
+    total = len(timepoints_to_process) * len(positions_to_process)
+    processed = 0
+
     if args.mp == 0:
+        processing_setup(args.input)
+
         for t in timepoints_to_process:
             for pos in positions_to_process:
                 results[pos][t] = processing_frame(t, pos)
+                processed += 1
+                print("Processed %d/%d" % (processed, total))
     else:
         if args.mp < 0:
             args.mp = multiprocessing.cpu_count()
@@ -165,9 +191,6 @@ def main():
             for pos in positions_to_process:
                 workerstates.append((t, pos, pool.apply_async(processing_frame, (t, pos))))
 
-        total = len(timepoints_to_process) * len(positions_to_process)
-        processed = 0
-
         while len(workerstates) > 0:
             for i, (t, pos, state) in reversed(list(enumerate(workerstates))):
                 if state.ready():
@@ -175,5 +198,12 @@ def main():
                     del workerstates[i]
                     processed += 1
                     print("Processed %d/%d" % (processed, total))
+
+    tracked_results = {}
+
+    for pos, times in results.items():
+        tracked_results[pos] = track_complete_channel_timeline(times)
+
+    analyze_tracking(tracked_results)
 
 

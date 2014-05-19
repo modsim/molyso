@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Taken from scikit-image, to remove dependency on scikit-image (for merely using one function)
 
 # This file

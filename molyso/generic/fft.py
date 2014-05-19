@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # variable dft_sizes below is taken from OpenCV's modules/core/src/dxt.cpp
 # ( https://github.com/Itseez/opencv/blob/a6ef45aa139ceb0cca2b86f95ef8298294a45d3b/modules/core/src/dxt.cpp )
 # below is OpenCV's modules/core/src/dxt.cpp license text

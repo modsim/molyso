@@ -6,3 +6,5 @@ from .debugging.debug import Debug
 from .debugging.debugplot import DebugPlot
 from .debugging.benchmark import Timed
 from .generic.tunable import tunable, TunableManager
+
+__version__ = "0.1"

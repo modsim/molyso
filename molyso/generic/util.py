@@ -11,7 +11,8 @@ import scipy.signal
 class NotReallyATree(list):
     def __init__(self, iterable):
         super(NotReallyATree, self).__init__(self)
-        self += iterable
+        for i in iterable:
+            self.append(i)
         self.na = numpy.array(iterable)
 
     def query(self, q):  # w_numpy
