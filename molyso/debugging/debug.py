@@ -7,7 +7,7 @@ from __future__ import division, unicode_literals, print_function
 
 class Debug(object):
     enabled = {}
-    context = ""
+    context = ''
 
     default_filter = True
     filter_map = {}
@@ -31,7 +31,7 @@ class Debug(object):
 
     @classmethod
     def set_context(cls, **kwargs):
-        cls.context = " ".join(["%s=%s" % x for x in kwargs.items()])
+        cls.context = ' '.join(["%s=%s" % x for x in kwargs.items()])
 
     @classmethod
     def get_context(cls):
@@ -39,7 +39,7 @@ class Debug(object):
 
     @staticmethod
     def filter_to_str(what):
-        return ".".join([w.lower() for w in what])
+        return '.'.join([w.lower() for w in what])
 
     @classmethod
     def add_filter(cls, *what):

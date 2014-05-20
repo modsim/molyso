@@ -143,6 +143,10 @@ def main():
             print("Debugging enabled, concurrent processing disabled!")
             args.mp = 0
 
+    if sys.maxsize <= 2 ** 32:
+        print("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
+              "and it will significantly reduce functionality!")
+
     ims = MultiImageStack.open(args.input)
 
     positions_to_process = args.multipoints
@@ -171,6 +175,9 @@ def main():
     total = len(timepoints_to_process) * len(positions_to_process)
     processed = 0
 
+    if args.mp < 0:
+        args.mp = multiprocessing.cpu_count()
+
     if args.mp == 0:
         processing_setup(args.input)
 
@@ -180,9 +187,6 @@ def main():
                 processed += 1
                 print("Processed %d/%d" % (processed, total))
     else:
-        if args.mp < 0:
-            args.mp = multiprocessing.cpu_count()
-
         pool = multiprocessing.Pool(args.mp, processing_setup, [args.input])
 
         workerstates = []
@@ -198,6 +202,8 @@ def main():
                     del workerstates[i]
                     processed += 1
                     print("Processed %d/%d" % (processed, total))
+
+        pool.close()
 
     tracked_results = {}
 

@@ -3,6 +3,9 @@ from __future__ import division, unicode_literals, print_function
 import random
 import numpy
 
+from ..generic.etc import QuickTableDumper
+
+
 try:
     import matplotlib.colors
 
@@ -228,35 +231,6 @@ def visualize_tracking(tracked_results):
             pass
 
 
-class QuickTableDumper(object):
-    def __init__(self, recipient=None):
-        if recipient is None:
-            import sys
-
-            recipient = sys.stdout
-        self.recipient = recipient
-        self.headers = []
-        self.delim = "\t"
-        self.lineend = "\n"
-        self.precision = 4
-
-    def write(self, s):
-        self.recipient.write(s)
-
-    def add(self, row):
-        if len(self.headers) == 0:
-            self.headers = list(row.keys())
-
-            self.write(self.delim.join(self.headers) + self.lineend)
-
-        self.write(self.delim.join([self.stringer(row[k]) for k in self.headers]) + self.lineend)
-
-    @classmethod
-    def stringer(cls, obj):
-        if type(obj) == float or type(obj) == numpy.float64:
-            return str(obj)  # str(round(obj, self.precision))
-        else:
-            return str(obj)
 
 
 def dump_tracking(tracked_results, basename="_OUT"):

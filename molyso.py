@@ -4,12 +4,17 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
-import molyso.mm.highlevel
+import os
+import inspect
+import sys
 
-#import os
-#import inspect
-#import sys
-#sys.path.insert(0, os.path.split(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))[0])
+if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))), "molyso")):
+    import molyso.mm.highlevel
+else:
+    sys.path = list(reversed(sys.path))
+    import molyso.mm.highlevel
+
+    sys.path = list(reversed(sys.path))
 
 if __name__ == '__main__':
     # noinspection PyUnresolvedReferences

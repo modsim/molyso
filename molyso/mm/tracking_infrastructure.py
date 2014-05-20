@@ -1,4 +1,18 @@
+# -*- coding: utf-8 -*-
+"""
+documentation
+"""
+from __future__ import division, unicode_literals, print_function
+
+import numpy
+import itertools
+
+
 class CellTracker(object):
+    """
+
+    """
+
     def __init__(self):
         self.all_tracked_cells = {}
         self.origins = []
@@ -9,29 +23,24 @@ class CellTracker(object):
 
     @property
     def average_cells(self):
-        try:
+        if self.timepoints > 0:
             return float(len(self.all_tracked_cells)) / self.timepoints
-        except ZeroDivisionError:
+        else:
             return 0.0
+
+    def new_cell(self):
+        return TrackedCell(self)
+
+    def new_observed_cell(self, where):
+        return self.new_cell().add_observation(where)
 
     def new_origin(self):
         t = self.new_cell()
-        self.origins += [t]
-        return t
-
-    def new_cell(self):
-        t = TrackedCell(self)
-        return t
-
-    def new_observed_cell(self, where):
-        t = self.new_cell()
-        t.add_observation(where)
+        self.origins.append(t)
         return t
 
     def new_observed_origin(self, where):
-        t = self.new_origin()
-        t.add_observation(where)
-        return t
+        return self.new_origin().add_observation(where)
 
     def is_tracked(self, cell):
         return cell in self.all_tracked_cells
@@ -48,8 +57,8 @@ class TrackedCell(object):
 
         self.seen_as = []
 
-        self.raw_elongation_rates = []
-        self.raw_trajectories = []
+        self.raw_elongation_rates = [0.0]
+        self.raw_trajectories = [0.0]
 
     @property
     def elongation_rates(self):
@@ -67,35 +76,35 @@ class TrackedCell(object):
 
     def add_child(self, tcell):
         tcell.parent = self
-        self.children += [tcell]
+        self.children.append(tcell)
+        return self
+
+    def add_children(self, *children):
+        for child in children:
+            self.add_child(child)
 
     def add_observation(self, cell):
-        self.seen_as += [cell]
-        try:
-            if self.seen_as[-2] == self.seen_as[-1]:
-                self.raw_elongation_rates.append(0.0)
-                self.raw_trajectories.append(0.0)
-                return  # wtf?
-        except IndexError:
-            pass
-            #print(self.seen_as)
+        self.seen_as.append(cell)
         self.tracker.all_tracked_cells[cell] = self
-        try:
-            self.raw_elongation_rates += [
-                (self.seen_as[-1].length - self.seen_as[-2].length) /
-                (self.seen_as[-1].channel.image.timepoint - self.seen_as[-2].channel.image.timepoint)]
-        except (IndexError, ZeroDivisionError):
-            self.raw_elongation_rates.append(0.0)
 
-        try:
-            self.raw_trajectories += [
-                (self.seen_as[-1].centroid1dloc - self.seen_as[-2].centroid1dloc) /
-                (self.seen_as[-1].channel.image.timepoint - self.seen_as[-2].channel.image.timepoint)]
-        except (IndexError, ZeroDivisionError):
-            self.raw_trajectories.append(0.0)
+        if len(self.seen_as) > 1:
+            current = self.seen_as[-1]
+            previous = self.seen_as[-2]
+
+            assert (current != previous)
+
+            self.raw_elongation_rates.append(
+                (current.length - previous.length) /
+                (current.channel.image.timepoint - previous.channel.image.timepoint))
+            self.raw_trajectories.append(
+                (current.centroid1dloc - previous.centroid1dloc) /
+                (current.channel.image.timepoint - previous.channel.image.timepoint))
+
+        return self
 
 
-import numpy
+def to_list(x):
+    return x if type(x) == list else [x]
 
 
 class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
@@ -107,75 +116,52 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
 
         self.run = []
 
-        self.debug_output = ""
+        self.debug_output = ''
 
-    def _aslist(self, something):
-        if type(something) == list:
-            return something
-        else:
-            return [something]
 
     def add_outcome(self, cost, involved_a, involved_b, what):
-
         # nan check
         if cost != cost:
             return
 
-        #if cost > 100:
-        #    return
         self.data.append((cost, (involved_a, involved_b, what)))
 
-        involved_a = self._aslist(involved_a)
-        involved_b = self._aslist(involved_b)
-
-        for a in involved_a:
-            self.set_a.add(a)
-        for b in involved_b:
-            self.set_b.add(b)
-
-
-    def getlookups(self):
-        alookup = {v: k + 1 for k, v in
-                   enumerate(c for pos, c in sorted((c.centroid1dloc, c) for c in self.set_a)[::-1])}
-        blookup = {v: k + 1 for k, v in
-                   enumerate(c for pos, c in sorted((c.centroid1dloc, c) for c in self.set_b)[::-1])}
-        return alookup, blookup
+        self.set_a |= involved_a
+        self.set_b |= involved_b
 
     # forgive me ...
     # hacking this together quickly as I want to see if the crossing checking
     # helps somewhat significantly
     # its totally unabstracted (and unoptimized). bleargh!
 
-    def perform_optimal(self, dryRun=False):
-        orderedA = list(sorted(self.set_a))
-        orderedB = list(sorted(self.set_b))
+    def perform_optimal(self):
+        ordered_a = list(sorted(self.set_a))
+        ordered_b = list(sorted(self.set_b))
 
-        lookupA = {i: n for n, i in enumerate(orderedA)}
-        lookupB = {i: n for n, i in enumerate(orderedB)}
+        lookup_a = {i: n for n, i in enumerate(ordered_a)}
+        lookup_b = {i: n for n, i in enumerate(ordered_b)}
 
-        lena = len(orderedA)
-        lenb = len(orderedB)
+        len_a = len(ordered_a)
+        len_b = len(ordered_b)
 
         rows = len(self.data)
-        cols = len(orderedA) + len(orderedB)
+        cols = len(ordered_a) + len(ordered_b)
 
-        matrix = numpy.zeros((rows, cols), dtype=bool)
+        matrix = numpy.zeros((rows, cols,), dtype=bool)
 
         costs = numpy.zeros(rows)
 
         actions = [()] * rows
 
-        to_list = lambda x: x if type(x) == list else [x]
-
         for i, (cost, (involved_a, involved_b, what)) in enumerate(
-                sorted(self.data, key=lambda x: (x[0], to_list(x[1][0]), to_list(x[1][1])))):
+                sorted(self.data, key=lambda x: (x[0], x[1][0], x[1][1]))):
             actions[i] = (involved_a, involved_b, what)
 
-            for a in self._aslist(involved_a):
-                matrix[i][lookupA[a]] = True
+            for a in involved_a:
+                matrix[i][lookup_a[a]] = True
 
-            for b in self._aslist(involved_b):
-                matrix[i][lookupB[b] + lena] = True
+            for b in involved_b:
+                matrix[i][lookup_b[b] + len_a] = True
 
             costs[i] = cost
 
@@ -185,31 +171,26 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
         collector = numpy.zeros(cols, dtype=bool)
         accumulator = 0.0
 
-        import itertools
-
         def would_that_work_without_crossings(used_rows, current_row):
             # wow, so bruteforce.
             def row_to_inuse(n):
-                a = []
-                b = []
+                tmp_a = []
+                tmp_b = []
                 for num, v in enumerate(matrix[n]):
                     if v:
-                        if num < lena:
-                            a += [orderedA[num]]
+                        if num < len_a:
+                            tmp_a.append(ordered_a[num])
                         else:
-                            b += [orderedB[num - lena]]
-                return list(itertools.product(a, b))
+                            tmp_b.append(ordered_b[num - len_a])
+                return itertools.product(tmp_a, tmp_b)
 
             tocheck = row_to_inuse(current_row)
 
             for ur in used_rows:
                 for a, b in row_to_inuse(ur):
                     for ta, tb in tocheck:
-                        if a.centroid1dloc < ta.centroid1dloc and b.centroid1dloc > tb.centroid1dloc:
-                            #print("it has happened")
-                            return False
-                        if a.centroid1dloc > ta.centroid1dloc and b.centroid1dloc < tb.centroid1dloc:
-                            #print("it has happened, a bit diffrently")
+                        if (a.centroid1dloc < ta.centroid1dloc and b.centroid1dloc > tb.centroid1dloc) or \
+                                (a.centroid1dloc > ta.centroid1dloc and b.centroid1dloc < tb.centroid1dloc):
                             return False
 
             return True
@@ -290,14 +271,14 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
 
         if False:
 
-            header = ["Cost"] + ["1"] + ["O"] + ["What"] + ["A"] + [str(s) for s in range(1, lena + 1)] \
-                     + ["B"] + [str(s) for s in range(1, lenb + 1)]
+            header = ["Cost"] + ["1"] + ["O"] + ["What"] + ["A"] + [str(s) for s in range(1, len_a + 1)] \
+                     + ["B"] + [str(s) for s in range(1, len_b + 1)]
             self.debug_output += "\t".join([str(s) for s in header])
             self.debug_output += "\n"
             #)
             for n in range(rows):
                 trow = [costs[n]] + ["*" if n in baseline else ""] + ["*" if n in current else ""] + [
-                    actions[n][2].func_name] + [""] + list(matrix[n][0:lena]) + [""] + list(matrix[n][lena:])  #)
+                    actions[n][2].func_name] + [""] + list(matrix[n][0:len_a]) + [""] + list(matrix[n][len_a:])  #)
                 self.debug_output += "\t".join([str(s) for s in trow])
                 self.debug_output += "\n"
 
@@ -305,4 +286,4 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
 
         for c in current:
             involved_a, involved_b, what = actions[c]
-            what(involved_a, involved_b)
+            what(list(involved_a), list(involved_b))

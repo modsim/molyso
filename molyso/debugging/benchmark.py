@@ -20,15 +20,15 @@ class Timed(object):
         self.quiet = None
         self.stop = None
 
-    def __enter__(self, what=""):
+    def __enter__(self, what=''):
         self.ticks = []
         self.start = time.time()
         self.last = time.time()
         self.what = what
-        self.quiet = Debug.is_enabled("microbenchmarks")
+        self.quiet = Debug.is_enabled('microbenchmarks')
         return self
 
-    def tick(self, what=""):
+    def tick(self, what=''):
         self.ticks += [(time.time(), self.last, what)]
         self.last = time.time()
 
@@ -40,7 +40,7 @@ class Timed(object):
         self.stop = time.time()
         total = self.stop - self.start
         if not self.quiet:
-            if self.what != "":
+            if self.what != '':
                 sys.stderr.write("[%s]: " % (self.what,))
             sys.stderr.write("Took %.4fs " % (total,) + os.linesep)
             for step, newstop, what in self.ticks:

@@ -85,14 +85,14 @@ class Channels(list):
             #noinspection PyMethodFirstArgAssignment
             self += [self.__class__.channel_type(self.image, begin, end, upper, lower)]
 
-        with DebugPlot("channeldetection", "result", "onoriginal") as p:
+        with DebugPlot('channeldetection', 'result', 'onoriginal') as p:
             p.title("Detected channels (on original image)")
             p.imshow(self.image.original_image)
             for chan in self:
                 coords = [self.image.cp(*pp) for pp in chan.get_coordinates()]
                 p.poly_drawing_helper(coords, lw=1, edgecolor='r', fill=False)
 
-        with DebugPlot("channeldetection", "result", "rotated") as p:
+        with DebugPlot('channeldetection', 'result', 'rotated') as p:
             p.title("Detected channels")
             p.imshow(self.image.image)
             for chan in self:
@@ -140,7 +140,7 @@ def find_channels_in_profile_fft_assisted(profile):
     upper_profile = smooth(upper_profile, signals(numpy.hamming, 15))  # 5
     lower_profile = smooth(lower_profile, signals(numpy.hamming, 15))  # 5
 
-    with DebugPlot("channeldetection", "details", "differentials", "smoothed") as p:
+    with DebugPlot('channeldetection', 'details', 'differentials', 'smoothed') as p:
         p.title("Channeldetection/Differentials/Smoothed")
         p.plot(upper_profile)
         p.plot(lower_profile)
@@ -155,11 +155,11 @@ def find_channels_in_profile_fft_assisted(profile):
     mainfrequency_upper = frequencies_upper[numpy.argmax(fourier_value_upper)]
     mainfrequency_lower = frequencies_lower[numpy.argmax(fourier_value_lower)]
 
-    with DebugPlot("channeldetection", "details", "powerspectra", "upper") as p:
+    with DebugPlot('channeldetection', 'details', 'powerspectra', 'upper') as p:
         p.title("Powerspectrum (upper)")
         p.semilogx(frequencies_upper, fourier_value_upper)
         p.title("mainfreq=%f" % mainfrequency_upper)
-    with DebugPlot("channeldetection", "details", "powerspectra", "lower") as p:
+    with DebugPlot('channeldetection', 'details', 'powerspectra', 'lower') as p:
         p.title("Powerspectrum (lower)")
         p.semilogx(frequencies_lower, fourier_value_lower)
         p.title("mainfreq=%f" % mainfrequency_lower)
@@ -304,7 +304,7 @@ def find_channels(img):
 
     profile = horizontal_mean(img)
 
-    with DebugPlot("channeldetection", "details", "overview", "horizontal") as p:
+    with DebugPlot('channeldetection', 'details', 'overview', 'horizontal') as p:
         p.title("Basic horizontal overview")
         p.plot(profile)
 

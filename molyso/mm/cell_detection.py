@@ -151,16 +151,16 @@ def find_cells_in_channel(im):
 
     cell_i = [[b, e] for b, e in cell_i if extrema.prominence[b:e].mean() > 10.0]
 
-    with DebugPlot("celldetection_exp") as p:
+    with DebugPlot('celldetection_exp') as p:
         p.title("Cell detection exp")
         p.imshow(numpy.transpose(im))
         p.plot(oldprofile)
 
-        p.plot(smooth(oldprofile, signals(numpy.hamming, 15)), color="purple")
+        p.plot(smooth(oldprofile, signals(numpy.hamming, 15)), color='purple')
 
         p.plot(extrema.xpts, extrema.prominence)
 
-    with DebugPlot("celldetection_exp") as p:
+    with DebugPlot('celldetection_exp') as p:
         p.title("Cell detection exp")
         p.imshow(numpy.transpose(im))
 
@@ -173,12 +173,12 @@ def find_cells_in_channel(im):
         dextrema = find_extrema_and_prominence(diff, order=5)
 
         p.plot(diff + 100)
-        p.scatter(dextrema.maxima, dextrema.signal[dextrema.maxima] + 100, color="green")
-        p.scatter(dextrema.minima, dextrema.signal[dextrema.minima] + 100, color="red")
+        p.scatter(dextrema.maxima, dextrema.signal[dextrema.maxima] + 100, color='green')
+        p.scatter(dextrema.minima, dextrema.signal[dextrema.minima] + 100, color='red')
         p.plot(dextrema.prominence + 50)
         p.scatter([150], [150])  # the fu point
 
-    with DebugPlot("celldetection") as p:
+    with DebugPlot('celldetection') as p:
         p.title("Cell detection")
         p.imshow(numpy.transpose(im))
         p.plot(profile)

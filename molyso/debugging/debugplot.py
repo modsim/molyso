@@ -19,7 +19,7 @@ class DebugPlot(object):
     throw_on_anything = True
 
     pp = None
-    context = ""
+    context = ''
 
     exp_plot_debugging = False  # True
 
@@ -62,20 +62,20 @@ class DebugPlot(object):
         :param info: An additional information about the plot, currently shown in the title
         :return:
         """
-        self.info = ""
-        if "info" in kwargs:
-            self.info = kwargs["info"]
+        self.info = ''
+        if 'info' in kwargs:
+            self.info = kwargs['info']
         self.filter_okay = Debug.filter(*args)
         self.filter_str = Debug.filter_to_str(args)
 
-        self.active = self.filter_okay and (Debug.is_enabled("plot") or Debug.is_enabled("plot_pdf"))
+        self.active = self.filter_okay and (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf'))
 
         if self.active:
             import pylab
 
             self.pylab = pylab
 
-        if Debug.is_enabled("plot_pdf"):
+        if Debug.is_enabled('plot_pdf'):
             if DebugPlot.pp is None:
                 DebugPlot.pp = self.__class__.pdfopener('debug.pdf')
 
@@ -87,8 +87,8 @@ class DebugPlot(object):
                         import sys
 
                         print("pylab.%s(%s%s%s)" % (
-                            item, ",".join([repr(a) for a in args]), "," if len(kwargs) > 0 else "",
-                            ",".join(["%s=%s" % (a, repr(b)) for a, b in kwargs.items()])), file=sys.stderr)
+                            item, ','.join([repr(a) for a in args]), ',' if len(kwargs) > 0 else '',
+                            ','.join(["%s=%s" % (a, repr(b)) for a, b in kwargs.items()])), file=sys.stderr)
                         return getattr(self.pylab, item)(*args, **kwargs)
                 else:
                     def proxy(*args, **kwargs):
