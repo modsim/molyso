@@ -17,7 +17,7 @@ import json
 import multiprocessing
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, \
-    QuickTableDumper, progress_bar
+    QuickTableDumper, silent_progress_bar, fancy_progress_bar
 
 from .. import TunableManager
 
@@ -150,8 +150,9 @@ def main():
         print(*inner_args, file=sys.stderr)
 
     if args.quiet:  # silence the progress bar filter
-        def progress_bar(iterable):
-            return iterable
+        progress_bar = silent_progress_bar
+    else:
+        progress_bar = fancy_progress_bar
 
     if not args.nb:
         print_info(banner())
