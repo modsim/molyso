@@ -37,7 +37,7 @@ class Cell(object):
 
     @property
     def centroid1dloc(self):
-        return (self.top + self.bottom) / 2
+        return (self.top + self.bottom) / 2.0
 
     @property
     def centroid(self):
@@ -70,24 +70,24 @@ class Cells(list):
 
     cell_type = Cell
 
-    def __init__(self, image, channel, imagedata, bootstrap=True):
+    def __init__(self, image, channel, image_data, bootstrap=True):
         super(Cells, self).__init__(self)
 
         self.image = image
         self.channel = channel
 
-        self.imagedata = imagedata
+        self.image_data = image_data
 
         self.nearest_tree = None
 
         if not bootstrap:
             return
 
-        for b, e in find_cells_in_channel(self.imagedata):
+        for b, e in find_cells_in_channel(self.image_data):
             self.append(self.__class__.cell_type(b, e, self.channel))
 
     def clean(self):
-        del self.imagedata
+        del self.image_data
 
     @property
     def centroids(self):
@@ -102,17 +102,18 @@ def find_cells_in_channel(im):
 
     # empty channel detection
     # noinspection PyArgumentEqualDefault
-    xprofile = threshold_outliers(profile, 2.0)
-    if ((xprofile.max() - xprofile.min()) / xprofile.max()) < 0.5:
+    xprofile = threshold_outliers(profile, tunable("cells.emptychannel.skipping.outlier_times_sigma", 2.0))
+    if ((xprofile.max() - xprofile.min()) / xprofile.max()) < \
+            tunable("cells.emptychannel.skipping.intensityrangequotient", 0.5) and \
+            tunable("cells.emptychannel.skipping", True):
         return []
         pass
 
     profile = simple_baseline_correction(profile, window_width=None)
 
-    profile = smooth(profile, signals(scipy.signal.flattop, 15))
+    profile = smooth(profile, signals(scipy.signal.flattop, tunable("cells.smoothing.flattop.length", 15)))
 
-    extrema_order = 15
-    extrema = find_extrema_and_prominence(profile, order=extrema_order)
+    extrema = find_extrema_and_prominence(profile, order=tunable("cells.extrema.order", 15))
 
     newsignal = numpy.zeros_like(profile)
     newsignal[extrema.maxima] = extrema.prominence[extrema.maxima]
@@ -130,8 +131,6 @@ def find_cells_in_channel(im):
     tp[len(points):-1] = points[1:]
     tp = tp.reshape((len(points), 2), order='F')[:-1]
 
-    #thresh, bwimg = cv2.threshold(im, 0, 1, cv2.THRESH_OTSU)
-
     thresh = threshold_otsu(im)
     bwimg = im > thresh
     bwprof = vertical_mean(bwimg.astype(float))
@@ -141,16 +140,20 @@ def find_cells_in_channel(im):
     for b, e in tp:
         bnewsignal[b:e] = numpy.mean(bwprof[b:e])
 
-    multiplicator = (bnewsignal < 0.75)
+    multiplicator = (bnewsignal < tunable("cells.multiplicator.threshold", 0.75))
 
     cells = multiplicator - newsignal
 
     cell_i = find_insides(cells)
     #cell_i = [[a, b] for a, b in cell_i if not (((a - b) == 0) or (a == 0) or (b == (len(cells) - 1)))]
     cell_i = [[a, b] for a, b in cell_i if not (((a - b) == 0))]
+    cell_i = [[b, e] for b, e in cell_i if extrema.prominence[b:e].mean() >
+                                           tunable("cells.filtering.minimum_prominence", 10.0)]
 
-    cell_i = [[b, e] for b, e in cell_i if extrema.prominence[b:e].mean() > 10.0]
+    return cell_i
 
+
+"""
     with DebugPlot('celldetection_exp') as p:
         p.title("Cell detection exp")
         p.imshow(numpy.transpose(im))
@@ -197,5 +200,4 @@ def find_cells_in_channel(im):
         for b, e in cell_i:
             pro = extrema.prominence[b:e].mean()
             p.text((b + e) / 2, -10, "%.1f" % (pro,))
-
-    return cell_i
+"""

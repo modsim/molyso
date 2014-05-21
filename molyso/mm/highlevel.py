@@ -10,18 +10,24 @@ __citation__ = "molyso: A software for mother machine analysis, working title. S
 import argparse
 import sys
 import os
+import numpy
+import itertools
+import codecs
+import json
 import multiprocessing
 
-from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init
+from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, \
+    QuickTableDumper, progress_bar
+
+from .. import TunableManager
 
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
 from .image import Image
 
-from .tracking import track_complete_channel_timeline, analyze_tracking
+from .tracking import TrackedPosition, analyze_tracking, plot_timeline, tracker_to_cell_list
 
 OMETiffStack = OMETiffStack
-
 
 def banner():
     return """
@@ -52,10 +58,16 @@ def create_argparser():
     argparser.add_argument("input", metavar="input", type=str, help="input file")
     argparser.add_argument("-tp", "--timepoints", dest="timepoints", default=[0, float("inf")], type=parse_range)
     argparser.add_argument("-mp", "--multipoints", dest="multipoints", default=[0, float("inf")], type=parse_range)
+    argparser.add_argument("-o", "--table-output", dest="table_output", type=str, default=None)
+    argparser.add_argument("-ot", "--output-tracking", dest="tracking_output", type=str, default=None)
     argparser.add_argument("-nb", "--no-banner", dest="nb", default=False, action="store_true")
     argparser.add_argument("-cpu", "--cpus", dest="mp", default=-1, type=int)
     argparser.add_argument("-debug", "--debug", dest="debug", default=False, action="store_true")
+    argparser.add_argument("-q", "--quiet", dest="quiet", default=False, action="store_true")
     argparser.add_argument("-nc", "--no-cache", dest="nocache", default=False, action="store_true")
+    argparser.add_argument("-rt", "--read-tunables", dest="read_tunables", type=str, default=None)
+    argparser.add_argument("-wt", "--write-tunables", dest="write_tunables", type=str, default=None)
+    argparser.add_argument("-zm", "--z-is-multipoint", dest="zm", default=False, action="store_true")
 
     return argparser
 
@@ -110,12 +122,17 @@ def processing_frame(t, pos):
     return image
 
 
-def processing_setup(filename):
+def processing_setup(args):
     global ims
     if ims is None:
-        ims = MultiImageStack.open(filename)
+        ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
 
     correct_windows_signal_handlers()
+
+    try:
+        import cv2
+    except ImportError:
+        pass
 
 
 def main():
@@ -125,29 +142,40 @@ def main():
 
     args = argparser.parse_args()
 
+    def print_info(*inner_args):
+        if not args.quiet:
+            print(*inner_args)
+
+    def print_warning(*inner_args):
+        print(*inner_args, file=sys.stderr)
+
+    if args.quiet:  # silence the progress bar filter
+        def progress_bar(iterable):
+            return iterable
+
     if not args.nb:
-        print(banner())
+        print_info(banner())
 
     try:
         import matplotlib
 
-        matplotlib.use("TkAgg")
+        matplotlib.use("PDF")
     except ImportError:
         if args.debug:
-            print("matplotlib could not be imported. Debugging was disabled.")
+            print_warning("matplotlib could not be imported. Debugging was disabled.")
             args.debug = False
 
     if args.debug:
         debug_init()
         if args.mp != 0:
-            print("Debugging enabled, concurrent processing disabled!")
+            print_warning("Debugging enabled, concurrent processing disabled!")
             args.mp = 0
 
     if sys.maxsize <= 2 ** 32:
-        print("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
-              "and it will significantly reduce functionality!")
+        print_warning("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
+                      "and it will significantly reduce functionality!")
 
-    ims = MultiImageStack.open(args.input)
+    ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
 
     positions_to_process = args.multipoints
 
@@ -166,9 +194,13 @@ def main():
 
     timepoints_to_process = [t for t in timepoints_to_process if 0 <= t <= ims.get_meta("timepoints")]
 
-    print("Processing:")
-    print("Positions : [%s]" % (", ".join(map(str, positions_to_process))))
-    print("Timepoints: [%s]" % (", ".join(map(str, timepoints_to_process))))
+    prettify_numpy_array = lambda arr, spaces: \
+        repr(numpy.array(arr)).replace(")", "").replace("array(", " " * 6).replace(" " * 6, " " * spaces)
+
+    print_info("Beginning Processing:")
+    #           123456789ABC :)
+    print_info("Positions : " + prettify_numpy_array(positions_to_process, 0xC).lstrip())
+    print_info("Timepoints: " + prettify_numpy_array(timepoints_to_process, 0xC).lstrip())
 
     results = {pos: {} for pos in positions_to_process}
 
@@ -178,38 +210,106 @@ def main():
     if args.mp < 0:
         args.mp = multiprocessing.cpu_count()
 
-    if args.mp == 0:
-        processing_setup(args.input)
+    print_info("Performing image analysis ...")
 
-        for t in timepoints_to_process:
-            for pos in positions_to_process:
-                results[pos][t] = processing_frame(t, pos)
-                processed += 1
-                print("Processed %d/%d" % (processed, total))
+    to_process = list(itertools.product(timepoints_to_process, positions_to_process))
+
+    if args.mp == 0:
+        processing_setup(args)
+
+        for t, pos in progress_bar(to_process):
+            results[pos][t] = processing_frame(t, pos)
     else:
-        pool = multiprocessing.Pool(args.mp, processing_setup, [args.input])
+        print_info("... parallel on %(cores)d cores" % {'cores': args.mp})
+
+        pool = multiprocessing.Pool(args.mp, processing_setup, [args])
 
         workerstates = []
 
-        for t in timepoints_to_process:
-            for pos in positions_to_process:
-                workerstates.append((t, pos, pool.apply_async(processing_frame, (t, pos))))
+        for t, pos in to_process:
+            workerstates.append((t, pos, pool.apply_async(processing_frame, (t, pos))))
+
+        progressbar_states = progress_bar(range(total))
 
         while len(workerstates) > 0:
             for i, (t, pos, state) in reversed(list(enumerate(workerstates))):
                 if state.ready():
                     results[pos][t] = state.get()
                     del workerstates[i]
-                    processed += 1
-                    print("Processed %d/%d" % (processed, total))
+                    next(progressbar_states)
 
         pool.close()
 
     tracked_results = {}
 
-    for pos, times in results.items():
-        tracked_results[pos] = track_complete_channel_timeline(times)
+    print_info("")
 
-    analyze_tracking(tracked_results)
+    print_info("Performing tracking ...")
 
+    for pos, times in progress_bar(results.items()):
+        tracked_results[pos] = TrackedPosition().perform_everything(times)
+
+    if args.table_output is None:
+        recipient = sys.stdout
+    else:
+        recipient = codecs.open(args.table_output, "wb+", "utf-8")
+
+    print_info("Outputting tabular data ...")
+
+
+    def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
+        for pos, tracking in inner_tracked_results.items():
+            for inner_k in sorted(tracking.tracker_mapping.keys()):
+                tracker = tracking.tracker_mapping[inner_k]
+                channels = tracking.channel_accumulator[inner_k]
+                yield pos, inner_k, tracking, tracker, channels
+
+    flat_results = list(each_pos_k_tracking_tracker_channels_in_results(tracked_results))
+
+    try:
+        table_dumper = QuickTableDumper(recipient=recipient)
+
+        for pos, k, tracking, tracker, channels in progress_bar(flat_results):
+            analyze_tracking(tracker, table_dumper)
+
+    finally:
+        if recipient is not sys.stdout:
+            recipient.close()
+
+    if args.tracking_output is not None:
+
+        try:
+            import matplotlib
+            import matplotlib.pylab
+        except ImportError:
+            print_warning("Tracking output enabled but matplotlib not found! Cannot proceed.")
+            print_warning("Please install matplotlib ...")
+            raise
+
+        print_info("Outputting graphical tracking data ...")
+
+        figdir = os.path.abspath(args.tracking_output)
+
+        if not os.path.isdir(figdir):
+            os.mkdir(figdir)
+
+        for pos, k, tracking, tracker, channels in progress_bar(flat_results):
+            plot_timeline(matplotlib.pylab, channels, tracker_to_cell_list(tracker),
+                          figure_presetup=
+                          lambda p: p.title("Channel #%02d (average cells = %.2f)" % (k, tracker.average_cells)),
+                          figure_finished=
+                          lambda p: p.savefig("%(dir)s/tracking_pt_%(mp)02d_chan_%(k)02d.pdf" % {
+                              'dir': figdir, 'mp': pos, 'k': k}),
+                          show_images=True, show_overlay=True)
+
+    if args.write_tunables:
+        print_info("")
+        if os.path.isfile(args.write_tunables):
+            print_warning("Tunable output will not overwrite existing files!")
+            print_warning("NOT outputint tunables.")
+        else:
+            fname = os.path.abspath(args.write_tunables)
+            print_info("Writing tunables to \"%(fname)s\"" % {'fname': fname})
+            with codecs.open(fname, "wb+", "utf-8") as fp:
+                json.dump(TunableManager.get_defaults(), fp, indent=4, sort_keys=True)
 

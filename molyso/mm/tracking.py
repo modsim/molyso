@@ -1,87 +1,122 @@
-import numpy
-import numpy.random
-#DuoOptimizerQueue, GlobalDuoOptimizerQueue,
+# -*- coding: utf-8 -*-
+"""
+documentation
+"""
+from __future__ import division, unicode_literals, print_function
+
 from .tracking_infrastructure import CellTracker, CellCrossingCheckingGlobalDuoOptimizerQueue
 
-from .tracking_output import dump_tracking, visualize_tracking, analyze_tracking
+from .tracking_output import *
 
 
-def track_complete_channel_timeline(times):
-    previous = None
-    tracker_mapping = {}
+class TrackedPosition(object):
+    def __init__(self):
+        self.times = None
+        self.n = 0
 
-    timeslist = list(sorted(times.keys()))
+        self.timeslist = []
 
-    first_num = None
+        self.first = []
 
-    keylist = []
+        self.tracker_mapping = {}
+        self.channel_accumulator = {}
+        self.cell_counts = {}
 
-    for n, t in enumerate(timeslist):
-        first_time = t
-        previous = times[first_time]
+    def set_times(self, times):
+        self.times = times
+        self.find_first_valid_time()
 
-        first = times[first_time].channels
+    def find_first_valid_time(self):
+        self.timeslist = list(sorted(self.times.keys()))
 
-        if len(first) > 0:
-            break
+        for self.n, t in enumerate(self.timeslist):
+            first_time = t
 
-        print("Skipping channel")
+            self.first = self.times[first_time].channels
 
-    keylist = list(range(len(first)))
+            if len(self.first) > 0:
+                break
 
-    tracker_mapping = {c: CellTracker() for c in keylist}
-    # helper
-    channel_accumulator = {c: {} for c in keylist}
+            print("Skipping channel")
 
-    cell_counts = {c: 0.0 for c in keylist}
+        keylist = list(range(len(self.first)))
 
-    image = None
+        self.tracker_mapping = {c: CellTracker() for c in keylist}
+        self.channel_accumulator = {c: {} for c in keylist}
+        self.cell_counts = {c: [] for c in keylist}
 
-    for t in timeslist[n + 1:]:
-        if image:
+    def align_channels(self):
+        image = None
+
+        for t in self.timeslist[self.n + 1:]:
+            if image is None:
+                image = self.times[t]
+
             previous = image
 
-        image = times[t]
-        alignment = previous.channels.align_with_and_return_indices(image.channels)
-        alignment_with_first = dict(image.channels.align_with_and_return_indices(first))
+            image = self.times[t]
+            alignment = previous.channels.align_with_and_return_indices(image.channels)
+            alignment_with_first = dict(image.channels.align_with_and_return_indices(self.first))
 
-        for _, current_index in alignment:
-            # ths is not perfectly right, but it's enough work with chan accum already
-            cell_counts[alignment_with_first[current_index]] += len(image.channels[current_index].cells)
+            for _, current_index in alignment:
+                # ths is not perfectly right, but it's enough work with chan accum already
+                self.cell_counts[alignment_with_first[current_index]].append(len(image.channels[current_index].cells))
 
-            if t not in channel_accumulator[alignment_with_first[current_index]]:
-                channel_accumulator[alignment_with_first[current_index]][t] = image.channels[current_index]
+                if t not in self.channel_accumulator[alignment_with_first[current_index]]:
+                    self.channel_accumulator[alignment_with_first[current_index]][t] = image.channels[current_index]
+        for index in self.channel_accumulator.keys():
+            self.channel_accumulator[index] = [self.channel_accumulator[index][n]
+                                               for n in sorted(self.channel_accumulator[index].keys())]
 
-    for index in channel_accumulator.keys():
-        channel_accumulator[index] = [channel_accumulator[index][n] for n in sorted(channel_accumulator[index].keys())]
+    def remove_empty_channels(self):
+        cell_means = {k: float(sum(v)) / len(v) for k, v in self.cell_counts.items()}
 
-    for k, count in list(cell_counts.items()):
-        if (count / len(timeslist)) < 0.5:
-            del tracker_mapping[k]
-            del channel_accumulator[k]
-            del cell_counts[k]
+        for k, mean_cellcount in cell_means.items():
+            if mean_cellcount < 0.5:
+                del self.tracker_mapping[k]
+                del self.channel_accumulator[k]
+                del self.cell_counts[k]
 
-    for c in tracker_mapping.keys():
-        tracker = tracker_mapping[c]
-        channellist = channel_accumulator[c]
+    def perform_tracking(self):
+        for c in self.tracker_mapping.keys():
+            tracker = self.tracker_mapping[c]
+            channel_list = self.channel_accumulator[c]
 
-        ii = iter(channellist)
+            if len(channel_list) == 0:
+                continue
 
-        if len(channellist) == 0:
-            continue
+            previous = channel_list[0]
 
-        previous = next(ii)
+            for current in channel_list[1:]:
+                tracker.tick()
+                analyse_cell_fates(tracker, previous.cells, current.cells)
+                previous = current
 
-        for image in ii:
-            tracker.tick()
-            analyse_cell_fates(tracker, previous.cells, image.cells)
-            previous = image
+    def remove_empty_channels_post_tracking(self):
+        minimum_average_cells = 2.0
+        shouldskip = True
+        for k, tracker in list(self.tracker_mapping.items()):
+            if shouldskip and tracker.average_cells < minimum_average_cells:  # 0.5:
+                del self.tracker_mapping[k]
+                del self.channel_accumulator[k]
+                del self.cell_counts[k]
 
-    return {"tracking": tracker_mapping, "accumulator": channel_accumulator}
-    # visualization!
+    def perform_everything(self, times):
+        self.set_times(times)
+        self.align_channels()
+        self.remove_empty_channels()
+        self.perform_tracking()
+        self.remove_empty_channels_post_tracking()
+        return self
 
 
 def analyse_cell_fates(tracker, pcells, ccells):
+    outcome_it_is_same = lambda pcell, ccell: tracker.get_cell_by_observation(pcell[0]).add_observation(ccell[0])
+    outcome_it_is_children = \
+        lambda pcell, ccell: tracker.get_cell_by_observation(pcell[0]). \
+            add_children(tracker.new_observed_cell(ccell[0]), tracker.new_observed_cell(ccell[1]))
+    outcome_it_is_new = lambda pcell, ccell: tracker.new_observed_origin(ccell[0])
+    outcome_it_is_lost = None  # lambda pcell, ccell: None
 
     opt = CellCrossingCheckingGlobalDuoOptimizerQueue()
 
@@ -204,17 +239,16 @@ def analyse_cell_fates(tracker, pcells, ccells):
 
             cost_same = calc_cost_same(pc, cc)
 
-            opt.add_outcome(cost_same, {pc}, {cc}, lambda pcell, ccell: \
-                tracker.get_cell_by_observation(pcell[0]).add_observation(ccell[0]))
+            opt.add_outcome(cost_same, {pc}, {cc}, outcome_it_is_same)
 
             large_value = 1000000.0
 
             cost_new_cell = 1.0 * large_value
 
-            opt.add_outcome(cost_new_cell, set(), {cc}, lambda pcell, ccell: tracker.new_observed_origin(ccell[0]))
+            opt.add_outcome(cost_new_cell, set(), {cc}, outcome_it_is_new)
 
             cost_lost_cell = 1.0 * large_value
-            opt.add_outcome(cost_lost_cell, {pc}, set(), lambda pcell, ccell: None)
+            opt.add_outcome(cost_lost_cell, {pc}, set(), outcome_it_is_lost)
 
             if n < len(ccells) - 1:
                 cc1 = ccells[n + 0]
@@ -222,9 +256,7 @@ def analyse_cell_fates(tracker, pcells, ccells):
 
                 cost_children = (calc_cost_child(pc, cc1) + calc_cost_child(pc, cc2)) / 2.0
 
-                opt.add_outcome(cost_children, {pc}, {cc1, cc2},
-                                lambda pcell, ccell: tracker.get_cell_by_observation(pcell[0]).
-                                add_children(tracker.new_observed_cell(ccell[0]), tracker.new_observed_cell(ccell[1])))
+                opt.add_outcome(cost_children, {pc}, {cc1, cc2}, outcome_it_is_children)
 
     opt.perform_optimal()
 

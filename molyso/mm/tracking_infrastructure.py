@@ -286,4 +286,5 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
 
         for c in current:
             involved_a, involved_b, what = actions[c]
-            what(list(involved_a), list(involved_b))
+            if what is not None:
+                what(list(involved_a), list(involved_b))

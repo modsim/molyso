@@ -43,7 +43,7 @@ class MultiImageStack(object):
         raise NotImplementedError("Virtual function")
 
     @classmethod
-    def open(cls, filename):
+    def open(cls, filename, *args, **kwargs):
         """
         Opens an image stack file.
         Will look up its registry if any image stack class is registered for the extension.
@@ -54,7 +54,7 @@ class MultiImageStack(object):
 
         for k, v in cls.ExtensionRegistry.items():
             if filename.lower().endswith(k):
-                i = v(filename)
+                i = v(filename, *args, **kwargs)
                 return i
 
         raise Exception("Unknown format")

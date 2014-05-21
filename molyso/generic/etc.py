@@ -7,8 +7,26 @@ import os
 import sys
 import numpy
 import hashlib
+import time
 
 from .. import Debug, Timed
+
+try:
+    import clint.textui
+
+    def progress_bar(iterable):
+        return clint.textui.progress.bar(iterable, width=50)
+
+except ImportError:
+    def progress_bar(iterable):
+        times = numpy.zeros(len(iterable), dtype=float)
+        for n, i in enumerate(iterable):
+            start_time = time.time()
+            yield i
+            stop_time = time.time()
+            times[n] = stop_time - start_time
+            eta = " ETA %.2fs" % (numpy.mean(times[:n + 1]) * (len(iterable) - (n + 1)))
+            print("processed %d/%d [took %.3fs%s]" % (n + 1, len(iterable), times[n], eta))
 
 
 class QuickTableDumper(object):
@@ -21,7 +39,7 @@ class QuickTableDumper(object):
 
         self.delim = "\t"
         self.lineend = "\n"
-        self.precision = 2
+        self.precision = 8
 
     def write(self, s):
         self.recipient.write(s)

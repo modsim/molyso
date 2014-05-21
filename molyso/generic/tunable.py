@@ -23,6 +23,8 @@ class TunableManager(object):
             return default
         if what in cls.current:
             return type(default)(cls.current[what])
+        else:
+            return default
 
 
 def tunable(what, default):
