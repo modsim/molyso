@@ -50,6 +50,23 @@ def normalize(arr):
     return (arr - mini) / (maxi - mini)
 
 
+def rescale_and_fit_to_type(img, new_dtype):
+    img_min = img.min()
+    img_max = img.max()
+    scaled_img = ((img.astype(numpy.float32) - img_min) / (img_max - img_min))
+    to_type = numpy.dtype(new_dtype)
+    if to_type.kind == 'f':
+        return scaled_img.astype(to_type)
+    elif to_type.kind == 'u':
+        return (scaled_img * 2 ** (to_type.itemsize * 8)).astype(to_type)
+    elif to_type.kind == 'i':
+        return (scaled_img * 2 ** (to_type.itemsize * 8 - 1)).astype(to_type)
+    elif to_type.kind == 'b':
+        return scaled_img > 0.5
+    else:
+        raise TypeError("Unsupported new_dtype value used for rescale_and_fit_to_type used!")
+
+
 def threshold_outliers(arr, times_std=2.0):
     """
     removes outliers

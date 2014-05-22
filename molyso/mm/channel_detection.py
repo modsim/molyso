@@ -25,10 +25,8 @@ class Channel(object):
         self.real_bottom = float(bottom)
         self.cells = None
 
-        try:
-            self.channelimage = self.crop_out_of_image(self.image.image)
-        except AttributeError:
-            pass
+        if self.image.image is not None:
+            self.channel_image = self.crop_out_of_image(self.image.image)
 
     @property
     def top(self):
@@ -43,20 +41,19 @@ class Channel(object):
         return (self.left + self.right) / 2, (self.top + self.bottom) / 2
 
     def crop_out_of_image(self, img):
-        return img[self.real_top:self.real_bottom, self.left:self.right]
+        return img[self.real_top:self.real_bottom, self.left:self.right].copy()
 
     def get_coordinates(self):
         return [[self.left, self.bottom], [self.right, self.bottom], [self.right, self.top], [self.left, self.top],
                 [self.left, self.bottom]]
 
     def detect_cells(self):
-        self.cells = self.__class__.cells_type(self.image, self, self.channelimage)
+        self.cells = self.__class__.cells_type(self)
 
     def clean(self):
         self.cells.clean()
         if not self.image.keep_channel_image:
-            del self.channelimage
-            self.channelimage = None
+            self.channel_image = None
 
 
 treeprovider = NotReallyATree
@@ -83,7 +80,7 @@ class Channels(list):
 
         for begin, end in positions:
             #noinspection PyMethodFirstArgAssignment
-            self += [self.__class__.channel_type(self.image, begin, end, upper, lower)]
+            self.append(self.__class__.channel_type(self.image, begin, end, upper, lower))
 
         with DebugPlot('channeldetection', 'result', 'onoriginal') as p:
             p.title("Detected channels (on original image)")

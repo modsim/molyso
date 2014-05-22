@@ -19,7 +19,7 @@ import multiprocessing
 from .. import Debug, TunableManager
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
-    silent_progress_bar, fancy_progress_bar
+    silent_progress_bar, fancy_progress_bar, Cache
 
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
@@ -65,7 +65,7 @@ def create_argparser():
     argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
     argparser.add_argument('-debug', '--debug', dest='debug', default=False, action='store_true')
     argparser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true')
-    argparser.add_argument('-nc', '--no-cache', dest='nocache', default=False, action='store_true')
+    argparser.add_argument('-nc', '--no-cache', dest='ignorecache', default=False, action='store_true')
     argparser.add_argument('-rt', '--read-tunables', dest='read_tunables', type=str, default=None)
     argparser.add_argument('-wt', '--write-tunables', dest='write_tunables', type=str, default=None)
     argparser.add_argument('-zm', '--z-is-multipoint', dest='zm', default=False, action='store_true')
@@ -117,13 +117,16 @@ def processing_frame(t, pos):
 
     Debug.set_context(t=t, pos=pos)
 
-    image.keep_channel_image = True
+    image.keep_channel_image = True  # False  # True
+    image.pack_channel_image = numpy.uint8
 
     image.autorotate()
     image.find_channels()
     image.find_cells_in_channels()
 
     image.clean()
+
+    image.flatten()
 
     return image
 
@@ -182,70 +185,81 @@ def main():
         print_warning("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
                       "and it will significantly reduce functionality!")
 
-    ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
+    Cache.printer = print_info
+    Cache.ignore_cache = args.ignorecache
+    cache = Cache(args.input)
 
-    positions_to_process = args.multipoints
-
-    if positions_to_process[-1] == float('Inf'):
-        f = positions_to_process[-2]
-        del positions_to_process[-2:-1]
-        positions_to_process += range(f, ims.get_meta('multipoints'))
-
-    positions_to_process = [p for p in positions_to_process if 0 <= p <= ims.get_meta('multipoints')]
-
-    timepoints_to_process = args.timepoints
-    if timepoints_to_process[-1] == float('Inf'):
-        f = timepoints_to_process[-2]
-        del timepoints_to_process[-2:-1]
-        timepoints_to_process += range(f, ims.get_meta('timepoints'))
-
-    timepoints_to_process = [t for t in timepoints_to_process if 0 <= t <= ims.get_meta('timepoints')]
-
-    prettify_numpy_array = lambda arr, spaces: \
-        repr(numpy.array(arr)).replace(')', '').replace('array(', ' ' * 6).replace(' ' * 6, ' ' * spaces)
-
-    print_info("Beginning Processing:")
-    #           123456789ABC :)
-    print_info("Positions : " + prettify_numpy_array(positions_to_process, 0xC).lstrip())
-    print_info("Timepoints: " + prettify_numpy_array(timepoints_to_process, 0xC).lstrip())
-
-    results = {pos: {} for pos in positions_to_process}
-
-    total = len(timepoints_to_process) * len(positions_to_process)
-    processed = 0
-
-    if args.mp < 0:
-        args.mp = multiprocessing.cpu_count()
-
-    print_info("Performing image analysis ...")
-
-    to_process = list(itertools.product(timepoints_to_process, positions_to_process))
-
-    if args.mp == 0:
-        processing_setup(args)
-
-        for t, pos in progress_bar(to_process):
-            results[pos][t] = processing_frame(t, pos)
+    if 'imageanalysis' in cache:
+        results = cache['imageanalysis']
     else:
-        print_info("... parallel on %(cores)d cores" % {'cores': args.mp})
+        ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
 
-        pool = multiprocessing.Pool(args.mp, processing_setup, [args])
+        positions_to_process = args.multipoints
 
-        workerstates = []
+        if positions_to_process[-1] == float('Inf'):
+            f = positions_to_process[-2]
+            del positions_to_process[-2:-1]
+            positions_to_process += range(f, ims.get_meta('multipoints'))
 
-        for t, pos in to_process:
-            workerstates.append((t, pos, pool.apply_async(processing_frame, (t, pos))))
+        positions_to_process = [p for p in positions_to_process if 0 <= p <= ims.get_meta('multipoints')]
 
-        progressbar_states = progress_bar(range(total))
+        timepoints_to_process = args.timepoints
+        if timepoints_to_process[-1] == float('Inf'):
+            f = timepoints_to_process[-2]
+            del timepoints_to_process[-2:-1]
+            timepoints_to_process += range(f, ims.get_meta('timepoints'))
 
-        while len(workerstates) > 0:
-            for i, (t, pos, state) in reversed(list(enumerate(workerstates))):
-                if state.ready():
-                    results[pos][t] = state.get()
-                    del workerstates[i]
-                    next(progressbar_states)
+        timepoints_to_process = [t for t in timepoints_to_process if 0 <= t <= ims.get_meta('timepoints')]
 
-        pool.close()
+        prettify_numpy_array = lambda arr, spaces: \
+            repr(numpy.array(arr)).replace(')', '').replace('array(', ' ' * 6).replace(' ' * 6, ' ' * spaces)
+
+        print_info("Beginning Processing:")
+        #           123456789ABC :)
+        print_info("Positions : " + prettify_numpy_array(positions_to_process, 0xC).lstrip())
+        print_info("Timepoints: " + prettify_numpy_array(timepoints_to_process, 0xC).lstrip())
+
+        ims = None
+
+        results = {pos: {} for pos in positions_to_process}
+
+        total = len(timepoints_to_process) * len(positions_to_process)
+        processed = 0
+
+        if args.mp < 0:
+            args.mp = multiprocessing.cpu_count()
+
+        print_info("Performing image analysis ...")
+
+        to_process = list(itertools.product(timepoints_to_process, positions_to_process))
+
+        if args.mp == 0:
+            processing_setup(args)
+
+            for t, pos in progress_bar(to_process):
+                results[pos][t] = processing_frame(t, pos)
+        else:
+            print_info("... parallel on %(cores)d cores" % {'cores': args.mp})
+
+            pool = multiprocessing.Pool(args.mp, processing_setup, [args])
+
+            workerstates = []
+
+            for t, pos in to_process:
+                workerstates.append((t, pos, pool.apply_async(processing_frame, (t, pos))))
+
+            progressbar_states = progress_bar(range(total))
+
+            while len(workerstates) > 0:
+                for i, (t, pos, state) in reversed(list(enumerate(workerstates))):
+                    if state.ready():
+                        results[pos][t] = state.get()
+                        del workerstates[i]
+                        next(progressbar_states)
+
+            pool.close()
+
+        cache['imageanalysis'] = results
 
     ####################################################################################################################
 

@@ -130,23 +130,35 @@ def parse_range(s, allow_open_interval=True):
     return ranges
 
 
-def hash_filename(fname):
-    return hashlib.sha1(str(fname).encode()).hexdigest()
+class Cache(object):
+    ignore_cache = True
+    printer = print
 
+    @classmethod
+    def build_cache_filename(cls, file, suffix):
+        return "%s.%s.%s.cache" % (
+            os.path.basename(file).replace('.', '_'),
+            hashlib.sha1(str(os.path.abspath(file).lower()).encode()).hexdigest()[:8],
+            suffix,)
 
-def does_pickled_hashed_exist(fname, suffix=''):
-    return os.path.isfile(hash_filename(fname) + suffix)
+    def __init__(self, file):
+        self.filename = file
 
+    def __contains__(self, suffix):
+        if self.__class__.ignore_cache:
+            return False
+        else:
+            return os.path.isfile(self.__class__.build_cache_filename(self.filename, suffix))
 
-def read_from_pickle_hashed(fname, suffix=''):
-    f = hash_filename(fname) + suffix
-    with Timed():
-        with open(f, 'rb') as fp:
-            results = pickle.load(fp)
-    return results
+    def __getitem__(self, suffix):
+        with open(self.__class__.build_cache_filename(self.filename, suffix), 'rb') as fp:
+            self.__class__.printer("Getting")
+            return pickle.load(fp)
 
-
-def write_to_pickle_hashed(fname, data=None, suffix=''):
-    f = hash_filename(fname) + suffix
-    with open(f, 'wb+') as fp:
-        pickle.dump(data, fp, protocol=pickle.HIGHEST_PROTOCOL)
+    def __setitem__(self, suffix, data):
+        if self.__class__.ignore_cache:
+            return
+        else:
+            with open(self.__class__.build_cache_filename(self.filename, suffix), 'wb+') as fp:
+                self.__class__.printer("Setting")
+                pickle.dump(data, fp, protocol=pickle.HIGHEST_PROTOCOL)

@@ -7,6 +7,7 @@
 from __future__ import division, unicode_literals, print_function
 
 import math
+from ..generic.util import rescale_and_fit_to_type
 from ..generic.rotation import find_rotation, apply_rotate_and_cleanup
 from ..generic.registration import translation_2x1d
 from .channel_detection import Channels
@@ -143,6 +144,9 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
         self.flattened = False
         self.keep_channel_image = False
+
+        self.pack_channel_image = False
+
         self.channels = None
 
         # empty data structures for flattening/unflattening
@@ -153,6 +157,8 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
         self.channels_cells_local_top = None
         self.channels_cells_local_bottom = None
+
+        self.channel_images = None
 
     def setup_image(self, img):
         super(Image, self).setup_image(img)
@@ -229,6 +235,17 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         self.channels_cells_local_top = [[cc.local_top for cc in c.cells] for c in channels]
         self.channels_cells_local_bottom = [[cc.local_bottom for cc in c.cells] for c in channels]
 
+        def _pack_image(img):
+            if self.pack_channel_image is False:
+                return img
+            else:
+                if img is None:
+                    return img
+                else:
+                    return rescale_and_fit_to_type(img, self.pack_channel_image)
+
+        self.channel_images = [_pack_image(c.channel_image) for c in channels]
+
     def unflatten(self):
         """
         unflattens the internal data structures from an object with previously flattened structures
@@ -242,8 +259,10 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
             chan = self.channels.__class__.channel_type(self, self.channels_left[n], self.channels_right[n],
                                                         self.channels_real_top[n], self.channels_real_bottom[n])
 
+            chan.channel_image = self.channel_images[n]
+
             self.channels.append(chan)
-            cells = chan.__class__.cells_type(self, chan, [], bootstrap=False)
+            cells = chan.__class__.cells_type(chan, bootstrap=False)
 
             chan.cells = cells
 
@@ -256,13 +275,14 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
         self.flattened = False
 
-        del self.channels_left
-        del self.channels_right
-        del self.channels_real_top
-        del self.channels_real_bottom
+        # empty data structures for flattening/unflattening
+        self.channels_left = None
+        self.channels_right = None
+        self.channels_real_top = None
+        self.channels_real_bottom = None
 
-        del self.channels_cells_local_top
-        del self.channels_cells_local_bottom
+        self.channels_cells_local_top = None
+        self.channels_cells_local_bottom = None
 
     def clean(self):
         """
@@ -271,7 +291,7 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         """
 
         self.channels.clean()
-        del self.image
-        del self.original_image
+        self.image = None
+        self.original_image = None
 
 

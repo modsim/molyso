@@ -35,6 +35,11 @@ class TrackedPosition(object):
 
     def set_times(self, times):
         self.times = times
+
+        for image in self.times.values():
+            if image.flattened:
+                image.unflatten()
+
         self.find_first_valid_time()
 
     def find_first_valid_time(self):
@@ -87,7 +92,7 @@ class TrackedPosition(object):
                                                for n in sorted(self.channel_accumulator[index].keys())]
 
     def remove_empty_channels(self):
-        cell_means = {k: float(sum(v)) / len(v) for k, v in self.cell_counts.items()}
+        cell_means = {k: (float(sum(v)) / len(v)) if len(v) > 0 else 0.0 for k, v in self.cell_counts.items()}
 
         for k, mean_cellcount in cell_means.items():
             if mean_cellcount < 0.5:
@@ -143,7 +148,11 @@ def analyse_cell_fates(tracker, pcells, ccells):
     opt = CellCrossingCheckingGlobalDuoOptimizerQueue()
 
     try:
-        chan_traj = numpy.mean([tracker.get_cell_by_observation(pc).trajectories[-1] for pc in pcells])
+        trajs = [tracker.get_cell_by_observation(pc).trajectories[-1] for pc in pcells]
+        if len(trajs) > 0:
+            chan_traj = numpy.mean(trajs)
+        else:
+            chan_traj = 0.0
     except KeyError:
         chan_traj = 0.0
 

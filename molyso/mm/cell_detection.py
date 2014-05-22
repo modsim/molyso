@@ -70,24 +70,22 @@ class Cells(list):
 
     cell_type = Cell
 
-    def __init__(self, image, channel, image_data, bootstrap=True):
+    def __init__(self, channel, bootstrap=True):
         super(Cells, self).__init__(self)
 
-        self.image = image
         self.channel = channel
-
-        self.image_data = image_data
 
         self.nearest_tree = None
 
         if not bootstrap:
             return
 
-        for b, e in find_cells_in_channel(self.image_data):
-            self.append(self.__class__.cell_type(b, e, self.channel))
+        for b, e in find_cells_in_channel(self.channel.channel_image):
+            if (tunable("cells.minimal_length.inmu", 1.5) / self.channel.image.calibration_px_to_mu) < e - b:
+                self.append(self.__class__.cell_type(b, e, self.channel))
 
     def clean(self):
-        del self.image_data
+        pass
 
     @property
     def centroids(self):

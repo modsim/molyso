@@ -1,18 +1,6 @@
 from __future__ import division, unicode_literals, print_function
 
-import random
 import numpy
-
-try:
-    import matplotlib.colors
-
-    colors = list(matplotlib.colors.cnames.keys())
-except ImportError:
-    colors = [""]
-
-from .. import DebugPlot, tunable
-from ..generic.util import remove_outliers
-
 
 def iterate_over_cells(cells):
     collector = []
@@ -73,35 +61,22 @@ def plot_timeline(p, channels, cells,
     max_h = 0
 
     for cc in channels:
-
-
         tp = cc.image.timepoint
         bs = numpy.searchsorted(tps, tp, side='right')
 
-        try:
-            ne = tps[bs]
-        except IndexError:
-            ne = tp
+        ne = tps[bs] if 0 <= bs < len(tps) else tp
 
-        try:
-            pre = tps[bs - 2]
-        except IndexError:
-            pre = tp
+        pre = tps[bs - 2] if 0 <= bs < len(tps) else tp
 
-        left = tp - abs(tp - pre) / 2
-        right = tp + abs(ne - tp) / 2
-
-        if left < 0:
-            left = 0
-        if right > tps[-1]:
-            right = tps[-1]
+        left = max(0.0, tp - abs(tp - pre) / 2.0)
+        right = min(tps[-1], tp + abs(ne - tp) / 2.0)
 
         if show_images:
             try:
-                if cc.channelimage is not None:
-                    cdata = cc.channelimage
-                    p.imshow(cdata, extent=(left, right, cc.top, cc.bottom), origin='lower', cmap='gray')
-
+                channel_image_data = cc.channel_image
+                if channel_image_data is not None:
+                    p.imshow(channel_image_data, extent=(left, right, cc.top, cc.bottom), origin='lower', cmap='gray',
+                             zorder=1.1)
             except AttributeError:
                 pass
 
@@ -113,7 +88,7 @@ def plot_timeline(p, channels, cells,
                 coords = [[left, cell.bottom], [right, cell.bottom],
                           [right, cell.top], [left, cell.top], [left, cell.bottom]]
                 poly_drawing_helper(p, coords,
-                                    lw=0, edgecolor='r', facecolor='gray', fill=True, alpha=0.25)
+                                    lw=0, edgecolor='r', facecolor='gray', fill=True, alpha=0.25, zorder=1.2)
 
     p.xlim(tps[0], tps[-1])
     p.ylim(0, max_h)
@@ -121,9 +96,12 @@ def plot_timeline(p, channels, cells,
     p.gca().set_autoscale_on(True)
 
     if show_overlay:
+        time_format_str = '#%0' + str(int(numpy.log10(len(tps))) + 1) + 'd' + ' ' \
+                          + '%0' + str(int(numpy.log10(tps[-1])) + 1) + '.2fs'
+
         for n, tp in enumerate(tps):
-            p.text(tp, 0, "%d/%.2f" % (n + 1, tp),
-                   rotation=90, verticalalignment='center', horizontalalignment='center', size=4)
+            p.text(tp, 0, time_format_str % (n + 1, tp),
+                   rotation=90, verticalalignment='center', horizontalalignment='center', size=2)
 
     division_times = []
     division_timepoints = []
@@ -183,28 +161,28 @@ def plot_timeline(p, channels, cells,
         scatter_collector_y.extend(ypts)
         scatter_collector_intensity.extend(fints)
 
-        col = random.choice(colors)
+        col = '#005B82'  # random.choice(colors)
         if show_overlay:
-            p.plot(xpts, ypts, marker='o', markersize=0.1, lw=0.5, c=col)
-            p.fill_between(xpts, y1pts, y2pts, lw=0, cmap='jet', alpha=0.5, facecolor=col)
+            p.plot(xpts, ypts, marker='o', markersize=0.1, lw=0.5, c=col, zorder=1.4)
+            p.fill_between(xpts, y1pts, y2pts, lw=0, cmap='jet', alpha=0.5, facecolor=col, zorder=1.3)
 
     sc = None
 
     if show_overlay:
         scatter_collector_intensity = numpy.array(scatter_collector_intensity)
 
-        p.scatter(starts_x, starts_y, c='green', s=10, marker='>', lw=0)
-        p.scatter(stops_x, stops_y, c='red', s=10, marker='8', lw=0)
-        p.scatter(junctions_x, junctions_y, c='blue', s=10, marker='D', lw=0)
+        p.scatter(starts_x, starts_y, c='green', s=10, marker='>', lw=0, zorder=1.5)
+        p.scatter(stops_x, stops_y, c='red', s=10, marker='8', lw=0, zorder=1.5)
+        p.scatter(junctions_x, junctions_y, c='blue', s=10, marker='D', lw=0, zorder=1.5)
 
         sc = p.scatter(scatter_collector_x,
                        scatter_collector_y,
                        c=scatter_collector_intensity,
-                       s=6, cmap='jet', lw=0)
+                       s=5, cmap='jet', lw=0, zorder=10.0)
         p.colorbar(sc)
 
     if show_images and sc is None:
-        sc = p.scatter([0, 0], [0, 0], c=[0, 1], s=6, cmap='jet', lw=0)
+        sc = p.scatter([0, 0], [0, 0], c=[0, 1], s=5, cmap='jet', lw=0)
         p.colorbar(sc)
 
     if figure_finished:
@@ -228,43 +206,43 @@ def analyze_tracking(tracker, t=None):
             about_to_divide = ((sn + 1) == sl) and (cell.parent is not None) and (len(cell.children) > 0)
 
             r = {
-                "cell_age": s_to_h(sa.channel.image.timepoint - cell.seen_as[0].channel.image.timepoint),
-                "elongation_rate": float("NaN"),
-                "length": sa.length,
-                "uid_track": id(cell),
-                "uid_thiscell": id(sa),
-                "uid_cell": id(cell),
-                "uid_parent": id(cell.parent),
-                "timepoint": sa.channel.image.timepoint,
-                "timepoint_num": sa.channel.image.timepoint_num,
-                "cellyposition": sa.centroid1dloc,
-                "multipoint": sa.channel.image.multipoint,
-                "channel_in_multipoint": k,
-                "channel_average_cells": tracker.average_cells,
-                "about_to_divide": (1 if about_to_divide else 0),
-                "division_age": float("NaN"),
-                "fluorescence": float("NaN"),
-                "fluorescence_background": float("NaN"),
+                'cell_age': s_to_h(sa.channel.image.timepoint - cell.seen_as[0].channel.image.timepoint),
+                'elongation_rate': float('NaN'),
+                'length': sa.length,
+                'uid_track': id(cell),
+                'uid_thiscell': id(sa),
+                'uid_cell': id(cell),
+                'uid_parent': id(cell.parent),
+                'timepoint': sa.channel.image.timepoint,
+                'timepoint_num': sa.channel.image.timepoint_num,
+                'cellyposition': sa.centroid1dloc,
+                'multipoint': sa.channel.image.multipoint,
+                'channel_in_multipoint': k,
+                'channel_average_cells': tracker.average_cells,
+                'about_to_divide': (1 if about_to_divide else 0),
+                'division_age': float('NaN'),
+                'fluorescence': float('NaN'),
+                'fluorescence_background': float('NaN'),
             }
 
             try:
-                r["elongation_rate"] = cell.raw_elongation_rates[sn]
+                r['elongation_rate'] = cell.raw_elongation_rates[sn]
             except IndexError:
                 pass
 
             try:
-                r["division_age"] = s_to_h(cell.children[0].seen_as[0].channel.image.timepoint - cell.seen_as[
+                r['division_age'] = s_to_h(cell.children[0].seen_as[0].channel.image.timepoint - cell.seen_as[
                     0].channel.image.timepoint)
             except IndexError:
                 pass
 
             try:
-                r["fluorescence"] = sa.fluorescence
+                r['fluorescence'] = sa.fluorescence
             except AttributeError:
                 pass
 
             try:
-                r["fluorescence_background"] = sa.channel.image.background_fluorescence
+                r['fluorescence_background'] = sa.channel.image.background_fluorescence
             except AttributeError:
                 pass
 

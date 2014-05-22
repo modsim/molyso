@@ -1,5 +1,10 @@
-import numpy
+# -*- coding: utf-8 -*-
+"""
 
+"""
+from __future__ import division, unicode_literals, print_function
+
+import numpy
 from .image import Image
 from .cell_detection import Cell, Cells
 from .channel_detection import Channel, Channels
@@ -15,11 +20,13 @@ class FluorescentCell(Cell):
         try:  # reconstitution from flattened state will fail
             # due to missing image_fluorescence.
             # keep calm and carry on!
+
             cell_img = self.channel.image.image_fluorescence[
-                       (self.top + self.channel.real_top):(self.bottom + self.channel.real_top),
+                       (self.local_top + self.channel.real_top):(self.local_bottom + self.channel.real_top),
                        self.channel.left:self.channel.right]
 
             self.fluorescence_mean = float(cell_img.mean())
+
         except AttributeError:
             self.fluorescence_mean = float('nan')
 
@@ -63,6 +70,7 @@ class FluorescentImage(Image):
 
     def autorotate(self):
         super(FluorescentImage, self).autorotate()
+
         self.image_fluorescence, _, _, _ = apply_rotate_and_cleanup(self.image_fluorescence, self.angle)
 
     def clean(self):
@@ -76,14 +84,20 @@ class FluorescentImage(Image):
         if len(self.channels) == 0:
             self.background_fluorescence = 0.0  # do something more meaningful ?!
         else:
-            fint_means = []
+            background_fluorescence_means = numpy.zeros((len(self.channels) - 1, 2), dtype=numpy.float64)
 
-            pchan = self.channels[0]
-            for nchan in self.channels[1:]:
-                frag = self.image_fluorescence[nchan.real_top:nchan.real_bottom, pchan.right:nchan.left]
-                fint_means += [frag.mean()]
-                pchan = nchan
-            self.background_fluorescence = float(numpy.array(fint_means).mean())
+            previous_channel = self.channels[0]
+            for n, next_channel in enumerate(self.channels[1:]):
+                background_fragment = self.image_fluorescence[next_channel.real_top:next_channel.real_bottom,
+                                      previous_channel.right:next_channel.left]
+                background_fluorescence_means[n, 0] = background_fragment.mean()
+                background_fluorescence_means[n, 1] = background_fragment.size
+                previous_channel = next_channel
+
+            background_fluorescence_means[:, 0] *= background_fluorescence_means[:, 1]
+
+            self.background_fluorescence = numpy.sum(background_fluorescence_means[:, 0]) / \
+                                           numpy.sum(background_fluorescence_means[:, 1])
 
     def flatten(self):
 
