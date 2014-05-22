@@ -16,14 +16,15 @@ import codecs
 import json
 import multiprocessing
 
-from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, \
-    QuickTableDumper, silent_progress_bar, fancy_progress_bar
+from .. import Debug, TunableManager
 
-from .. import TunableManager
+from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
+    silent_progress_bar, fancy_progress_bar
 
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
 from .image import Image
+from .fluorescence import FluorescentImage
 
 from .tracking import TrackedPosition, analyze_tracking, plot_timeline, tracker_to_cell_list
 
@@ -55,19 +56,19 @@ def create_argparser():
 
     argparser.error = _error
 
-    argparser.add_argument("input", metavar="input", type=str, help="input file")
-    argparser.add_argument("-tp", "--timepoints", dest="timepoints", default=[0, float("inf")], type=parse_range)
-    argparser.add_argument("-mp", "--multipoints", dest="multipoints", default=[0, float("inf")], type=parse_range)
-    argparser.add_argument("-o", "--table-output", dest="table_output", type=str, default=None)
-    argparser.add_argument("-ot", "--output-tracking", dest="tracking_output", type=str, default=None)
-    argparser.add_argument("-nb", "--no-banner", dest="nb", default=False, action="store_true")
-    argparser.add_argument("-cpu", "--cpus", dest="mp", default=-1, type=int)
-    argparser.add_argument("-debug", "--debug", dest="debug", default=False, action="store_true")
-    argparser.add_argument("-q", "--quiet", dest="quiet", default=False, action="store_true")
-    argparser.add_argument("-nc", "--no-cache", dest="nocache", default=False, action="store_true")
-    argparser.add_argument("-rt", "--read-tunables", dest="read_tunables", type=str, default=None)
-    argparser.add_argument("-wt", "--write-tunables", dest="write_tunables", type=str, default=None)
-    argparser.add_argument("-zm", "--z-is-multipoint", dest="zm", default=False, action="store_true")
+    argparser.add_argument('input', metavar='input', type=str, help="input file")
+    argparser.add_argument('-tp', '--timepoints', dest='timepoints', default=[0, float('inf')], type=parse_range)
+    argparser.add_argument('-mp', '--multipoints', dest='multipoints', default=[0, float('inf')], type=parse_range)
+    argparser.add_argument('-o', '--table-output', dest='table_output', type=str, default=None)
+    argparser.add_argument('-ot', '--output-tracking', dest='tracking_output', type=str, default=None)
+    argparser.add_argument('-nb', '--no-banner', dest='nb', default=False, action='store_true')
+    argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
+    argparser.add_argument('-debug', '--debug', dest='debug', default=False, action='store_true')
+    argparser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true')
+    argparser.add_argument('-nc', '--no-cache', dest='nocache', default=False, action='store_true')
+    argparser.add_argument('-rt', '--read-tunables', dest='read_tunables', type=str, default=None)
+    argparser.add_argument('-wt', '--write-tunables', dest='write_tunables', type=str, default=None)
+    argparser.add_argument('-zm', '--z-is-multipoint', dest='zm', default=False, action='store_true')
 
     return argparser
 
@@ -77,7 +78,7 @@ def setup_image(i, local_ims, t, pos):
 
     i.setup_image(img)
 
-    if local_ims.get_meta("channels") > 1:
+    if local_ims.get_meta('channels') > 1:
         fimg = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Fluorescence, float=True)
 
         i.setup_fluorescence(fimg)
@@ -85,20 +86,20 @@ def setup_image(i, local_ims, t, pos):
     i.multipoint = int(pos)
     i.timepoint_num = int(t)
 
-    i.timepoint = local_ims.get_meta("time", t=t, pos=pos)
+    i.timepoint = local_ims.get_meta('time', t=t, pos=pos)
 
-    i.calibration_px_to_mu = local_ims.get_meta("calibration", t=t, pos=pos)
+    i.calibration_px_to_mu = local_ims.get_meta('calibration', t=t, pos=pos)
 
-    i.metadata["x"], i.metadata["y"], i.metadata["z"] = local_ims.get_meta("position", t=t, pos=pos)
+    i.metadata['x'], i.metadata['y'], i.metadata['z'] = local_ims.get_meta('position', t=t, pos=pos)
 
-    i.metadata["time"] = i.timepoint
-    i.metadata["timepoint"] = i.timepoint_num
-    i.metadata["multipoint"] = i.multipoint
+    i.metadata['time'] = i.timepoint
+    i.metadata['timepoint'] = i.timepoint_num
+    i.metadata['multipoint'] = i.multipoint
 
-    i.metadata["calibration_px_to_mu"] = i.calibration_px_to_mu
+    i.metadata['calibration_px_to_mu'] = i.calibration_px_to_mu
 
-    i.metadata["tag"] = ""
-    i.metadata["tag_number"] = 0
+    i.metadata['tag'] = ''
+    i.metadata['tag_number'] = 0
 
 
 # globals
@@ -107,9 +108,14 @@ ims = None
 
 
 def processing_frame(t, pos):
-    image = Image()
+    if ims.get_meta('channels') > 1:
+        image = FluorescentImage()
+    else:
+        image = Image()
 
     setup_image(image, ims, t, pos)
+
+    Debug.set_context(t=t, pos=pos)
 
     image.keep_channel_image = True
 
@@ -160,7 +166,7 @@ def main():
     try:
         import matplotlib
 
-        matplotlib.use("PDF")
+        matplotlib.use('PDF')
     except ImportError:
         if args.debug:
             print_warning("matplotlib could not be imported. Debugging was disabled.")
@@ -180,23 +186,23 @@ def main():
 
     positions_to_process = args.multipoints
 
-    if positions_to_process[-1] == float("Inf"):
+    if positions_to_process[-1] == float('Inf'):
         f = positions_to_process[-2]
         del positions_to_process[-2:-1]
-        positions_to_process += range(f, ims.get_meta("multipoints"))
+        positions_to_process += range(f, ims.get_meta('multipoints'))
 
-    positions_to_process = [p for p in positions_to_process if 0 <= p <= ims.get_meta("multipoints")]
+    positions_to_process = [p for p in positions_to_process if 0 <= p <= ims.get_meta('multipoints')]
 
     timepoints_to_process = args.timepoints
-    if timepoints_to_process[-1] == float("Inf"):
+    if timepoints_to_process[-1] == float('Inf'):
         f = timepoints_to_process[-2]
         del timepoints_to_process[-2:-1]
-        timepoints_to_process += range(f, ims.get_meta("timepoints"))
+        timepoints_to_process += range(f, ims.get_meta('timepoints'))
 
-    timepoints_to_process = [t for t in timepoints_to_process if 0 <= t <= ims.get_meta("timepoints")]
+    timepoints_to_process = [t for t in timepoints_to_process if 0 <= t <= ims.get_meta('timepoints')]
 
     prettify_numpy_array = lambda arr, spaces: \
-        repr(numpy.array(arr)).replace(")", "").replace("array(", " " * 6).replace(" " * 6, " " * spaces)
+        repr(numpy.array(arr)).replace(')', '').replace('array(', ' ' * 6).replace(' ' * 6, ' ' * spaces)
 
     print_info("Beginning Processing:")
     #           123456789ABC :)
@@ -241,22 +247,35 @@ def main():
 
         pool.close()
 
+    ####################################################################################################################
+
     tracked_results = {}
 
-    print_info("")
+    print_info()
+
+    print_info("Set-up for tracking ...")
+
+    pi = progress_bar(range(sum([len(l) - 1 if len(l) > 0 else 0 for l in results.values()]) - 1))
+
+    for pos, times in results.items():
+        tracked_position = TrackedPosition()
+        tracked_position.set_times(times)
+        tracked_position.align_channels(progress_indicator=pi)
+        tracked_position.remove_empty_channels()
+        tracked_results[pos] = tracked_position
+
+    print_info()
 
     print_info("Performing tracking ...")
 
-    for pos, times in progress_bar(results.items()):
-        tracked_results[pos] = TrackedPosition().perform_everything(times)
+    pi = progress_bar(range(sum([tp.get_tracking_work_size() for tp in tracked_results.values()]) - 1))
 
-    if args.table_output is None:
-        recipient = sys.stdout
-    else:
-        recipient = codecs.open(args.table_output, "wb+", "utf-8")
+    for pos, times in results.items():
+        tracked_position = tracked_results[pos]
+        tracked_position.perform_tracking(progress_indicator=pi)
+        tracked_position.remove_empty_channels_post_tracking()
 
-    print_info("Outputting tabular data ...")
-
+    #( Output of textual results: )#####################################################################################
 
     def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
         for pos, tracking in inner_tracked_results.items():
@@ -265,17 +284,30 @@ def main():
                 channels = tracking.channel_accumulator[inner_k]
                 yield pos, inner_k, tracking, tracker, channels
 
+
+    if args.table_output is None:
+        recipient = sys.stdout
+    else:
+        recipient = codecs.open(args.table_output, "wb+", "utf-8")
+
+    print_info()
+    print_info("Outputting tabular data ...")
+
     flat_results = list(each_pos_k_tracking_tracker_channels_in_results(tracked_results))
 
     try:
         table_dumper = QuickTableDumper(recipient=recipient)
 
-        for pos, k, tracking, tracker, channels in progress_bar(flat_results):
+        iterable = progress_bar(flat_results) if recipient is not sys.stdout else silent_progress_bar(flat_results)
+
+        for pos, k, tracking, tracker, channels in iterable:
             analyze_tracking(tracker, table_dumper)
 
     finally:
         if recipient is not sys.stdout:
             recipient.close()
+
+    #( Output of graphical tracking results: )##########################################################################
 
     if args.tracking_output is not None:
 
@@ -299,12 +331,14 @@ def main():
                           figure_presetup=
                           lambda p: p.title("Channel #%02d (average cells = %.2f)" % (k, tracker.average_cells)),
                           figure_finished=
-                          lambda p: p.savefig("%(dir)s/tracking_pt_%(mp)02d_chan_%(k)02d.pdf" % {
-                              'dir': figdir, 'mp': pos, 'k': k}),
+                          lambda p: p.savefig("%(dir)s/tracking_pt_%(mp)02d_chan_%(k)02d.pdf" %
+                                              {'dir': figdir, 'mp': pos, 'k': k}),
                           show_images=True, show_overlay=True)
 
+    #( Post-Tracking: Just write some tunables, if desired )############################################################
+
     if args.write_tunables:
-        print_info("")
+        print_info()
         if os.path.isfile(args.write_tunables):
             print_warning("Tunable output will not overwrite existing files!")
             print_warning("NOT outputint tunables.")

@@ -114,7 +114,7 @@ def plot_timeline(p, channels, cells,
                           [right, cell.top], [left, cell.top], [left, cell.bottom]]
                 poly_drawing_helper(p, coords,
                                     lw=0, edgecolor='r', facecolor='gray', fill=True, alpha=0.25)
-    print(tps)
+
     p.xlim(tps[0], tps[-1])
     p.ylim(0, max_h)
     p.gca().set_aspect('auto')

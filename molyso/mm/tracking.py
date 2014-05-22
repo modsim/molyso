@@ -9,6 +9,17 @@ from .tracking_infrastructure import CellTracker, CellCrossingCheckingGlobalDuoO
 from .tracking_output import *
 
 
+def dummy_progress_indicator():
+    pass
+
+
+def ignorant_next(iterable):
+    try:
+        return next(iterable)
+    except StopIteration:
+        return None
+
+
 class TrackedPosition(object):
     def __init__(self):
         self.times = None
@@ -39,16 +50,21 @@ class TrackedPosition(object):
 
             print("Skipping channel")
 
-        keylist = list(range(len(self.first)))
+        key_list = list(range(len(self.first)))
 
-        self.tracker_mapping = {c: CellTracker() for c in keylist}
-        self.channel_accumulator = {c: {} for c in keylist}
-        self.cell_counts = {c: [] for c in keylist}
+        self.tracker_mapping = {c: CellTracker() for c in key_list}
+        self.channel_accumulator = {c: {} for c in key_list}
+        self.cell_counts = {c: [] for c in key_list}
 
-    def align_channels(self):
+    def align_channels(self, progress_indicator=dummy_progress_indicator):
         image = None
 
+        for _ in range(self.n):
+            ignorant_next(progress_indicator)
+
         for t in self.timeslist[self.n + 1:]:
+
+
             if image is None:
                 image = self.times[t]
 
@@ -64,6 +80,8 @@ class TrackedPosition(object):
 
                 if t not in self.channel_accumulator[alignment_with_first[current_index]]:
                     self.channel_accumulator[alignment_with_first[current_index]][t] = image.channels[current_index]
+
+            ignorant_next(progress_indicator)
         for index in self.channel_accumulator.keys():
             self.channel_accumulator[index] = [self.channel_accumulator[index][n]
                                                for n in sorted(self.channel_accumulator[index].keys())]
@@ -77,7 +95,10 @@ class TrackedPosition(object):
                 del self.channel_accumulator[k]
                 del self.cell_counts[k]
 
-    def perform_tracking(self):
+    def get_tracking_work_size(self):
+        return sum([len(ca) - 1 if len(ca) > 0 else 0 for ca in self.channel_accumulator.values()])
+
+    def perform_tracking(self, progress_indicator=dummy_progress_indicator):
         for c in self.tracker_mapping.keys():
             tracker = self.tracker_mapping[c]
             channel_list = self.channel_accumulator[c]
@@ -90,6 +111,7 @@ class TrackedPosition(object):
             for current in channel_list[1:]:
                 tracker.tick()
                 analyse_cell_fates(tracker, previous.cells, current.cells)
+                ignorant_next(progress_indicator)
                 previous = current
 
     def remove_empty_channels_post_tracking(self):

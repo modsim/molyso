@@ -72,7 +72,7 @@ class Channels(list):
     channel_type = Channel
 
     def __init__(self, image, bootstrap=True):
-        super(self.__class__, self).__init__(self)
+        super(Channels, self).__init__(self)
         self.image = image
         self.nearest_tree = None
 
