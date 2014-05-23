@@ -20,6 +20,7 @@ try:
     def fancy_progress_bar(iterable):
         return clint.textui.progress.bar(iterable, width=50)
 
+    raise ImportError
 except ImportError:
     def fancy_progress_bar(iterable):
         times = numpy.zeros(len(iterable), dtype=float)
@@ -127,11 +128,12 @@ def parse_range(s, allow_open_interval=True):
         else:
             ranges += [int(frag)]
     ranges += tail
+
+    print(ranges)
     return ranges
 
 
 class Cache(object):
-    ignore_cache = True
     printer = print
 
     @classmethod
@@ -141,11 +143,17 @@ class Cache(object):
             hashlib.sha1(str(os.path.abspath(file).lower()).encode()).hexdigest()[:8],
             suffix,)
 
-    def __init__(self, file):
+    def __init__(self, file, ignore_cache):
         self.filename = file
+        if ignore_cache == 'everything':
+            self.ignore_cache = True
+        elif ignore_cache == 'nothing':
+            self.ignore_cache = []
+        else:
+            self.ignore_cache = ignore_cache.split(',')
 
     def __contains__(self, suffix):
-        if self.__class__.ignore_cache:
+        if self.ignore_cache is True or suffix in self.ignore_cache:
             return False
         else:
             return os.path.isfile(self.__class__.build_cache_filename(self.filename, suffix))
@@ -156,7 +164,7 @@ class Cache(object):
             return pickle.load(fp)
 
     def __setitem__(self, suffix, data):
-        if self.__class__.ignore_cache:
+        if self.ignore_cache is True or suffix in self.ignore_cache:
             return
         else:
             with open(self.__class__.build_cache_filename(self.filename, suffix), 'wb+') as fp:

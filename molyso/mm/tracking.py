@@ -137,18 +137,25 @@ class TrackedPosition(object):
         return self
 
 
-def analyse_cell_fates(tracker, pcells, ccells):
-    outcome_it_is_same = lambda pcell, ccell: tracker.get_cell_by_observation(pcell[0]).add_observation(ccell[0])
-    outcome_it_is_children = \
-        lambda pcell, ccell: tracker.get_cell_by_observation(pcell[0]). \
-            add_children(tracker.new_observed_cell(ccell[0]), tracker.new_observed_cell(ccell[1]))
-    outcome_it_is_new = lambda pcell, ccell: tracker.new_observed_origin(ccell[0])
+def analyse_cell_fates(tracker, previous_cells, current_cells):
+    def outcome_it_is_same(previous_cell, current_cell):
+        tracker.get_cell_by_observation(previous_cell).add_observation(current_cell)
+
+
+    def outcome_it_is_children(previous_cell, current_cells):
+        tracker.get_cell_by_observation(previous_cell). \
+            add_children(tracker.new_observed_cell(current_cells[0]), tracker.new_observed_cell(current_cells[1]))
+
+
+    def outcome_it_is_new(_, current_cell):
+        tracker.new_observed_origin(current_cell)
+
     outcome_it_is_lost = None  # lambda pcell, ccell: None
 
     opt = CellCrossingCheckingGlobalDuoOptimizerQueue()
 
     try:
-        trajs = [tracker.get_cell_by_observation(pc).trajectories[-1] for pc in pcells]
+        trajs = [tracker.get_cell_by_observation(pc).trajectories[-1] for pc in previous_cells]
         if len(trajs) > 0:
             chan_traj = numpy.mean(trajs)
         else:
@@ -156,138 +163,87 @@ def analyse_cell_fates(tracker, pcells, ccells):
     except KeyError:
         chan_traj = 0.0
 
-    for pn, pc in enumerate(pcells):
-        if not tracker.is_tracked(pc):  # this probably only occurs on the first attempt
-            tracker.new_observed_origin(pc)
-        for n, cc in enumerate(ccells):
+    for previous_number, previous_cell in enumerate(previous_cells):
+        if not tracker.is_tracked(previous_cell):  # this probably only occurs on the first attempt
+            tracker.new_observed_origin(previous_cell)
+        for current_number, current_cell in enumerate(current_cells):
+            tracked_previous_cell = tracker.get_cell_by_observation(previous_cell)
 
+            trajectories = tracked_previous_cell.trajectories
+            elongation_rates = tracked_previous_cell.elongation_rates
 
-            tc = tracker.get_cell_by_observation(pc)
+            last_traj = numpy.mean(trajectories[-min(len(trajectories), 5):])
+            last_elo = numpy.mean(elongation_rates[-min(len(elongation_rates), 5):])
 
-
-            def calc_trajectory(c1, c2):
-                return (c1.centroid1dloc - c2.centroid1dloc) / (c1.channel.image.timepoint - c2.channel.image.timepoint)
-
-
-            def _get_some_linspace(n):
-                return numpy.linspace(1, n, n)
-
-
-            end_weighted_average_tail_len = 5
-            end_weighted_average_tail = 1.0 / numpy.linspace(1, end_weighted_average_tail_len,
-                                                             end_weighted_average_tail_len)
-            end_weighted_average_tail_sums = numpy.cumsum(end_weighted_average_tail)
-
-            def end_weighted_average(arr):
-                return arr[-1]
-                to_use = min(len(arr), end_weighted_average_tail_len)
-                return numpy.sum(end_weighted_average_tail[:to_use] * arr[-1:-to_use - 1:-1]) \
-                       / end_weighted_average_tail_sums[to_use - 1]
-
-            def calc_last_traj(tc):
-                trajr = tc.trajectories
-                #return numpy.mean(trajr)
-                #print("***")
-                #print(trajr)
-                #print(end_weighted_average(trajr), calc_trajectory(pc,cc), end_weighted_average(trajr)/calc_trajectory(pc,cc))
-                return end_weighted_average(trajr)
-
-            last_traj = calc_last_traj(tc)
-
-            def calc_last_elo(tc):
-                elor = tc.elongation_rates
-                #return numpy.mean(elor)
-                return end_weighted_average(elor)
-
-
-            last_elo = calc_last_elo(tc)
-
-            #if chan_traj != 0.0:
-            #    last_traj = (last_traj + chan_traj) / 2
-
-
-            wneighbor = 0.40
-
-            try:
-                decp = tracker.get_cell_by_observation(pc.dec_neighbor)
-                btraj = calc_last_traj(decp)
-                belo = calc_last_elo(decp)
-
-                last_traj = ((1 - wneighbor) * last_traj + wneighbor * btraj)
-                last_elo = ((1 - wneighbor) * last_elo + wneighbor * belo)
-            except KeyError:
-                pass
-
-            try:
-                incp = tracker.get_cell_by_observation(pc.inc_neighbor)
-                btraj = calc_last_traj(incp)
-                belo = calc_last_elo(incp)
-
-                last_traj = ((1 - wneighbor) * last_traj + wneighbor * btraj)
-                last_elo = ((1 - wneighbor) * last_elo + wneighbor * belo)
-            except KeyError:
-                pass
-
-            time_delta = cc.channel.image.timepoint - pc.channel.image.timepoint
+            time_delta = current_cell.channel.image.timepoint - previous_cell.channel.image.timepoint
 
             putative_shift = last_traj * time_delta
             putative_elongation = last_elo * time_delta
 
-            putative_shift = 0.0
-            putative_elongation = 0.0
+            #putative_shift = 0.0
+            #putative_elongation = 0.0
 
             su = putative_shift + 0.5 * putative_elongation
             sd = putative_shift - 0.5 * putative_elongation
 
-            def calc_cost_same(onecell, othercell):
-                value = (abs(onecell.top + su - othercell.top)
-                         + abs(onecell.bottom + sd - othercell.bottom)) / 2
-                shrinkage = othercell.length - onecell.length
+            def calc_cost_same(one_cell, other_cell):
+                value = (abs(one_cell.top + su - other_cell.top)
+                         + abs(one_cell.bottom + sd - other_cell.bottom)) / 2
+                shrinkage = other_cell.length - one_cell.length
                 if shrinkage < 0:
                     shrinkage *= 5
                 value -= shrinkage
 
-                value += 2 * (onecell.centroid1dloc / 10.0) ** 1
+                value += 2 * (one_cell.centroid1dloc / 10.0) ** 1
                 return 1.0 * value
 
-            def calc_cost_child(onecell, othercell):
-                c1d = (onecell.top + onecell.bottom) / 2 + 0.5 * putative_elongation
-                value = 0.0
-                value += abs(onecell.top + su - othercell.top)
-                value += abs(c1d - othercell.bottom)
-                value += abs(onecell.bottom + sd - othercell.bottom)
-                value += abs(c1d - othercell.top)
+            def calc_cost_children(one_cell, one_child, another_child):
 
-                value /= 4.0
+                def calc_cost_child(one_cell, other_cell):
+                    c1d = (one_cell.top + one_cell.bottom) / 2 + 0.5 * putative_elongation
+                    value = 0.0
+                    value += abs(one_cell.top + su - other_cell.top)
+                    value += abs(c1d - other_cell.bottom)
+                    value += abs(one_cell.bottom + sd - other_cell.bottom)
+                    value += abs(c1d - other_cell.top)
 
-                shrinkage = othercell.length - onecell.length
-                if shrinkage > 0:
-                    shrinkage *= 5
-                value += shrinkage
-                #value *= (onecell.centroid1dloc / 100.0)**1
-                value += 2 * (onecell.centroid1dloc / 10.0) ** 1
-                return 1.15 * value
+                    value /= 4.0
 
-            cost_same = calc_cost_same(pc, cc)
+                    shrinkage = other_cell.length - one_cell.length
+                    if shrinkage > 0:
+                        shrinkage *= 5
+                    value += shrinkage
+                    #value *= (onecell.centroid1dloc / 100.0)**1
+                    value += 2 * (one_cell.centroid1dloc / 10.0) ** 1
+                    return 1.15 * value
 
-            opt.add_outcome(cost_same, {pc}, {cc}, outcome_it_is_same)
+                return (calc_cost_child(one_cell, one_child) + calc_cost_child(one_cell, another_child)) / 2.0
+
+
+            cost_same = calc_cost_same(previous_cell, current_cell)
+            opt.add_outcome(cost_same, {previous_cell}, {current_cell}, outcome_it_is_same)
 
             large_value = 1000000.0
 
             cost_new_cell = 1.0 * large_value
-
-            opt.add_outcome(cost_new_cell, set(), {cc}, outcome_it_is_new)
+            opt.add_outcome(cost_new_cell,
+                            set(), {current_cell},
+                            outcome_it_is_new)
 
             cost_lost_cell = 1.0 * large_value
-            opt.add_outcome(cost_lost_cell, {pc}, set(), outcome_it_is_lost)
+            opt.add_outcome(cost_lost_cell,
+                            {previous_cell}, set(),
+                            outcome_it_is_lost)
 
-            if n < len(ccells) - 1:
-                cc1 = ccells[n + 0]
-                cc2 = ccells[n + 1]
+            if current_number < len(current_cells) - 1:
+                putative_first_child = current_cells[current_number + 0]
+                putative_other_child = current_cells[current_number + 1]
 
-                cost_children = (calc_cost_child(pc, cc1) + calc_cost_child(pc, cc2)) / 2.0
+                cost_children = calc_cost_children(previous_cell, putative_first_child, putative_other_child)
 
-                opt.add_outcome(cost_children, {pc}, {cc1, cc2}, outcome_it_is_children)
+                opt.add_outcome(cost_children,
+                                {previous_cell}, {putative_first_child, putative_other_child},
+                                outcome_it_is_children)
 
     opt.perform_optimal()
 

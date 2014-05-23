@@ -65,7 +65,8 @@ def create_argparser():
     argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
     argparser.add_argument('-debug', '--debug', dest='debug', default=False, action='store_true')
     argparser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true')
-    argparser.add_argument('-nc', '--no-cache', dest='ignorecache', default=False, action='store_true')
+    argparser.add_argument('-nc', '--no-cache', dest='ignorecache', default='nothing',
+                           const='everything', type=str, nargs='?')
     argparser.add_argument('-rt', '--read-tunables', dest='read_tunables', type=str, default=None)
     argparser.add_argument('-wt', '--write-tunables', dest='write_tunables', type=str, default=None)
     argparser.add_argument('-zm', '--z-is-multipoint', dest='zm', default=False, action='store_true')
@@ -78,7 +79,7 @@ def setup_image(i, local_ims, t, pos):
 
     i.setup_image(img)
 
-    if local_ims.get_meta('channels') > 1:
+    if getattr(i, 'setup_fluorescence', False) and local_ims.get_meta('channels') > 1:
         fimg = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Fluorescence, float=True)
 
         i.setup_fluorescence(fimg)
@@ -106,8 +107,34 @@ def setup_image(i, local_ims, t, pos):
 
 ims = None
 
+first_frame_cache = {}
+first_to_look_at = 0
+
+
+def check_or_get_first_frame(pos):
+    global first_frame_cache
+
+    if pos in first_frame_cache:
+        return first_frame_cache[pos]
+    else:
+        if ims.get_meta('channels') > 1:
+            image = FluorescentImage()
+        else:
+            image = Image()
+
+        setup_image(image, ims, first_to_look_at, pos)
+
+        image.autorotate()
+        image.autoregister(image)
+
+        first_frame_cache[pos] = image
+
+        return image
+
 
 def processing_frame(t, pos):
+    first = check_or_get_first_frame(pos)
+
     if ims.get_meta('channels') > 1:
         image = FluorescentImage()
     else:
@@ -121,6 +148,8 @@ def processing_frame(t, pos):
     image.pack_channel_image = numpy.uint8
 
     image.autorotate()
+    image.autoregister(first)
+
     image.find_channels()
     image.find_cells_in_channels()
 
@@ -133,6 +162,10 @@ def processing_frame(t, pos):
 
 def processing_setup(args):
     global ims
+    global first_to_look_at
+
+    first_to_look_at = args.timepoints[0]
+
     if ims is None:
         ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
 
@@ -186,8 +219,7 @@ def main():
                       "and it will significantly reduce functionality!")
 
     Cache.printer = print_info
-    Cache.ignore_cache = args.ignorecache
-    cache = Cache(args.input)
+    cache = Cache(args.input, ignore_cache=args.ignorecache)
 
     if 'imageanalysis' in cache:
         results = cache['imageanalysis']
@@ -198,15 +230,17 @@ def main():
 
         if positions_to_process[-1] == float('Inf'):
             f = positions_to_process[-2]
-            del positions_to_process[-2:-1]
+            del positions_to_process[len(positions_to_process) - 2:len(positions_to_process)]
             positions_to_process += range(f, ims.get_meta('multipoints'))
 
         positions_to_process = [p for p in positions_to_process if 0 <= p <= ims.get_meta('multipoints')]
 
         timepoints_to_process = args.timepoints
+
         if timepoints_to_process[-1] == float('Inf'):
             f = timepoints_to_process[-2]
-            del timepoints_to_process[-2:-1]
+            del timepoints_to_process[len(timepoints_to_process) - 2:len(timepoints_to_process)]
+
             timepoints_to_process += range(f, ims.get_meta('timepoints'))
 
         timepoints_to_process = [t for t in timepoints_to_process if 0 <= t <= ims.get_meta('timepoints')]
@@ -263,31 +297,38 @@ def main():
 
     ####################################################################################################################
 
-    tracked_results = {}
 
-    print_info()
+    if 'tracking' in cache:
+        tracked_results = cache['tracking']
+    else:
 
-    print_info("Set-up for tracking ...")
+        tracked_results = {}
 
-    pi = progress_bar(range(sum([len(l) - 1 if len(l) > 0 else 0 for l in results.values()]) - 1))
+        print_info()
 
-    for pos, times in results.items():
-        tracked_position = TrackedPosition()
-        tracked_position.set_times(times)
-        tracked_position.align_channels(progress_indicator=pi)
-        tracked_position.remove_empty_channels()
-        tracked_results[pos] = tracked_position
+        print_info("Set-up for tracking ...")
 
-    print_info()
+        pi = progress_bar(range(sum([len(l) - 1 if len(l) > 0 else 0 for l in results.values()]) - 1))
 
-    print_info("Performing tracking ...")
+        for pos, times in results.items():
+            tracked_position = TrackedPosition()
+            tracked_position.set_times(times)
+            tracked_position.align_channels(progress_indicator=pi)
+            tracked_position.remove_empty_channels()
+            tracked_results[pos] = tracked_position
 
-    pi = progress_bar(range(sum([tp.get_tracking_work_size() for tp in tracked_results.values()]) - 1))
+        print_info()
 
-    for pos, times in results.items():
-        tracked_position = tracked_results[pos]
-        tracked_position.perform_tracking(progress_indicator=pi)
-        tracked_position.remove_empty_channels_post_tracking()
+        print_info("Performing tracking ...")
+
+        pi = progress_bar(range(sum([tp.get_tracking_work_size() for tp in tracked_results.values()]) - 1))
+
+        for pos, times in results.items():
+            tracked_position = tracked_results[pos]
+            tracked_position.perform_tracking(progress_indicator=pi)
+            tracked_position.remove_empty_channels_post_tracking()
+
+        cache['tracking'] = tracked_results
 
     #( Output of textual results: )#####################################################################################
 
@@ -315,7 +356,7 @@ def main():
         iterable = progress_bar(flat_results) if recipient is not sys.stdout else silent_progress_bar(flat_results)
 
         for pos, k, tracking, tracker, channels in iterable:
-            analyze_tracking(tracker, table_dumper)
+            analyze_tracking(tracker_to_cell_list(tracker), lambda x: table_dumper.add(x))
 
     finally:
         if recipient is not sys.stdout:
