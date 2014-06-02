@@ -134,8 +134,11 @@ def find_channels_in_profile_fft_assisted(profile):
     upper_profile = (differentiated_profile * (differentiated_profile > 0))
     lower_profile = -(differentiated_profile * (differentiated_profile < 0))
 
-    upper_profile = smooth(upper_profile, signals(numpy.hamming, 15))  # 5
-    lower_profile = smooth(lower_profile, signals(numpy.hamming, 15))  # 5
+    kernel = signals(numpy.hamming, 5)
+
+    upper_profile = smooth(upper_profile, kernel)  # 5
+    lower_profile = smooth(lower_profile, kernel)  # 5
+
 
     with DebugPlot('channeldetection', 'details', 'differentials', 'smoothed') as p:
         p.title("Channeldetection/Differentials/Smoothed")
@@ -143,11 +146,15 @@ def find_channels_in_profile_fft_assisted(profile):
         p.plot(lower_profile)
 
     # fft oversample
-    n = 2
+    n = 4
 
     # get the power spectra of the two signals
     frequencies_upper, fourier_value_upper = hires_powerspectrum(upper_profile, oversampling=n)
     frequencies_lower, fourier_value_lower = hires_powerspectrum(lower_profile, oversampling=n)
+
+    fft_value_smoothing_kernel = signals(numpy.hamming, 3)
+    fourier_value_upper = smooth(fourier_value_upper, fft_value_smoothing_kernel)
+    fourier_value_lower = smooth(fourier_value_lower, fft_value_smoothing_kernel)
 
     mainfrequency_upper = frequencies_upper[numpy.argmax(fourier_value_upper)]
     mainfrequency_lower = frequencies_lower[numpy.argmax(fourier_value_lower)]
@@ -156,6 +163,7 @@ def find_channels_in_profile_fft_assisted(profile):
         p.title("Powerspectrum (upper)")
         p.semilogx(frequencies_upper, fourier_value_upper)
         p.title("mainfreq=%f" % mainfrequency_upper)
+
     with DebugPlot('channeldetection', 'details', 'powerspectra', 'lower') as p:
         p.title("Powerspectrum (lower)")
         p.semilogx(frequencies_lower, fourier_value_lower)
@@ -196,7 +204,7 @@ def find_channels_in_profile_fft_assisted(profile):
     ma = numpy.max(help_signal)
     mi = numpy.min(help_signal)
 
-    threshold_factor = 0.5
+    threshold_factor = 0.2
     threshold = (ma - mi) * threshold_factor + mi
 
     help_signal = help_signal > threshold
@@ -251,7 +259,7 @@ def _brute_force_fft_up_down_detect(img):
         ft[0] = 0
         ft[-1] = 0
         # to counteract the rebound effect similar to the larger detection routine above
-        ft = smooth(ft, signals(numpy.hamming, 5))
+        ft = smooth(ft, signals(numpy.hamming, 3))
         return f[numpy.argmax(ft)]
 
     overall_f = hori_main_freq(img)
@@ -260,8 +268,8 @@ def _brute_force_fft_up_down_detect(img):
 
     collector = numpy.ones(height)
 
-    d = 10.0
-    break_condition = 5.0
+    d = 5.0
+    break_condition = 2.5
 
     def recurse(top, bottom, orientation=0):
         if top >= bottom:

@@ -10,7 +10,7 @@ import scipy.signal
 
 from ..generic.otsu import threshold_otsu
 from ..generic.smoothing import smooth, signals
-from ..generic.util import vertical_mean, threshold_outliers, find_insides, corrected_numerical_differentiation
+from ..generic.util import vertical_mean, threshold_outliers, find_insides
 from ..generic.signal import simple_baseline_correction, find_extrema_and_prominence
 
 from .. import DebugPlot, tunable
@@ -81,7 +81,7 @@ class Cells(list):
             return
 
         for b, e in find_cells_in_channel(self.channel.channel_image):
-            if (tunable("cells.minimal_length.inmu", 1.5) / self.channel.image.calibration_px_to_mu) < e - b:
+            if (tunable("cells.minimal_length.in_mu", 1.5) / self.channel.image.calibration_px_to_mu) < e - b:
                 self.append(self.__class__.cell_type(b, e, self.channel))
 
     def clean(self):
@@ -94,18 +94,22 @@ class Cells(list):
 
 def find_cells_in_channel(im):
     profile = vertical_mean(im)
-    oldprofile = profile.copy()
 
     # ma, mi = profile.max(), profile.min()
 
+    # TODO make that more meaningful! cells dark, background light
     # empty channel detection
     # noinspection PyArgumentEqualDefault
-    xprofile = threshold_outliers(profile, tunable("cells.emptychannel.skipping.outlier_times_sigma", 2.0))
+    xprofile = threshold_outliers(profile, tunable("cells.empty_channel.skipping.outlier_times_sigma", 2.0))
     if ((xprofile.max() - xprofile.min()) / xprofile.max()) < \
-            tunable("cells.emptychannel.skipping.intensityrangequotient", 0.5) and \
-            tunable("cells.emptychannel.skipping", True):
+            tunable("cells.empty_channel.skipping.intensity_range_quotient", 0.5) and \
+            tunable("cells.empty_channel.skipping", False):
         return []
-        pass
+
+    thresh = threshold_otsu(im)
+    bwimg = im > thresh
+    bwprof = vertical_mean(bwimg.astype(float))
+
 
     profile = simple_baseline_correction(profile, window_width=None)
 
@@ -124,78 +128,22 @@ def find_cells_in_channel(im):
 
     points, = numpy.where(newsignal)
 
-    tp = numpy.zeros(len(points) * 2)
-    tp[:len(points)] = points
-    tp[len(points):-1] = points[1:]
-    tp = tp.reshape((len(points), 2), order='F')[:-1]
-
-    thresh = threshold_otsu(im)
-    bwimg = im > thresh
-    bwprof = vertical_mean(bwimg.astype(float))
-
     bnewsignal = newsignal.astype(float)
 
-    for b, e in tp:
-        bnewsignal[b:e] = numpy.mean(bwprof[b:e])
+    last_point = points[0]
+
+    for next_point in points[1:]:
+        bnewsignal[last_point:next_point] = numpy.mean(bwprof[last_point:next_point])
+        last_point = next_point
 
     multiplicator = (bnewsignal < tunable("cells.multiplicator.threshold", 0.75))
 
     cells = multiplicator - newsignal
 
     cell_i = find_insides(cells)
-    #cell_i = [[a, b] for a, b in cell_i if not (((a - b) == 0) or (a == 0) or (b == (len(cells) - 1)))]
+    # cell_i = [[a, b] for a, b in cell_i if not (((a - b) == 0) or (a == 0) or (b == (len(cells) - 1)))]
     cell_i = [[a, b] for a, b in cell_i if not (((a - b) == 0))]
     cell_i = [[b, e] for b, e in cell_i if extrema.prominence[b:e].mean() >
                                            tunable("cells.filtering.minimum_prominence", 10.0)]
 
     return cell_i
-
-
-"""
-    with DebugPlot('celldetection_exp') as p:
-        p.title("Cell detection exp")
-        p.imshow(numpy.transpose(im))
-        p.plot(oldprofile)
-
-        p.plot(smooth(oldprofile, signals(numpy.hamming, 15)), color='purple')
-
-        p.plot(extrema.xpts, extrema.prominence)
-
-    with DebugPlot('celldetection_exp') as p:
-        p.title("Cell detection exp")
-        p.imshow(numpy.transpose(im))
-
-        diff = corrected_numerical_differentiation(oldprofile)
-        diff = abs(diff)
-
-        diff = smooth(diff, signals(numpy.hamming, 5))
-        diff /= diff.mean()
-        # noinspection PyArgumentEqualDefault
-        dextrema = find_extrema_and_prominence(diff, order=5)
-
-        p.plot(diff + 100)
-        p.scatter(dextrema.maxima, dextrema.signal[dextrema.maxima] + 100, color='green')
-        p.scatter(dextrema.minima, dextrema.signal[dextrema.minima] + 100, color='red')
-        p.plot(dextrema.prominence + 50)
-        p.scatter([150], [150])  # the fu point
-
-    with DebugPlot('celldetection') as p:
-        p.title("Cell detection")
-        p.imshow(numpy.transpose(im))
-        p.plot(profile)
-        p.plot(bwprof)
-
-        p.plot(extrema.xpts, extrema.max_spline_points)
-        p.plot(extrema.xpts, extrema.min_spline_points)
-
-        p.scatter(extrema.maxima, profile[extrema.maxima])
-        p.scatter(extrema.minima, profile[extrema.minima])
-
-        celllines = [x for x in cell_i for x in x]
-
-        p.vlines(celllines, [0] * len(celllines), [im.shape[1]] * len(celllines))
-
-        for b, e in cell_i:
-            pro = extrema.prominence[b:e].mean()
-            p.text((b + e) / 2, -10, "%.1f" % (pro,))
-"""
