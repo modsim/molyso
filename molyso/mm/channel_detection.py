@@ -87,14 +87,14 @@ class Channels(list):
             p.imshow(self.image.original_image)
             for chan in self:
                 coords = [self.image.cp(*pp) for pp in chan.get_coordinates()]
-                p.poly_drawing_helper(coords, lw=1, edgecolor='r', fill=False)
+                p.poly_drawing_helper(coords, lw=1, edgecolor='r', fill=False, closed=True)
 
         with DebugPlot('channeldetection', 'result', 'rotated') as p:
             p.title("Detected channels")
             p.imshow(self.image.image)
             for chan in self:
                 coords = chan.get_coordinates()
-                p.poly_drawing_helper(coords, lw=1, edgecolor='r', fill=False)
+                p.poly_drawing_helper(coords, lw=1, edgecolor='r', fill=False, closed=True)
 
     def clean(self):
         for channel in self:
@@ -254,48 +254,73 @@ def find_channels_in_profile_fft_assisted(profile):
 def _brute_force_fft_up_down_detect(img):
     f = _spec_bins_n(img.shape[1])
 
-    def hori_main_freq(imgs):
-        ft = numpy.absolute(_spec_fft(horizontal_mean(imgs)))
-        ft[0] = 0
-        ft[-1] = 0
-        # to counteract the rebound effect similar to the larger detection routine above
-        ft = smooth(ft, signals(numpy.hamming, 3))
-        return f[numpy.argmax(ft)]
+    def hori_main_freq(img_frag, clean_around=None, clean_width=0):
 
-    overall_f = hori_main_freq(img)
+        ft = numpy.absolute(_spec_fft(horizontal_mean(img_frag)))
+
+        ft /= 0.5 * ft[0]
+        ft[0] = 0
+
+        ft = smooth(ft, signals(numpy.hamming, 3))
+
+        if clean_around:
+            ft[numpy.absolute(f - clean_around) > clean_width] = 0.0
+
+        return ft.max(), f[numpy.argmax(ft)]
+
+    power_overall_f, overall_f = hori_main_freq(img)
+
+    d = 1.0
+    power_min_quotient = 0.1
+    break_condition = 2.0
+
+    clean_width = overall_f / 2.0
+
+
+    def matches(img_frag):
+        power_local_f, local_f = hori_main_freq(img_frag, clean_around=overall_f, clean_width=clean_width)
+        return (abs(overall_f - local_f) < d) and ((power_local_f / power_overall_f) > power_min_quotient)
 
     height = img.shape[0]
 
-    collector = numpy.ones(height)
+    collector = numpy.zeros(height)
 
-    d = 5.0
-    break_condition = 2.5
+    # for n in range(height):
+    #    print(hori_main_freq(img[n:n+1,:]))
 
-    def recurse(top, bottom, orientation=0):
-        if top >= bottom:
+    FIRST_CALL, FROM_TOP, FROM_BOTTOM = 0, -1, 1
+
+    def recurse(top, bottom, orientation=FIRST_CALL):
+        if (bottom - top) < break_condition:
             return
-        new_f = hori_main_freq(img[top:bottom, :])
-        if abs(overall_f - new_f) < d:
-            if (bottom - top) < break_condition:
-                return
-            mid = (top + bottom) // 2
-            if orientation == -1:
-                recurse(top, mid, orientation)
-            elif orientation == 1:
-                recurse(mid, bottom, orientation)
 
-        else:
-            collector[top:bottom] = 0
+        mid = (top + bottom) // 2
 
-    recurse(0, height // 2, -1)
-    recurse(height // 2, height, 1)
-    result = sorted([(e - b, (b, e)) for b, e in find_insides(collector)], reverse=True)
-    #if len(result) == 0:
-    #    print(collector)
-    #    print(height)
+        upper = matches(img[top:mid, :])
+        lower = matches(img[mid:bottom, :])
 
-    _, (upper, lower) = result[0]
-    return upper, lower
+        collector[top:mid] = upper
+        collector[mid:bottom] = lower
+
+        if orientation == FIRST_CALL:
+            if upper:
+                recurse(top, mid, FROM_TOP)
+            if lower:
+                recurse(mid, bottom, 1)
+        elif orientation == FROM_TOP:
+            if upper and lower:
+                recurse(top, mid, FROM_TOP)
+            elif not upper and lower:
+                recurse(mid, bottom, FROM_TOP)
+        elif orientation == FROM_BOTTOM:
+            if lower and upper:
+                recurse(mid, bottom, FROM_BOTTOM)
+            elif not lower and upper:
+                recurse(top, mid, FROM_BOTTOM)
+
+    recurse(0, height)
+
+    return sorted(find_insides(collector), key=lambda pair: pair[1] - pair[0], reverse=True)[0]
 
 
 def find_channels(img):

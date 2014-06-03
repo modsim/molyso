@@ -81,7 +81,7 @@ class Cells(list):
             return
 
         for b, e in find_cells_in_channel(self.channel.channel_image):
-            if (tunable("cells.minimal_length.in_mu", 1.5) / self.channel.image.calibration_px_to_mu) < e - b:
+            if (tunable("cells.minimal_length.in_mu", 1.0) / self.channel.image.calibration_px_to_mu) < e - b:
                 self.append(self.__class__.cell_type(b, e, self.channel))
 
     def clean(self):
@@ -100,8 +100,14 @@ def find_cells_in_channel(im):
     # TODO make that more meaningful! cells dark, background light
     # empty channel detection
     # noinspection PyArgumentEqualDefault
-    xprofile = threshold_outliers(profile, tunable("cells.empty_channel.skipping.outlier_times_sigma", 2.0))
-    if ((xprofile.max() - xprofile.min()) / xprofile.max()) < \
+    thresholded_profile = threshold_outliers(profile, tunable("cells.empty_channel.skipping.outlier_times_sigma", 2.0))
+
+    delta_thresholded_profile = thresholded_profile - thresholded_profile.mean()
+    if delta_thresholded_profile[delta_thresholded_profile > 0].sum() < \
+            delta_thresholded_profile[delta_thresholded_profile < 0].sum():
+        pass
+
+    if ((thresholded_profile.max() - thresholded_profile.min()) / thresholded_profile.max()) < \
             tunable("cells.empty_channel.skipping.intensity_range_quotient", 0.5) and \
             tunable("cells.empty_channel.skipping", False):
         return []
@@ -143,7 +149,22 @@ def find_cells_in_channel(im):
     cell_i = find_insides(cells)
     # cell_i = [[a, b] for a, b in cell_i if not (((a - b) == 0) or (a == 0) or (b == (len(cells) - 1)))]
     cell_i = [[a, b] for a, b in cell_i if not (((a - b) == 0))]
+    cell_i = [[b, e] for b, e in cell_i if bwprof[b:e].mean() < 0.5]
+
     cell_i = [[b, e] for b, e in cell_i if extrema.prominence[b:e].mean() >
-                                           tunable("cells.filtering.minimum_prominence", 10.0)]
+              tunable("cells.filtering.minimum_prominence", 10.0)]
+
+    with DebugPlot() as p:
+        p.title("Cell detection")
+        p.imshow(numpy.transpose(im), aspect="auto", extent=(0, im.shape[0], 10 * im.shape[1], 0))
+        p.imshow(numpy.transpose(bwimg), aspect="auto", extent=(0, im.shape[0], 0, -10 * im.shape[1]))
+        p.plot(profile)
+
+        p.plot(thresholded_profile)
+
+        cell_lines = [x for x in cell_i for x in x]
+
+        p.vlines(cell_lines, [im.shape[1] * -10] * len(cell_lines), [im.shape[1] * 10] * len(cell_lines),
+                 colors="yellow")
 
     return cell_i

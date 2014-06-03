@@ -112,6 +112,13 @@ class DebugPlot(object):
             from matplotlib.patches import PathPatch
 
             actions = [Path.MOVETO] + [Path.LINETO] * (len(coords) - 1)
+
+            if "closed" in kwargs:
+                if kwargs["closed"]:
+                    actions.append(Path.CLOSEPOLY)
+                    coords.append((0, 0))
+                del kwargs["closed"]
+
             gca.add_patch(PathPatch(Path(coords, actions), **kwargs))
 
     def __enter__(self):
@@ -119,7 +126,7 @@ class DebugPlot(object):
             # noinspection PyPep8Naming,PyAttributeOutsideInit
             self.rcParams = self.pylab.rcParams
             self.clf()
-            self.close()
+            self.close('all')
             self.rcParams['figure.figsize'] = (12, 8)
             self.rcParams['figure.dpi'] = 150
             self.rcParams['image.cmap'] = 'gray'
@@ -139,5 +146,5 @@ class DebugPlot(object):
                 if self.filter_str in okay:
                     self.savefig(pp, format='pdf')
             self.clf()
-            self.close()
+            self.close('all')
             self.figure()

@@ -74,6 +74,8 @@ def threshold_outliers(arr, times_std=2.0):
     :param times_std:
     :return:
     """
+
+    arr = arr.copy()
     median = numpy.median(arr)
     std = numpy.std(arr)
     arr[(arr - median) > (times_std * std)] = median + (times_std * std)
@@ -123,7 +125,7 @@ def find_insides(arr):
     if inside:
         positions += [[beg, len(arr) - 1]]
 
-    return numpy.array(positions)
+    return positions
 
 
 def find_insides_w_int(arr):
