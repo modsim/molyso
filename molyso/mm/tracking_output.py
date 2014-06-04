@@ -1,6 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+documentation
+"""
 from __future__ import division, unicode_literals, print_function
 
 import numpy
+
 
 def iterate_over_cells(cells):
     collector = []
@@ -126,7 +131,7 @@ def plot_timeline(p, channels, cells,
     # for cell in cells:
     # if cell.parent is not None:
     # if len(cell.children) > 0:
-    #     child = cell.children[0]
+    # child = cell.children[0]
     #     # cell took first_occurrence_parent to first_occurrence_child time to divide!
     #     t1 = cell.seen_as[0].channel.image.timepoint
     #     t2 = child.seen_as[0].channel.image.timepoint
@@ -240,7 +245,7 @@ def analyze_tracking(cells, receptor):
                 'timepoint_num': sa.channel.image.timepoint_num,
                 'cellyposition': sa.centroid1dloc,
                 'multipoint': sa.channel.image.multipoint,
-                'channel_in_multipoint': sa.channel.image.channels.index(sa.channel),
+                'channel_in_multipoint': sa.channel.image.channels.channels_list.index(sa.channel),
                 'channel_average_cells': cell.tracker.average_cells,
                 'about_to_divide': int(
                     ((sn + 1) == len(cell.seen_as)) and (cell.parent is not None) and (len(cell.children) > 0)

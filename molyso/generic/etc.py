@@ -11,8 +11,10 @@ import time
 
 from .. import Debug, Timed
 
+
 def silent_progress_bar(iterable):
     return iterable
+
 
 try:
     import clint.textui
@@ -20,7 +22,7 @@ try:
     def fancy_progress_bar(iterable):
         return clint.textui.progress.bar(iterable, width=50)
 
-    raise ImportError
+        # raise ImportError
 except ImportError:
     def fancy_progress_bar(iterable):
         times = numpy.zeros(len(iterable), dtype=float)
@@ -33,6 +35,7 @@ except ImportError:
             print("processed %d/%d [took %.3fs%s]" % (n + 1, len(iterable), times[n], eta))
 
 progress_bar = fancy_progress_bar
+
 
 class QuickTableDumper(object):
     def __init__(self, recipient=None):

@@ -17,6 +17,8 @@ from .. import DebugPlot, tunable
 
 
 class Cell(object):
+    __slots__ = ['local_top', 'local_bottom', 'channel']
+
     def __init__(self, top, bottom, channel):
         self.local_top = float(top)
         self.local_bottom = float(bottom)
@@ -44,10 +46,9 @@ class Cell(object):
         return [self.channel.centroid[0], self.centroid1dloc]
 
     def get_neighbor(self, shift=0):
-        c = self.channel.cells
-        pos = c.index(self)
+        cl = self.channel.cells.cells_list
         try:
-            return c[pos + shift]
+            return cl[cl.index(self) + shift]
         except IndexError:
             return None
 
@@ -63,15 +64,18 @@ class Cell(object):
         return self.local_top < other_cell.local_top
 
 
-class Cells(list):
+class Cells(object):
     """
         docstring
     """
 
+    __slots__ = ['cells_list', 'channel', 'nearest_tree']
+
     cell_type = Cell
 
     def __init__(self, channel, bootstrap=True):
-        super(Cells, self).__init__(self)
+
+        self.cells_list = []
 
         self.channel = channel
 
@@ -82,14 +86,20 @@ class Cells(list):
 
         for b, e in find_cells_in_channel(self.channel.channel_image):
             if (tunable("cells.minimal_length.in_mu", 1.0) / self.channel.image.calibration_px_to_mu) < e - b:
-                self.append(self.__class__.cell_type(b, e, self.channel))
+                self.cells_list.append(self.__class__.cell_type(b, e, self.channel))
+
+    def __len__(self):
+        return len(self.cells_list)
+
+    def __iter__(self):
+        return iter(self.cells_list)
 
     def clean(self):
         pass
 
     @property
     def centroids(self):
-        return [cell.centroid for cell in self]
+        return [cell.centroid for cell in self.cells_list]
 
 
 def find_cells_in_channel(im):
@@ -115,7 +125,6 @@ def find_cells_in_channel(im):
     thresh = threshold_otsu(im)
     bwimg = im > thresh
     bwprof = vertical_mean(bwimg.astype(float))
-
 
     profile = simple_baseline_correction(profile, window_width=None)
 

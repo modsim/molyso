@@ -12,7 +12,7 @@ from ..generic.rotation import apply_rotate_and_cleanup
 
 
 class FluorescentCell(Cell):
-    fluorescence_mean = float('nan')
+    __slots__ = ['fluorescence_mean']
 
     def __init__(self, *args, **kwargs):
         super(FluorescentCell, self).__init__(*args, **kwargs)
@@ -61,6 +61,8 @@ class FluorescentImage(Image):
         self.original_image_fluorescence = None
         self.background_fluorescence = float('NaN')
 
+        self.channels_cells_fluorescence_mean = None
+
 
     def setup_fluorescence(self, fimg):
         self.image_fluorescence = fimg
@@ -86,8 +88,10 @@ class FluorescentImage(Image):
         else:
             background_fluorescence_means = numpy.zeros((len(self.channels) - 1, 2), dtype=numpy.float64)
 
-            previous_channel = self.channels[0]
-            for n, next_channel in enumerate(self.channels[1:]):
+            channel_iterator = iter(self.channels)
+
+            previous_channel = next(channel_iterator)
+            for n, next_channel in enumerate(channel_iterator):
                 background_fragment = self.image_fluorescence[next_channel.real_top:next_channel.real_bottom,
                                       previous_channel.right:next_channel.left]
                 background_fluorescence_means[n, 0] = background_fragment.mean()
@@ -110,7 +114,7 @@ class FluorescentImage(Image):
 
     def unflatten(self):
         super(FluorescentImage, self).unflatten()
-        for n, _ in enumerate(self.channels):
-            for cn, __ in enumerate(self.channels[n].cells):
-                self.channels[n].cells[cn].fluorescence_mean = self.channels_cells_fluorescence_mean[n][cn]
-        del self.channels_cells_fluorescence_mean
+        for n, channel in enumerate(self.channels):
+            for cn, cell in enumerate(channel.cells):
+                cell.fluorescence_mean = self.channels_cells_fluorescence_mean[n][cn]
+        self.channels_cells_fluorescence_mean = None

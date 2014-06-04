@@ -13,6 +13,8 @@ class CellTracker(object):
 
     """
 
+    __slots__ = ['all_tracked_cells', 'origins', 'timepoints']
+
     def __init__(self):
         self.all_tracked_cells = {}
         self.origins = []
@@ -50,6 +52,8 @@ class CellTracker(object):
 
 
 class TrackedCell(object):
+    __slots__ = ['tracker', 'parent', 'children', 'seen_as', 'raw_elongation_rates', 'raw_trajectories']
+
     def __init__(self, tracker):
         self.tracker = tracker
         self.parent = None

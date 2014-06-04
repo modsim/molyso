@@ -261,7 +261,7 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
             chan.channel_image = self.channel_images[n]
 
-            self.channels.append(chan)
+            self.channels.channels_list.append(chan)
             cells = chan.__class__.cells_type(chan, bootstrap=False)
 
             chan.cells = cells
@@ -271,7 +271,7 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
                 cell = cells.cell_type(ltop, lbottom, chan)
 
-                cells.append(cell)
+                cells.cells_list.append(cell)
 
         self.flattened = False
 

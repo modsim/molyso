@@ -81,10 +81,12 @@ class TrackedPosition(object):
 
             for _, current_index in alignment:
                 # ths is not perfectly right, but it's enough work with chan accum already
-                self.cell_counts[alignment_with_first[current_index]].append(len(image.channels[current_index].cells))
+                self.cell_counts[alignment_with_first[current_index]].append(
+                    len(image.channels.channels_list[current_index].cells))
 
                 if t not in self.channel_accumulator[alignment_with_first[current_index]]:
-                    self.channel_accumulator[alignment_with_first[current_index]][t] = image.channels[current_index]
+                    self.channel_accumulator[alignment_with_first[current_index]][t] = image.channels.channels_list[
+                        current_index]
 
             ignorant_next(progress_indicator)
         for index in self.channel_accumulator.keys():
@@ -138,6 +140,9 @@ class TrackedPosition(object):
 
 
 def analyse_cell_fates(tracker, previous_cells, current_cells):
+    # original_current_cells = current_cells
+    current_cells = current_cells.cells_list
+
     def outcome_it_is_same(previous_cell, current_cell):
         tracker.get_cell_by_observation(previous_cell).add_observation(current_cell)
 

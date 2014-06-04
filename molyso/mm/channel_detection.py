@@ -17,6 +17,8 @@ from .cell_detection import Cells
 class Channel(object):
     cells_type = Cells
 
+    __slots__ = ['image', 'left', 'right', 'real_top', 'real_bottom', 'cells', 'channel_image']
+
     def __init__(self, image, left, right, top, bottom):
         self.image = image
         self.left = float(left)
@@ -57,19 +59,21 @@ class Channel(object):
 
 
 treeprovider = NotReallyATree
-#treeprovider = KDTree
+# treeprovider = KDTree
 #treeprovider = ckdtree.cKDTree
 
 
-class Channels(list):
+class Channels(object):
     """
         docstring
     """
 
+    __slots__ = ['channels_list', 'image', 'nearest_tree']
+
     channel_type = Channel
 
     def __init__(self, image, bootstrap=True):
-        super(Channels, self).__init__(self)
+        self.channels_list = []
         self.image = image
         self.nearest_tree = None
 
@@ -80,7 +84,7 @@ class Channels(list):
 
         for begin, end in positions:
             #noinspection PyMethodFirstArgAssignment
-            self.append(self.__class__.channel_type(self.image, begin, end, upper, lower))
+            self.channels_list.append(self.__class__.channel_type(self.image, begin, end, upper, lower))
 
         with DebugPlot('channeldetection', 'result', 'onoriginal') as p:
             p.title("Detected channels (on original image)")
@@ -95,6 +99,12 @@ class Channels(list):
             for chan in self:
                 coords = chan.get_coordinates()
                 p.poly_drawing_helper(coords, lw=1, edgecolor='r', fill=False, closed=True)
+
+    def __len__(self):
+        return len(self.channels_list)
+
+    def __iter__(self):
+        return iter(self.channels_list)
 
     def clean(self):
         for channel in self:
@@ -138,7 +148,6 @@ def find_channels_in_profile_fft_assisted(profile):
 
     upper_profile = smooth(upper_profile, kernel)  # 5
     lower_profile = smooth(lower_profile, kernel)  # 5
-
 
     with DebugPlot('channeldetection', 'details', 'differentials', 'smoothed') as p:
         p.title("Channeldetection/Differentials/Smoothed")
@@ -254,7 +263,7 @@ def find_channels_in_profile_fft_assisted(profile):
 def _brute_force_fft_up_down_detect(img):
     f = _spec_bins_n(img.shape[1])
 
-    def hori_main_freq(img_frag, clean_around=None, clean_width=0):
+    def hori_main_freq(img_frag, clean_around=None, clean_width=0.0):
 
         ft = numpy.absolute(_spec_fft(horizontal_mean(img_frag)))
 
@@ -274,11 +283,10 @@ def _brute_force_fft_up_down_detect(img):
     power_min_quotient = 0.1
     break_condition = 2.0
 
-    clean_width = overall_f / 2.0
-
+    current_clean_width = overall_f / 2.0
 
     def matches(img_frag):
-        power_local_f, local_f = hori_main_freq(img_frag, clean_around=overall_f, clean_width=clean_width)
+        power_local_f, local_f = hori_main_freq(img_frag, clean_around=overall_f, clean_width=current_clean_width)
         return (abs(overall_f - local_f) < d) and ((power_local_f / power_overall_f) > power_min_quotient)
 
     height = img.shape[0]
@@ -302,17 +310,17 @@ def _brute_force_fft_up_down_detect(img):
         collector[top:mid] = upper
         collector[mid:bottom] = lower
 
-        if orientation == FIRST_CALL:
+        if orientation is FIRST_CALL:
             if upper:
                 recurse(top, mid, FROM_TOP)
             if lower:
                 recurse(mid, bottom, 1)
-        elif orientation == FROM_TOP:
+        elif orientation is FROM_TOP:
             if upper and lower:
                 recurse(top, mid, FROM_TOP)
             elif not upper and lower:
                 recurse(mid, bottom, FROM_TOP)
-        elif orientation == FROM_BOTTOM:
+        elif orientation is FROM_BOTTOM:
             if lower and upper:
                 recurse(mid, bottom, FROM_BOTTOM)
             elif not lower and upper:
