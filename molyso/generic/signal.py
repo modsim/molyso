@@ -149,13 +149,11 @@ def simple_baseline_correction(signal, window_width=100):
     :param window_width: smoothing window width
     :return:
     """
-    if window_width is None:
-        window_width = len(signal)
-    elif window_width > len(signal):
+    if window_width is None or window_width > len(signal):
         window_width = len(signal)
 
     smoothing_signal = numpy.hamming(window_width)
-    return signal - smooth(smooth(signal, smoothing_signal), smoothing_signal)
+    return signal - smooth(signal, smoothing_signal)
 
 
 def _spectrum(arr):

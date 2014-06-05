@@ -8,7 +8,7 @@ import numpy
 
 from .. import DebugPlot, tunable
 from ..generic.signal import _spec_fft, _spec_bins_n, hires_powerspectrum, find_phase, find_extrema_and_prominence
-from ..generic.smoothing import smooth, signals
+from ..generic.smoothing import hamming_smooth
 from ..generic.util import horizontal_mean, vertical_mean, NotReallyATree, find_insides, numerical_differentiation, \
     one_every_n, normalize, threshold_outliers
 from .cell_detection import Cells
@@ -144,10 +144,8 @@ def find_channels_in_profile_fft_assisted(profile):
     upper_profile = (differentiated_profile * (differentiated_profile > 0))
     lower_profile = -(differentiated_profile * (differentiated_profile < 0))
 
-    kernel = signals(numpy.hamming, 5)
-
-    upper_profile = smooth(upper_profile, kernel)  # 5
-    lower_profile = smooth(lower_profile, kernel)  # 5
+    upper_profile = hamming_smooth(upper_profile, 5)  # 5
+    lower_profile = hamming_smooth(lower_profile, 5)  # 5
 
     with DebugPlot('channeldetection', 'details', 'differentials', 'smoothed') as p:
         p.title("Channeldetection/Differentials/Smoothed")
@@ -161,9 +159,8 @@ def find_channels_in_profile_fft_assisted(profile):
     frequencies_upper, fourier_value_upper = hires_powerspectrum(upper_profile, oversampling=n)
     frequencies_lower, fourier_value_lower = hires_powerspectrum(lower_profile, oversampling=n)
 
-    fft_value_smoothing_kernel = signals(numpy.hamming, 3)
-    fourier_value_upper = smooth(fourier_value_upper, fft_value_smoothing_kernel)
-    fourier_value_lower = smooth(fourier_value_lower, fft_value_smoothing_kernel)
+    fourier_value_upper = hamming_smooth(fourier_value_upper, 3)
+    fourier_value_lower = hamming_smooth(fourier_value_lower, 3)
 
     mainfrequency_upper = frequencies_upper[numpy.argmax(fourier_value_upper)]
     mainfrequency_lower = frequencies_lower[numpy.argmax(fourier_value_lower)]
@@ -204,7 +201,7 @@ def find_channels_in_profile_fft_assisted(profile):
         one_every_n(profile_len, mainfrequency, shift=phase + 0.5 * width + width)
 
     # dependence on 'new_signal' removed, works apparently without
-    help_signal = normalize(smooth(absolute_differentiated_profile, signals(numpy.hamming, 50)))  # * new_signal
+    help_signal = normalize(hamming_smooth(absolute_differentiated_profile, 50))  # * new_signal
 
     # under certain conditions, the help signal may contain a totally extreme
     # maximum (testimage), I guess it's wiser to remove ity
@@ -270,7 +267,7 @@ def _brute_force_fft_up_down_detect(img):
         ft /= 0.5 * ft[0]
         ft[0] = 0
 
-        ft = smooth(ft, signals(numpy.hamming, 3))
+        ft = hamming_smooth(ft, 3)
 
         if clean_around:
             ft[numpy.absolute(f - clean_around) > clean_width] = 0.0

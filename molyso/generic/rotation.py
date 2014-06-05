@@ -8,7 +8,7 @@ import math
 import numpy
 
 from .util import each_image_slice_vertical, vertical_mean, numerical_differentiation, remove_outliers
-from .smoothing import smooth
+from .smoothing import hamming_smooth
 from .signal import find_phase
 
 
@@ -19,7 +19,6 @@ def find_rotation(im, steps=10, smoothing_signal_length=15):
     :param steps:
     :return:
     """
-    smoothing_signal = numpy.hamming(smoothing_signal_length)
 
     shifts = numpy.zeros(steps)
 
@@ -32,10 +31,10 @@ def find_rotation(im, steps=10, smoothing_signal_length=15):
         step = the_step
         profile = vertical_mean(imgslice)
 
-        profile = smooth(profile, smoothing_signal)
+        profile = hamming_smooth(profile, smoothing_signal_length)
         profile = numerical_differentiation(profile)
         profile[0] = 0
-        profile = smooth(profile, smoothing_signal)
+        profile = hamming_smooth(profile, smoothing_signal_length)
 
         if n == 0:
             last_signal = profile

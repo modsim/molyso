@@ -8,32 +8,23 @@ import numpy
 import scipy.signal
 
 
-def regular_smooth(x, k):
+def smooth(signal, kernel):
     """
 
-    :param x:
-    :param k:
+    :param signal:
+    :param kernel:
     :return:
     """
-    kl = len(k)
-    s = numpy.r_[x[kl - 1:0:-1], x, x[-1:-kl:-1]]
-    #print(x.dtype,k.dtype)
-    return numpy.convolve(k / k.sum(), s, mode='valid')[kl / 2 - 1:-kl / 2][0:len(x)]
+
+    return numpy.convolve(
+        kernel / kernel.sum(),
+        numpy.r_[signal[kernel.size - 1:0:-1], signal, signal[-1:-kernel.size:-1]],
+        mode='valid')[kernel.size / 2 - 1:-kernel.size / 2][0:len(signal)]
 
 
-def fft_smooth(x, k):
-    """
+def hamming_smooth(signal, window_width):
+    return smooth(signal, signals(numpy.hamming, window_width))
 
-    :param x:
-    :param k:
-    :return:
-    """
-    kl = len(k)
-    s = numpy.r_[x[kl - 1:0:-1], x, x[-1:-kl:-1]]
-    return scipy.signal.fftconvolve(k / k.sum(), s, mode='valid')[kl / 2 - 1:-kl / 2][0:len(x)]
-
-
-smooth = regular_smooth
 
 _signals = {}
 

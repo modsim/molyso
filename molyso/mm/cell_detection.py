@@ -9,7 +9,7 @@ import scipy
 import scipy.signal
 
 from ..generic.otsu import threshold_otsu
-from ..generic.smoothing import smooth, signals
+from ..generic.smoothing import hamming_smooth
 from ..generic.util import vertical_mean, threshold_outliers, find_insides
 from ..generic.signal import simple_baseline_correction, find_extrema_and_prominence
 
@@ -128,7 +128,7 @@ def find_cells_in_channel(im):
 
     profile = simple_baseline_correction(profile, window_width=None)
 
-    profile = smooth(profile, signals(scipy.signal.flattop, tunable("cells.smoothing.flattop.length", 15)))
+    profile = hamming_smooth(profile, tunable("cells.smoothing.length", 10))
 
     extrema = find_extrema_and_prominence(profile, order=tunable("cells.extrema.order", 15))
 
