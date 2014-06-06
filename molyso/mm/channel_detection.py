@@ -130,6 +130,9 @@ def find_channels_in_profile_fft_assisted(profile):
     upper_profile = (differentiated_profile * (differentiated_profile > 0))
     lower_profile = -(differentiated_profile * (differentiated_profile < 0))
 
+    upper_profile[upper_profile < upper_profile.max() * 0.5] *= 0.1
+    lower_profile[lower_profile < lower_profile.max() * 0.5] *= 0.1
+
     upper_profile = hamming_smooth(upper_profile, 5)  # 5
     lower_profile = hamming_smooth(lower_profile, 5)  # 5
 
@@ -171,6 +174,11 @@ def find_channels_in_profile_fft_assisted(profile):
     absolute_differentiated_profile = numpy.absolute(differentiated_profile)
 
     width, = find_phase(upper_profile, lower_profile)
+
+    if width > mainfrequency:
+        width = int(width % mainfrequency)
+    elif width < 0:
+        width = int(width + mainfrequency)
 
     mainfrequency += (width / ((profile_len / mainfrequency)))
 
