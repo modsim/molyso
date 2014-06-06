@@ -56,14 +56,7 @@ def plot_timeline(p, channels, cells,
                   figure_presetup=None, figure_finished=None,
                   show_images=True, show_overlay=True,
                   leave_open=False):
-    def poly_drawing_helper(p, coords, **kwargs):
-        gca = p.gca()
-        if gca:
-            from matplotlib.path import Path
-            from matplotlib.patches import PathPatch
-
-            actions = [Path.MOVETO] + [Path.LINETO] * (len(coords) - 1)
-            gca.add_patch(PathPatch(Path(coords, actions), **kwargs))
+    from ..debugging.debugplot import poly_drawing_helper
 
     time_points = numpy.sort([cc.image.timepoint for cc in channels])
 

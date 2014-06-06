@@ -43,7 +43,7 @@ def find_phase(signal1=None, signal2=None,
 
     corr = numpy.absolute(corr)
     themax = numpy.argmax(corr)
-    #if themax > 2 and themax < (len(corr) - 2):
+    # if themax > 2 and themax < (len(corr) - 2):
     #    sur = corr[themax-1:themax+2]
     #    themax += -0.5*sur[0] + 0.5*sur[2]
 
@@ -57,9 +57,9 @@ def find_phase(signal1=None, signal2=None,
     return result
 
 
-ExtremeAndProminence = namedtuple("ExtremeAndProminence", ["maxima", "minima", "signal", "order", "max_spline",
-                                                           "min_spline", "xpts", "max_spline_points",
-                                                           "min_spline_points", "prominence"])
+ExtremeAndProminence = namedtuple('ExtremeAndProminence', ['maxima', 'minima', 'signal', 'order', 'max_spline',
+                                                           'min_spline', 'xpts', 'max_spline_points',
+                                                           'min_spline_points', 'prominence'])
 
 
 def find_extrema_and_prominence(signal, order=5):
@@ -113,11 +113,11 @@ def find_extrema_and_prominence(signal, order=5):
     if k < 1:
         def max_spline(arg):
             arg = numpy.zeros_like(arg)
-            arg[:] = float("Inf")
+            arg[:] = float('Inf')
             return arg
     else:
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            warnings.simplefilter('ignore')
             max_spline = scipy.interpolate.UnivariateSpline(maximaintpx, maximaintpy, bbox=[0, len(signal)], k=k)
 
     k = 3
@@ -126,11 +126,11 @@ def find_extrema_and_prominence(signal, order=5):
     if k < 1:
         def min_spline(arg):
             arg = numpy.zeros_like(arg)
-            arg[:] = float("-Inf")
+            arg[:] = float('-Inf')
             return arg
     else:
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            warnings.simplefilter('ignore')
             min_spline = scipy.interpolate.UnivariateSpline(minimaintpx, minimaintpy, bbox=[0, len(signal)], k=k)
 
     xpts = numpy.linspace(0, len(signal) - 1, len(signal))
@@ -142,7 +142,7 @@ def find_extrema_and_prominence(signal, order=5):
                                 maxsy - minsy)
 
 
-def simple_baseline_correction(signal, window_width=100):
+def simple_baseline_correction(signal, window_width=None):
     """
     performs a simple baseline correction by subtracting a strongly smoothed version of the signal from itself
     :param signal: input signal

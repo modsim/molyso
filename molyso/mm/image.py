@@ -23,7 +23,7 @@ class BaseImage(object):
     def __init__(self):
         """
         creates an image object
-        :return: baseimage object
+        :return: BaseImage object
         """
 
         self.image = None
@@ -60,6 +60,11 @@ class BaseImage(object):
         self.original_image = img
 
     def pixel_to_mu(self, pix):
+        """
+        convertes a distance in pixels to micrometers using the calibration data of the image
+        :param pix: pixel distance to convert
+        :return: distance in micrometers as floating point number
+        """
         return float(self.calibration_px_to_mu * pix)
 
     def cp(self, x, y):
@@ -126,6 +131,10 @@ class AutoRegistrationProvider(object):
         self.shift = [yn, xn]
 
 
+cell_color = '#005b82'
+channel_color = '#e7af12'
+
+
 class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
     """
         An image object stores the original image, rotation and cropping information as well as the modified image.
@@ -180,11 +189,25 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
     def find_channels(self):
         """
-        calls channel detection routines (by instanciating
+        calls channel detection routines (by instantiating the correct Channels object)
         :returns: None
         """
 
         self.channels = self.__class__.channels_type(self)
+
+        with DebugPlot('channeldetection', 'result', 'onoriginal') as p:
+            p.title("Detected channels (on original image)")
+            p.imshow(self.original_image)
+            for chan in self.channels:
+                coords = [self.cp(*pp) for pp in chan.get_coordinates()]
+                p.poly_drawing_helper(coords, lw=1, edgecolor=channel_color, fill=False, closed=True)
+
+        with DebugPlot('channeldetection', 'result', 'rotated') as p:
+            p.title("Detected channels")
+            p.imshow(self.image)
+            for chan in self.channels:
+                coords = chan.get_coordinates()
+                p.poly_drawing_helper(coords, lw=1, edgecolor=channel_color, fill=False, closed=True)
 
     def find_cells_in_channels(self):
         """
@@ -197,20 +220,24 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         for channel in self.channels:
             channel.detect_cells()
 
-        with DebugPlot("celldetection", "result", "rotated") as p:
-            p.title("Detected cells")
-            p.imshow(self.image)
-            # noinspection PyTypeChecker
-            for channel in self.channels:
-                coords = channel.get_coordinates()
-                p.poly_drawing_helper(coords, lw=1, edgecolor='r', fill=False)
+        with DebugPlot('celldetection', 'result', 'rotated') as p:
+            self.debug_print_cells(p)
 
-                for cell in channel.cells:
-                    coords = [[channel.left, cell.bottom], [channel.right, cell.bottom],
-                              [channel.right, cell.top], [channel.left, cell.top],
-                              [channel.left, cell.bottom]]
+    def debug_print_cells(self, p):
+        p.title("Detected cells")
+        p.imshow(self.image)
+        # noinspection PyTypeChecker
+        for channel in self.channels:
+            coords = channel.get_coordinates()
+            p.poly_drawing_helper(coords, lw=1, edgecolor=channel_color, fill=False)
 
-                    p.poly_drawing_helper(coords, lw=0.5, edgecolor='b', fill=False)
+            for cell in channel.cells:
+                coords = [[channel.left, cell.bottom], [channel.right, cell.bottom],
+                          [channel.right, cell.top], [channel.left, cell.top],
+                          [channel.left, cell.bottom]]
+
+                p.poly_drawing_helper(coords, lw=0.5, edgecolor=cell_color, fill=False)
+
 
     def flatten(self):
         """

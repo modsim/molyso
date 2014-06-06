@@ -126,7 +126,7 @@ def find_cells_in_channel(im):
     bwimg = im > thresh
     bwprof = vertical_mean(bwimg.astype(float))
 
-    profile = simple_baseline_correction(profile, window_width=None)
+    profile = simple_baseline_correction(profile)
 
     profile = hamming_smooth(profile, tunable("cells.smoothing.length", 10))
 

@@ -6,7 +6,9 @@ documentation
 import molyso
 from distutils.core import setup
 
-setup(name='molyso',
+
+setup(
+    name='molyso',
       version=molyso.__version__,
       description='MOther machine anaLYsis SOftware',
       long_description='MOther machine anaLYsis SOftware - PyPI site text',

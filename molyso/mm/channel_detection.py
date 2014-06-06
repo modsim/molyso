@@ -60,7 +60,7 @@ class Channel(object):
 
 treeprovider = NotReallyATree
 # treeprovider = KDTree
-#treeprovider = ckdtree.cKDTree
+# treeprovider = ckdtree.cKDTree
 
 
 class Channels(object):
@@ -85,20 +85,6 @@ class Channels(object):
         for begin, end in positions:
             #noinspection PyMethodFirstArgAssignment
             self.channels_list.append(self.__class__.channel_type(self.image, begin, end, upper, lower))
-
-        with DebugPlot('channeldetection', 'result', 'onoriginal') as p:
-            p.title("Detected channels (on original image)")
-            p.imshow(self.image.original_image)
-            for chan in self:
-                coords = [self.image.cp(*pp) for pp in chan.get_coordinates()]
-                p.poly_drawing_helper(coords, lw=1, edgecolor='r', fill=False, closed=True)
-
-        with DebugPlot('channeldetection', 'result', 'rotated') as p:
-            p.title("Detected channels")
-            p.imshow(self.image.image)
-            for chan in self:
-                coords = chan.get_coordinates()
-                p.poly_drawing_helper(coords, lw=1, edgecolor='r', fill=False, closed=True)
 
     def __len__(self):
         return len(self.channels_list)

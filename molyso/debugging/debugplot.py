@@ -7,6 +7,23 @@ from __future__ import division, unicode_literals, print_function
 from .. import Debug
 
 
+def poly_drawing_helper(p, coords, **kwargs):
+    gca = p.gca()
+
+    from matplotlib.path import Path
+    from matplotlib.patches import PathPatch
+
+    actions = [Path.MOVETO] + [Path.LINETO] * (len(coords) - 1)
+
+    if "closed" in kwargs:
+        if kwargs["closed"]:
+            actions.append(Path.CLOSEPOLY)
+            coords.append((0, 0))
+        del kwargs["closed"]
+
+    gca.add_patch(PathPatch(Path(coords, actions), **kwargs))
+
+
 class DebugPlotInterruptException(Exception):
     pass
 
@@ -105,21 +122,11 @@ class DebugPlot(object):
 
         return proxy
 
+
     def poly_drawing_helper(self, coords, **kwargs):
-        gca = self.gca()
-        if gca:
-            from matplotlib.path import Path
-            from matplotlib.patches import PathPatch
+        if self.gca():
+            return poly_drawing_helper(self, coords, **kwargs)
 
-            actions = [Path.MOVETO] + [Path.LINETO] * (len(coords) - 1)
-
-            if "closed" in kwargs:
-                if kwargs["closed"]:
-                    actions.append(Path.CLOSEPOLY)
-                    coords.append((0, 0))
-                del kwargs["closed"]
-
-            gca.add_patch(PathPatch(Path(coords, actions), **kwargs))
 
     def __enter__(self):
         if self.active:
