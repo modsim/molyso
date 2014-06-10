@@ -220,7 +220,7 @@ def analyse_cell_fates(tracker, previous_cells, current_cells):
                     value += shrinkage
                     #value *= (onecell.centroid1dloc / 100.0)**1
                     value += 2 * (one_cell.centroid1dloc / 10.0) ** 1
-                    return 1.15 * value
+                    return 1.5 * value
 
                 return (calc_cost_child(one_cell, one_child) + calc_cost_child(one_cell, another_child)) / 2.0
 

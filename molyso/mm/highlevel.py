@@ -28,6 +28,9 @@ from .fluorescence import FluorescentImage
 
 from .tracking import TrackedPosition, analyze_tracking, plot_timeline, tracker_to_cell_list
 
+from .highlevel_interactive_viewer import interactive_main
+from .highlevel_interactive_ground_truth import interactive_ground_truth_main
+
 OMETiffStack = OMETiffStack
 
 def banner():
@@ -58,6 +61,7 @@ def create_argparser():
 
     argparser.add_argument('input', metavar='input', type=str, help="input file")
     argparser.add_argument('-p', '--process', dest='process', default=False, action='store_true')
+    argparser.add_argument('-gt', '--ground-truth', dest='ground_truth', default=False, action='store_true')
     argparser.add_argument('-tp', '--timepoints', dest='timepoints', default=[0, float('inf')], type=parse_range)
     argparser.add_argument('-mp', '--multipoints', dest='multipoints', default=[0, float('inf')], type=parse_range)
     argparser.add_argument('-o', '--table-output', dest='table_output', type=str, default=None)
@@ -178,93 +182,15 @@ def processing_setup(args):
         pass
 
 
-def interactive_main(args):
-    import matplotlib.pyplot as plt
-    from matplotlib.widgets import Slider
-    from .image import cell_color, channel_color
-
-    ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
-
-    mp_max = ims.get_meta('multipoints')
-    tp_max = ims.get_meta('timepoints')
-
-    fig, ax = plt.subplots()
-
-    plt.subplots_adjust(left=0.25, bottom=0.25)
-
-    fig.canvas.set_window_title("Image Viewer")
-
-    ax_mp = plt.axes([0.25, 0.1, 0.65, 0.03], axisbg=channel_color)
-    ax_tp = plt.axes([0.25, 0.15, 0.65, 0.03], axisbg=channel_color)
-
-    multipoint = Slider(ax_mp, 'Multipoint', 1, mp_max, valinit=1, valfmt="%d", color=cell_color)
-    timepoint = Slider(ax_tp, 'Timepoint', 1, tp_max, valinit=1, valfmt="%d", color=cell_color)
-
-
-    def update(_):
-        t = int(timepoint.val)
-        pos = int(multipoint.val)
-
-        fig.canvas.set_window_title("Image Viewer - [BUSY]")
-
-        img = ims.get_image(t=t - 1, pos=pos - 1, channel=0)
-        i = Image()
-        i.setup_image(img)
-        i.autorotate()
-        i.find_channels()
-        i.find_cells_in_channels()
-
-        def pdh(coords, **kwargs):
-            from ..debugging.debugplot import poly_drawing_helper as _pdh
-
-            return _pdh(plt, coords, **kwargs)
-
-        plt.poly_drawing_helper = pdh
-
-        plt.rcParams['image.cmap'] = 'gray'
-
-        plt.sca(ax)
-        plt.cla()
-
-        i.debug_print_cells(plt)
-
-        fig.canvas.set_window_title("Image Viewer - %s timepoint %d/%d multipoint %d/%d" %
-                                    (args.input, t, tp_max, pos, mp_max))
-
-        plt.draw()
-
-    update(None)
-
-    multipoint.on_changed(update)
-    timepoint.on_changed(update)
-
-    def key_press(event):
-        if event.key == 'left':
-            timepoint.set_val(max(1, int(timepoint.val) - 1))
-        elif event.key == 'right':
-            timepoint.set_val(min(tp_max, int(timepoint.val) + 1))
-        elif event.key == 'ctrl+left':
-            timepoint.set_val(max(1, int(timepoint.val) - 10))
-        elif event.key == 'ctrl+right':
-            timepoint.set_val(min(tp_max, int(timepoint.val) + 10))
-        elif event.key == 'down':
-            multipoint.set_val(max(1, int(multipoint.val) - 1))
-        elif event.key == 'up':
-            multipoint.set_val(min(mp_max, int(multipoint.val) + 1))
-
-    fig.canvas.mpl_connect('key_press_event', key_press)
-
-    fig.tight_layout()
-
-    plt.show()
-
-
 def main():
     global ims
 
     argparser = create_argparser()
 
     args = argparser.parse_args()
+
+    if args.ground_truth:
+        args.process = True
 
     def print_info(*inner_args):
         if not args.quiet:
@@ -284,10 +210,14 @@ def main():
     if not args.process:
         return interactive_main(args)
 
-    try:
-        import matplotlib
+    if args.ground_truth:
+        args.debug = False
 
-        matplotlib.use('PDF')
+    try:
+        if not args.ground_truth:
+            import matplotlib
+
+            matplotlib.use('PDF')
     except ImportError:
         if args.debug:
             print_warning("matplotlib could not be imported. Debugging was disabled.")
@@ -414,6 +344,12 @@ def main():
             tracked_position.remove_empty_channels_post_tracking()
 
         cache['tracking'] = tracked_results
+
+    # ( Diversion into ground truth processing, if applicable )
+
+    if args.ground_truth:
+        interactive_ground_truth_main(args, tracked_results)
+        return
 
     #( Output of textual results: )#####################################################################################
 

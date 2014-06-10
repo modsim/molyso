@@ -248,5 +248,5 @@ def analyze_tracking(cells, receptor):
                         cell.children[0].seen_as[0].channel.image.timepoint - cell.seen_as[0].channel.image.timepoint
                     ), float('NaN')),
                 'fluorescence': getattr(sa, 'fluorescence', float('NaN')),
-                'fluorescence_background': getattr(sa, 'background_fluorescence', float('NaN')),
+                'fluorescence_background': getattr(sa.channel.image, 'background_fluorescence', float('NaN')),
             })

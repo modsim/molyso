@@ -66,17 +66,19 @@ class TrackedCell(object):
 
     @property
     def elongation_rates(self):
-        if self.parent:
-            return self.parent.elongation_rates + self.raw_elongation_rates
-        else:
-            return self.raw_elongation_rates
+        # if self.parent:
+        # return self.parent.elongation_rates + self.raw_elongation_rates
+        # else:
+        #     return self.raw_elongation_rates
+        return self.raw_elongation_rates
 
     @property
     def trajectories(self):
-        if self.parent:
-            return self.parent.trajectories + self.raw_trajectories
-        else:
-            return self.raw_trajectories
+        # if self.parent:
+        # return self.parent.trajectories + self.raw_trajectories
+        # else:
+        #     return self.raw_trajectories
+        return self.raw_trajectories
 
     def add_child(self, tcell):
         tcell.parent = self
