@@ -35,6 +35,8 @@ def interactive_main(args):
     multipoint = Slider(ax_mp, 'Multipoint', 1, mp_max, valinit=1, valfmt="%d", color=cell_color)
     timepoint = Slider(ax_tp, 'Timepoint', 1, tp_max, valinit=1, valfmt="%d", color=cell_color)
 
+    env = {'show': True, 'rotated': True}
+
 
     def update(_):
         t = int(timepoint.val)
@@ -45,9 +47,7 @@ def interactive_main(args):
         img = ims.get_image(t=t - 1, pos=pos - 1, channel=0)
         i = Image()
         i.setup_image(img)
-        i.autorotate()
-        i.find_channels()
-        i.find_cells_in_channels()
+
 
         def pdh(coords, **kwargs):
             from ..debugging.debugplot import poly_drawing_helper as _pdh
@@ -61,7 +61,22 @@ def interactive_main(args):
         plt.sca(ax)
         plt.cla()
 
-        i.debug_print_cells(plt)
+        plt.suptitle('[left/right] timepoint [up/down] multipoint [h] hide analysis [r] toggle rotated (in raw mode)')
+
+        if env['show'] or env['rotated']:
+            i.autorotate()
+
+        if env['show']:
+            i.find_channels()
+            i.find_cells_in_channels()
+            i.debug_print_cells(plt)
+        else:
+            if env['rotated']:
+                plt.title("Image (rotated)")
+                plt.imshow(i.image)
+            else:
+                plt.title("Image (raw)")
+                plt.imshow(i.original_image)
 
         fig.canvas.set_window_title("Image Viewer - %s timepoint %d/%d multipoint %d/%d" %
                                     (args.input, t, tp_max, pos, mp_max))
@@ -86,6 +101,12 @@ def interactive_main(args):
             multipoint.set_val(max(1, int(multipoint.val) - 1))
         elif event.key == 'up':
             multipoint.set_val(min(mp_max, int(multipoint.val) + 1))
+        elif event.key == 'h':
+            env['show'] = not env['show']
+            update(None)
+        elif event.key == 'r':
+            env['rotated'] = not env['rotated']
+            update(None)
         elif event.key == 'q':
             raise SystemExit
 

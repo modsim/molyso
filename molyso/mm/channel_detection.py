@@ -17,7 +17,7 @@ from .cell_detection import Cells
 class Channel(object):
     cells_type = Cells
 
-    __slots__ = ['image', 'left', 'right', 'real_top', 'real_bottom', 'cells', 'channel_image']
+    __slots__ = ['image', 'left', 'right', 'real_top', 'real_bottom', 'putative_orientation', 'cells', 'channel_image']
 
     def __init__(self, image, left, right, top, bottom):
         self.image = image
@@ -25,6 +25,7 @@ class Channel(object):
         self.right = float(right)
         self.real_top = float(top)
         self.real_bottom = float(bottom)
+        self.putative_orientation = 0
         self.cells = None
 
         if self.image.image is not None:

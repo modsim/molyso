@@ -13,12 +13,26 @@ def parser(parser):
 
 def process(data, env, output):
     data = data[data.fluorescence == data.fluorescence]  # NaN check
-    env.fluor = env.process(data.fluorescence)
-    env.fluor_bg = env.process(data.fluorescence_background)
-    env.times = env.process(data.timepoint)
+    gtp = data.groupby(by=('timepoint_num'))
+
+    env.fluor = env.process(gtp.mean().fluorescence)
+    env.fluor_bg = env.process(gtp.mean().fluorescence_background)
+    env.times = env.process(gtp.mean().timepoint)
+
+    all_cells = data
     division_data = data[data.about_to_divide == 1]
-    env.ages = numpy.log(2) / env.process(division_data.division_age)
-    env.age_times = env.process(division_data.timepoint)
+
+    ad = all_cells.groupby(by=('timepoint_num'))
+
+    gdd = division_data.groupby(by=('timepoint_num'))
+
+    env.ages = numpy.log(2) / env.process(gdd.mean().division_age)
+    env.age_times = env.process(gdd.mean().timepoint)
+
+    env.counts = env.process(gdd.count().division_age)
+
+    env.cell_counts = env.process(ad.count().division_age)
+    env.cell_times = env.process(ad.mean().timepoint)
 
 
 def ploting(env):
@@ -30,8 +44,10 @@ def ploting(env):
     ax2 = twinx()
     ax2.set_ylabel('fluorescence [a.u.]')
     ax2.plot(0, 0, label='µ')
-    ax2.plot(env.times, env.fluor, label='fluorescence')
-    ax2.plot(env.times, env.fluor_bg - env.fluor_bg.min(), label='fluorescence background')
+    # ax2.plot(env.times, env.fluor, label='fluorescence')
+    #ax2.plot(env.times, env.fluor_bg - env.fluor_bg.min(), label='fluorescence background')
+    ax2.plot(env.age_times, env.counts)
+    ax2.plot(env.cell_times, env.cell_counts)
     legend()
 
 

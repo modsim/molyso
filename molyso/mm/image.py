@@ -163,6 +163,7 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         self.channels_right = None
         self.channels_real_top = None
         self.channels_real_bottom = None
+        self.channels_putative_orientations = None
 
         self.channels_cells_local_top = None
         self.channels_cells_local_bottom = None
@@ -238,6 +239,14 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
                 p.poly_drawing_helper(coords, lw=0.5, edgecolor=cell_color, fill=False)
 
+    def guess_channel_orientation(self):
+        if getattr(self, 'channel_orientation_cache', None) is None:
+            orientations = [float(channel.putative_orientation) for channel in self.channels
+                            if channel.putative_orientation != 0]
+            self.channel_orientation_cache = 1 if (sum(orientations) / len(orientations)) > 0 else -1
+
+        return self.channel_orientation_cache
+
 
     def flatten(self):
         """
@@ -258,6 +267,7 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         self.channels_right = [c.right for c in channels]
         self.channels_real_top = [c.real_top for c in channels]
         self.channels_real_bottom = [c.real_bottom for c in channels]
+        self.channels_putative_orientations = [c.putative_orientation for c in channels]
 
         self.channels_cells_local_top = [[cc.local_top for cc in c.cells] for c in channels]
         self.channels_cells_local_bottom = [[cc.local_bottom for cc in c.cells] for c in channels]
@@ -286,6 +296,8 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
             chan = self.channels.__class__.channel_type(self, self.channels_left[n], self.channels_right[n],
                                                         self.channels_real_top[n], self.channels_real_bottom[n])
 
+            chan.putative_orientation = self.channels_putative_orientations[n]
+
             chan.channel_image = self.channel_images[n]
 
             self.channels.channels_list.append(chan)
@@ -307,6 +319,7 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         self.channels_right = None
         self.channels_real_top = None
         self.channels_real_bottom = None
+        self.channels_putative_orientations = None
 
         self.channels_cells_local_top = None
         self.channels_cells_local_bottom = None

@@ -16,7 +16,7 @@ import codecs
 import json
 import multiprocessing
 
-from .. import Debug, TunableManager
+from .. import Debug, DebugPlot, TunableManager
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
     silent_progress_bar, fancy_progress_bar, Cache
@@ -330,6 +330,7 @@ def main():
             tracked_position.set_times(times)
             tracked_position.align_channels(progress_indicator=pi)
             tracked_position.remove_empty_channels()
+            tracked_position.guess_channel_orientation()
             tracked_results[pos] = tracked_position
 
         print_info()

@@ -4,7 +4,10 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
+from .. import tunable
 from .tracking_infrastructure import CellTracker, CellCrossingCheckingGlobalDuoOptimizerQueue
+from ..generic.smoothing import hamming_smooth
+from ..generic.signal import find_extrema_and_prominence
 
 from .tracking_output import *
 
@@ -59,6 +62,7 @@ class TrackedPosition(object):
 
         self.tracker_mapping = {c: CellTracker() for c in key_list}
         self.channel_accumulator = {c: {} for c in key_list}
+        self.cell_centroid_accumulator = {c: {} for c in key_list}
         self.cell_counts = {c: [] for c in key_list}
 
     def align_channels(self, progress_indicator=dummy_progress_indicator):
@@ -68,7 +72,6 @@ class TrackedPosition(object):
             ignorant_next(progress_indicator)
 
         for t in self.timeslist[self.n + 1:]:
-
 
             if image is None:
                 image = self.times[t]
@@ -80,9 +83,17 @@ class TrackedPosition(object):
             alignment_with_first = dict(image.channels.align_with_and_return_indices(self.first))
 
             for _, current_index in alignment:
-                # ths is not perfectly right, but it's enough work with chan accum already
+                # ths is not perfectly right, but it's enough work with chan accumulator already
                 self.cell_counts[alignment_with_first[current_index]].append(
                     len(image.channels.channels_list[current_index].cells))
+
+                centroid_accumulator = self.cell_centroid_accumulator[alignment_with_first[current_index]]
+                for cell in image.channels.channels_list[current_index].cells:
+                    centroid = int(round(cell.centroid1dloc))
+                    if centroid in centroid_accumulator:
+                        centroid_accumulator[centroid] += 1
+                    else:
+                        centroid_accumulator[centroid] = 1
 
                 if t not in self.channel_accumulator[alignment_with_first[current_index]]:
                     self.channel_accumulator[alignment_with_first[current_index]][t] = image.channels.channels_list[
@@ -97,10 +108,35 @@ class TrackedPosition(object):
         cell_means = {k: (float(sum(v)) / len(v)) if len(v) > 0 else 0.0 for k, v in self.cell_counts.items()}
 
         for k, mean_cellcount in cell_means.items():
-            if mean_cellcount < 0.5:
+            if mean_cellcount < tunable("tracking.empty_channel_filtering.minimum_mean_cells", 2.0):
                 del self.tracker_mapping[k]
                 del self.channel_accumulator[k]
                 del self.cell_counts[k]
+                del self.cell_centroid_accumulator[k]
+
+
+    def guess_channel_orientation(self):
+        for channel_num in self.channel_accumulator.keys():
+            cells_in_channel = self.cell_centroid_accumulator[channel_num]
+            minpos = min(cells_in_channel.keys())
+            signal = numpy.zeros(max(cells_in_channel.keys()) + 1 - minpos)
+            for pos, times in cells_in_channel.items():
+                signal[pos - minpos] = times
+
+            helper_parabola = numpy.linspace(-signal.size / 2, +signal.size / 2, signal.size) ** 2 / signal.size ** 2
+
+            signal = hamming_smooth(signal, 15)
+            signal *= helper_parabola
+            extrema = find_extrema_and_prominence(signal)
+            maxy = extrema.signal[extrema.maxima]
+
+            centroid = numpy.sum(extrema.maxima * maxy) / numpy.sum(maxy)
+
+            # mean = numpy.mean(maxy)
+            result = 1 if centroid >= signal.size / 2 else -1
+
+            for channel in self.channel_accumulator[channel_num]:
+                channel.putative_orientation = result
 
     def get_tracking_work_size(self):
         return sum([len(ca) - 1 if len(ca) > 0 else 0 for ca in self.channel_accumulator.values()])
@@ -159,15 +195,6 @@ def analyse_cell_fates(tracker, previous_cells, current_cells):
 
     opt = CellCrossingCheckingGlobalDuoOptimizerQueue()
 
-    try:
-        trajs = [tracker.get_cell_by_observation(pc).trajectories[-1] for pc in previous_cells]
-        if len(trajs) > 0:
-            chan_traj = numpy.mean(trajs)
-        else:
-            chan_traj = 0.0
-    except KeyError:
-        chan_traj = 0.0
-
     for previous_number, previous_cell in enumerate(previous_cells):
         if not tracker.is_tracked(previous_cell):  # this probably only occurs on the first attempt
             tracker.new_observed_origin(previous_cell)
@@ -185,57 +212,50 @@ def analyse_cell_fates(tracker, previous_cells, current_cells):
             putative_shift = last_traj * time_delta
             putative_elongation = last_elo * time_delta
 
-            #putative_shift = 0.0
-            #putative_elongation = 0.0
+            # putative_shift, putative_elongation = 0.0, 0.0
 
-            su = putative_shift + 0.5 * putative_elongation
-            sd = putative_shift - 0.5 * putative_elongation
+            shift_upper = putative_shift + 0.5 * putative_elongation
+            shift_lower = putative_shift - 0.5 * putative_elongation
 
-            def calc_cost_same(one_cell, other_cell):
-                value = (abs(one_cell.top + su - other_cell.top)
-                         + abs(one_cell.bottom + sd - other_cell.bottom)) / 2
-                shrinkage = other_cell.length - one_cell.length
-                if shrinkage < 0:
-                    shrinkage *= 5
-                value -= shrinkage
-
-                value += 2 * (one_cell.centroid1dloc / 10.0) ** 1
-                return 1.0 * value
-
-            def calc_cost_children(one_cell, one_child, another_child):
-
-                def calc_cost_child(one_cell, other_cell):
-                    c1d = (one_cell.top + one_cell.bottom) / 2 + 0.5 * putative_elongation
-                    value = 0.0
-                    value += abs(one_cell.top + su - other_cell.top)
-                    value += abs(c1d - other_cell.bottom)
-                    value += abs(one_cell.bottom + sd - other_cell.bottom)
-                    value += abs(c1d - other_cell.top)
-
-                    value /= 4.0
-
-                    shrinkage = other_cell.length - one_cell.length
-                    if shrinkage > 0:
-                        shrinkage *= 5
-                    value += shrinkage
-                    #value *= (onecell.centroid1dloc / 100.0)**1
-                    value += 2 * (one_cell.centroid1dloc / 10.0) ** 1
-                    return 1.5 * value
-
-                return (calc_cost_child(one_cell, one_child) + calc_cost_child(one_cell, another_child)) / 2.0
-
-
-            cost_same = calc_cost_same(previous_cell, current_cell)
-            opt.add_outcome(cost_same, {previous_cell}, {current_cell}, outcome_it_is_same)
+            shrinkage_penalty = 5.0
 
             large_value = 1000000.0
-
             cost_new_cell = 1.0 * large_value
+            cost_lost_cell = 1.0 * large_value
+
+            def calc_cost_same(one_cell, other_cell):
+                cost = \
+                    0.5 * abs(one_cell.top + shift_upper - other_cell.top) + \
+                    0.5 * abs(one_cell.bottom + shift_lower - other_cell.bottom)
+
+                shrinkage = other_cell.length - (one_cell.length + putative_elongation)
+
+                cost -= shrinkage * shrinkage_penalty if shrinkage < 0.0 else 0.0
+                return cost
+
+            def calc_cost_children(one_cell, upper_child, lower_child):
+
+                one_cell_centroid = 0.5 * one_cell.top + 0.5 * one_cell.bottom + 0.5 * putative_elongation
+
+                cost = \
+                    0.5 * abs(one_cell.top + shift_upper - upper_child.top) + \
+                    0.5 * abs(one_cell_centroid - upper_child.bottom) + \
+                    0.5 * abs(one_cell_centroid - lower_child.top) + \
+                    0.5 * abs(one_cell.bottom - lower_child.bottom)
+
+                shrinkage = (one_cell.length + putative_elongation) - upper_child.length - lower_child.length
+
+                cost += shrinkage * shrinkage_penalty if shrinkage > 0.0 else 0.0
+                return cost
+
+            opt.add_outcome(calc_cost_same(previous_cell, current_cell),
+                            {previous_cell}, {current_cell},
+                            outcome_it_is_same)
+
             opt.add_outcome(cost_new_cell,
                             set(), {current_cell},
                             outcome_it_is_new)
 
-            cost_lost_cell = 1.0 * large_value
             opt.add_outcome(cost_lost_cell,
                             {previous_cell}, set(),
                             outcome_it_is_lost)
@@ -244,9 +264,7 @@ def analyse_cell_fates(tracker, previous_cells, current_cells):
                 putative_first_child = current_cells[current_number + 0]
                 putative_other_child = current_cells[current_number + 1]
 
-                cost_children = calc_cost_children(previous_cell, putative_first_child, putative_other_child)
-
-                opt.add_outcome(cost_children,
+                opt.add_outcome(calc_cost_children(previous_cell, putative_first_child, putative_other_child),
                                 {previous_cell}, {putative_first_child, putative_other_child},
                                 outcome_it_is_children)
 

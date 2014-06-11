@@ -229,7 +229,7 @@ def analyze_tracking(cells, receptor):
             receptor({
                 'cell_age': s_to_h(sa.channel.image.timepoint - cell.seen_as[0].channel.image.timepoint),
                 'elongation_rate': catch_index_error(lambda: cell.raw_elongation_rates[sn], float('NaN')),
-                'length': sa.length,
+                'length': sa.channel.image.pixel_to_mu(sa.length),
                 'uid_track': id(cell),
                 'uid_thiscell': id(sa),
                 'uid_cell': id(cell),
@@ -240,6 +240,7 @@ def analyze_tracking(cells, receptor):
                 'multipoint': sa.channel.image.multipoint,
                 'channel_in_multipoint': sa.channel.image.channels.channels_list.index(sa.channel),
                 'channel_average_cells': cell.tracker.average_cells,
+                'channel_orientation': sa.channel.image.guess_channel_orientation(),
                 'about_to_divide': int(
                     ((sn + 1) == len(cell.seen_as)) and (cell.parent is not None) and (len(cell.children) > 0)
                 ),
