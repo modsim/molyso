@@ -9,8 +9,8 @@ import numpy
 from .. import DebugPlot, tunable
 from ..generic.signal import _spec_fft, _spec_bins_n, hires_powerspectrum, find_phase, find_extrema_and_prominence
 from ..generic.smoothing import hamming_smooth
-from ..generic.util import horizontal_mean, vertical_mean, NotReallyATree, find_insides, numerical_differentiation, \
-    one_every_n, normalize, threshold_outliers
+from ..generic.util import horizontal_mean, vertical_mean, NotReallyATree, find_insides, \
+    corrected_numerical_differentiation, one_every_n, normalize, threshold_outliers
 from .cell_detection import Cells
 
 
@@ -125,8 +125,9 @@ def find_channels_in_profile_fft_assisted(profile):
     """
     nothing_found = ([], 0, 0, 0, 0, -1, )
 
-    differentiated_profile = numerical_differentiation(profile)
-    differentiated_profile[0] = differentiated_profile[1]
+    #differentiated_profile = numerical_differentiation(profile)
+    #differentiated_profile[0] = differentiated_profile[1]
+    differentiated_profile = corrected_numerical_differentiation(profile)
 
     upper_profile = (differentiated_profile * (differentiated_profile > 0))
     lower_profile = -(differentiated_profile * (differentiated_profile < 0))

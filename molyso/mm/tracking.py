@@ -127,13 +127,17 @@ class TrackedPosition(object):
 
             signal = hamming_smooth(signal, 15)
             signal *= helper_parabola
-            extrema = find_extrema_and_prominence(signal)
-            maxy = extrema.signal[extrema.maxima]
 
-            centroid = numpy.sum(extrema.maxima * maxy) / numpy.sum(maxy)
+            try:
+                extrema = find_extrema_and_prominence(signal)
+                maxy = extrema.signal[extrema.maxima]
 
-            # mean = numpy.mean(maxy)
-            result = 1 if centroid >= signal.size / 2 else -1
+                centroid = numpy.sum(extrema.maxima * maxy) / numpy.sum(maxy)
+
+                # mean = numpy.mean(maxy)
+                result = 1 if centroid >= signal.size / 2 else -1
+            except IndexError:
+                result = 0
 
             for channel in self.channel_accumulator[channel_num]:
                 channel.putative_orientation = result

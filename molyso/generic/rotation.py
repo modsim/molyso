@@ -7,7 +7,7 @@ from __future__ import division, unicode_literals, print_function
 import math
 import numpy
 
-from .util import each_image_slice_vertical, vertical_mean, numerical_differentiation, remove_outliers
+from .util import each_image_slice_vertical, vertical_mean, corrected_numerical_differentiation, remove_outliers
 from .smoothing import hamming_smooth
 from .signal import find_phase
 
@@ -32,9 +32,7 @@ def find_rotation(im, steps=10, smoothing_signal_length=15):
         profile = vertical_mean(imgslice)
 
         profile = hamming_smooth(profile, smoothing_signal_length)
-        profile = numerical_differentiation(profile)
-        profile[0] = 0
-        profile = hamming_smooth(profile, smoothing_signal_length)
+        profile = corrected_numerical_differentiation(profile)
 
         if n == 0:
             last_signal = profile
@@ -49,7 +47,6 @@ def find_rotation(im, steps=10, smoothing_signal_length=15):
     shifts = remove_outliers(shifts)
 
     return math.atan(numpy.mean(shifts) / step) * 180.0 / math.pi
-
 
 try:
     # noinspection PyUnresolvedReferences
