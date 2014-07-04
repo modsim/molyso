@@ -38,13 +38,12 @@ class Cell(object):
         return abs(self.top - self.bottom)
 
     @property
-    def centroid1dloc(self):
+    def centroid_1d(self):
         return (self.top + self.bottom) / 2.0
 
     @property
     def centroid(self):
-        return [self.channel.centroid[0], self.centroid1dloc]
-
+        return [self.channel.centroid[0], self.centroid_1d]
 
     def __lt__(self, other_cell):
         return self.local_top < other_cell.local_top
@@ -96,10 +95,10 @@ def find_cells_in_channel(im):
 
     if ((thresholded_profile.max() - thresholded_profile.min()) / thresholded_profile.max()) < \
             tunable("cells.empty_channel.skipping.intensity_range_quotient", 0.5) and \
-            tunable("cells.empty_channel.skipping", False):
+            tunable("cells.empty_channel.skipping", False):  # is off by default!
         return []
 
-    binary_image = im > threshold_otsu(im)
+    binary_image = im > threshold_otsu(im) * tunable("cells.otsu_bias", 1.0)
     profile_of_binary_image = vertical_mean(binary_image.astype(float))
 
     profile = simple_baseline_correction(profile)
@@ -115,8 +114,6 @@ def find_cells_in_channel(im):
 
     positions = [pos for pos in extrema.maxima if extrema.prominence[pos] > 0] + [profile.size]
     cells = [[last_pos + 1, pos - 1] for last_pos, pos in zip([0] + positions, positions) if is_a_cell(last_pos, pos)]
-
-    print(cells)
 
     with DebugPlot() as p:
         p.title("Cell detection")

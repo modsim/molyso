@@ -111,11 +111,6 @@ class Channels(object):
             return []
         return [[ind, other_channels.find_nearest(cen)[1]] for ind, cen in enumerate(self.centroids)]
 
-    def align_with(self, other_channels):
-        if len(other_channels) == 0 or len(self) == 0:
-            return []
-        return [[channel, other_channels[other_channels.find_nearest(channel.centroid)[1]]] for channel in self]
-
 
 def find_channels_in_profile_fft_assisted(profile):
     """
@@ -127,7 +122,7 @@ def find_channels_in_profile_fft_assisted(profile):
 
     profile_diff = numpy.diff(profile)
 
-    upper_profile = (profile_diff * (profile_diff > 0))
+    upper_profile = +(profile_diff * (profile_diff > 0))
     lower_profile = -(profile_diff * (profile_diff < 0))
 
     upper_profile[upper_profile < upper_profile.max() * 0.5] *= 0.1
@@ -144,15 +139,14 @@ def find_channels_in_profile_fft_assisted(profile):
     # oversample the fft n-times
     n = 4
 
+    def calc_bins_freqs_main(the_profile):
+        frequencies, fourier_value = hires_powerspectrum(the_profile, oversampling=n)
+        fourier_value = hamming_smooth(fourier_value, 3)
+        return frequencies, fourier_value, frequencies[numpy.argmax(fourier_value)]
+
     # get the power spectra of the two signals
-    frequencies_upper, fourier_value_upper = hires_powerspectrum(upper_profile, oversampling=n)
-    frequencies_lower, fourier_value_lower = hires_powerspectrum(lower_profile, oversampling=n)
-
-    fourier_value_upper = hamming_smooth(fourier_value_upper, 3)
-    fourier_value_lower = hamming_smooth(fourier_value_lower, 3)
-
-    mainfrequency_upper = frequencies_upper[numpy.argmax(fourier_value_upper)]
-    mainfrequency_lower = frequencies_lower[numpy.argmax(fourier_value_lower)]
+    frequencies_upper, fourier_value_upper, mainfrequency_upper = calc_bins_freqs_main(upper_profile)
+    frequencies_lower, fourier_value_lower, mainfrequency_lower = calc_bins_freqs_main(lower_profile)
 
     with DebugPlot('channeldetection', 'details', 'powerspectra', 'upper') as p:
         p.title("Powerspectrum (upper)")
@@ -192,29 +186,24 @@ def find_channels_in_profile_fft_assisted(profile):
 
     new_signal = \
         one_every_n(profile_diff_len, main_frequency, shift=phase + 0.5 * width) + \
-        one_every_n(profile_diff_len, main_frequency, shift=phase + 0.5 * width + width)
+        one_every_n(profile_diff_len, main_frequency, shift=phase + 1.5 * width)
 
     # dependence on 'new_signal' removed, works apparently without
     help_signal = normalize(hamming_smooth(absolute_differentiated_profile, 50))  # * new_signal
 
     # under certain conditions, the help signal may contain a totally extreme
     # maximum (testimage), I guess it's wiser to remove it
-    threshold_outliers(help_signal)
-
-    ma = numpy.max(help_signal)
-    mi = numpy.min(help_signal)
+    help_signal = threshold_outliers(help_signal)
 
     threshold_factor = 0.2
-    threshold = (ma - mi) * threshold_factor + mi
-
-    help_signal = help_signal > threshold
+    min_val, max_val = help_signal.min(), help_signal.max()
+    help_signal = help_signal > (max_val - min_val) * threshold_factor + min_val
 
     remaining_phase_shift, = find_phase(new_signal, absolute_differentiated_profile)
 
     new_signal = \
         one_every_n(profile_diff_len, main_frequency, shift=remaining_phase_shift + phase + 0.5 * width) + \
         one_every_n(profile_diff_len, main_frequency, shift=remaining_phase_shift + phase + 1.5 * width)
-
 
     try:
         left = numpy.where(help_signal)[0][0]

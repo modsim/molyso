@@ -103,7 +103,7 @@ class TrackedCell(object):
                 (current.length - previous.length) /
                 (current.channel.image.timepoint - previous.channel.image.timepoint))
             self.raw_trajectories.append(
-                (current.centroid1dloc - previous.centroid1dloc) /
+                (current.centroid_1d - previous.centroid_1d) /
                 (current.channel.image.timepoint - previous.channel.image.timepoint))
 
         return self

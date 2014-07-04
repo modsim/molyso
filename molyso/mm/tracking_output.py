@@ -151,7 +151,7 @@ def plot_timeline(p, channels, cells,
 
             scatter_collector[scatter_used, 0] = type_nothing
             scatter_collector[scatter_used, 1] = parent_cell.channel.image.timepoint
-            scatter_collector[scatter_used, 2] = parent_cell.centroid1dloc
+            scatter_collector[scatter_used, 2] = parent_cell.centroid_1d
             scatter_collector[scatter_used, 3] = getattr(parent_cell, 'fluorescence', 0.0)
             scatter_collector[scatter_used, 4] = parent_cell.length
 
@@ -170,7 +170,7 @@ def plot_timeline(p, channels, cells,
 
             scatter_collector[scatter_used, 0] = the_type
             scatter_collector[scatter_used, 1] = cell_appearance.channel.image.timepoint
-            scatter_collector[scatter_used, 2] = cell_appearance.centroid1dloc
+            scatter_collector[scatter_used, 2] = cell_appearance.centroid_1d
             scatter_collector[scatter_used, 3] = getattr(cell_appearance, 'fluorescence', 0.0)
             scatter_collector[scatter_used, 4] = cell_appearance.length
 
@@ -236,7 +236,7 @@ def analyze_tracking(cells, receptor):
                 'uid_parent': id(cell.parent),
                 'timepoint': sa.channel.image.timepoint,
                 'timepoint_num': sa.channel.image.timepoint_num,
-                'cellyposition': sa.centroid1dloc,
+                'cellyposition': sa.centroid_1d,
                 'multipoint': sa.channel.image.multipoint,
                 'channel_in_multipoint': sa.channel.image.channels.channels_list.index(sa.channel),
                 'channel_average_cells': cell.tracker.average_cells,

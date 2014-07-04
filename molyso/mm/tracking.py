@@ -89,7 +89,7 @@ class TrackedPosition(object):
 
                 centroid_accumulator = self.cell_centroid_accumulator[alignment_with_first[current_index]]
                 for cell in image.channels.channels_list[current_index].cells:
-                    centroid = int(round(cell.centroid1dloc))
+                    centroid = int(round(cell.centroid_1d))
                     if centroid in centroid_accumulator:
                         centroid_accumulator[centroid] += 1
                     else:
