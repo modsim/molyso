@@ -10,7 +10,7 @@ from .. import DebugPlot, tunable
 from ..generic.signal import _spec_fft, _spec_bins_n, hires_powerspectrum, find_phase, find_extrema_and_prominence
 from ..generic.smoothing import hamming_smooth
 from ..generic.util import horizontal_mean, vertical_mean, NotReallyATree, find_insides, \
-    corrected_numerical_differentiation, one_every_n, normalize, threshold_outliers
+    one_every_n, normalize, threshold_outliers
 from .cell_detection import Cells
 
 
@@ -125,12 +125,10 @@ def find_channels_in_profile_fft_assisted(profile):
     """
     nothing_found = ([], 0, 0, 0, 0, -1, )
 
-    #differentiated_profile = numerical_differentiation(profile)
-    #differentiated_profile[0] = differentiated_profile[1]
-    differentiated_profile = corrected_numerical_differentiation(profile)
+    profile_diff = numpy.diff(profile)
 
-    upper_profile = (differentiated_profile * (differentiated_profile > 0))
-    lower_profile = -(differentiated_profile * (differentiated_profile < 0))
+    upper_profile = (profile_diff * (profile_diff > 0))
+    lower_profile = -(profile_diff * (profile_diff < 0))
 
     upper_profile[upper_profile < upper_profile.max() * 0.5] *= 0.1
     lower_profile[lower_profile < lower_profile.max() * 0.5] *= 0.1
@@ -143,7 +141,7 @@ def find_channels_in_profile_fft_assisted(profile):
         p.plot(upper_profile)
         p.plot(lower_profile)
 
-    # fft oversample
+    # oversample the fft n-times
     n = 4
 
     # get the power spectra of the two signals
@@ -166,41 +164,41 @@ def find_channels_in_profile_fft_assisted(profile):
         p.semilogx(frequencies_lower, fourier_value_lower)
         p.title("mainfreq=%f" % mainfrequency_lower)
 
-    mainfrequency = (mainfrequency_upper + mainfrequency_lower) / 2
+    main_frequency = (mainfrequency_upper + mainfrequency_lower) / 2
 
-    if mainfrequency == 0.0:
+    if main_frequency == 0.0:
         return nothing_found
 
-    profile_len = len(profile)
-
-    absolute_differentiated_profile = numpy.absolute(differentiated_profile)
+    profile_diff_len = profile_diff.size
+    absolute_differentiated_profile = numpy.absolute(profile_diff)
 
     width, = find_phase(upper_profile, lower_profile)
 
-    if width > mainfrequency:
-        width = int(width % mainfrequency)
+    if width > main_frequency:
+        width = int(width % main_frequency)
     elif width < 0:
-        width = int(width + mainfrequency)
+        width = int(width + main_frequency)
 
-    mainfrequency += (width / ((profile_len / mainfrequency)))
+    main_frequency += (width / ((profile_diff_len / main_frequency)))
 
-    preliminary_signal = one_every_n(profile_len, mainfrequency) + one_every_n(profile_len, mainfrequency, shift=width)
+    preliminary_signal = one_every_n(profile_diff_len, main_frequency) + \
+                         one_every_n(profile_diff_len, main_frequency, shift=width)
 
-    tmpsignal = numpy.zeros_like(absolute_differentiated_profile)
+    tempoary_signal = numpy.zeros_like(absolute_differentiated_profile)
 
-    tmpex = find_extrema_and_prominence(absolute_differentiated_profile, order=max(1, abs(width // 2)))
-    tmpsignal[tmpex.maxima] = 1
-    phase, = find_phase(tmpsignal, preliminary_signal)
+    tempoary_extrema = find_extrema_and_prominence(absolute_differentiated_profile, order=max(1, abs(width // 2)))
+    tempoary_signal[tempoary_extrema.maxima] = 1
+    phase, = find_phase(tempoary_signal, preliminary_signal)
 
     new_signal = \
-        one_every_n(profile_len, mainfrequency, shift=phase + 0.5 * width) + \
-        one_every_n(profile_len, mainfrequency, shift=phase + 0.5 * width + width)
+        one_every_n(profile_diff_len, main_frequency, shift=phase + 0.5 * width) + \
+        one_every_n(profile_diff_len, main_frequency, shift=phase + 0.5 * width + width)
 
     # dependence on 'new_signal' removed, works apparently without
     help_signal = normalize(hamming_smooth(absolute_differentiated_profile, 50))  # * new_signal
 
     # under certain conditions, the help signal may contain a totally extreme
-    # maximum (testimage), I guess it's wiser to remove ity
+    # maximum (testimage), I guess it's wiser to remove it
     threshold_outliers(help_signal)
 
     ma = numpy.max(help_signal)
@@ -212,24 +210,23 @@ def find_channels_in_profile_fft_assisted(profile):
     help_signal = help_signal > threshold
 
     remaining_phase_shift, = find_phase(new_signal, absolute_differentiated_profile)
-    ####
 
     new_signal = \
-        one_every_n(profile_len, mainfrequency, shift=remaining_phase_shift + phase + 0.5 * width) + \
-        one_every_n(profile_len, mainfrequency, shift=remaining_phase_shift + phase + 0.5 * width + width)
+        one_every_n(profile_diff_len, main_frequency, shift=remaining_phase_shift + phase + 0.5 * width) + \
+        one_every_n(profile_diff_len, main_frequency, shift=remaining_phase_shift + phase + 1.5 * width)
 
-    left = help_signal
-    right = help_signal[::-1]
 
     try:
-        left = int(numpy.where(left)[0][0])
+        left = numpy.where(help_signal)[0][0]
     except IndexError:
         left = 0
 
     try:
-        right = int(len(right) - numpy.where(right)[0][0])
+        right = help_signal.size - numpy.where(help_signal[::-1])[0][0]
     except IndexError:
-        right = int(len(right))
+        right = help_signal.size
+
+    left, right = int(left), int(right)
 
     new_signal[:left] = 0
     new_signal[right:] = 0
@@ -239,7 +236,6 @@ def find_channels_in_profile_fft_assisted(profile):
     if len(positions) % 2 == 1:
         # either there's an additional line on the left or on the right
         # lets try to find it ...
-        #print positions
         if abs(abs(positions[-1] - positions[-2]) - width) < 1:
             positions = positions[1:]
         elif abs(abs(positions[0] - positions[1]) - width) < 1:
@@ -248,9 +244,15 @@ def find_channels_in_profile_fft_assisted(profile):
             return nothing_found
 
     positions = positions.reshape((len(positions) // 2, 2))
-    times = int((right - left) / mainfrequency)
+    times = int((right - left) / main_frequency)
 
-    return positions, left, right, width, times, mainfrequency,
+    # we worked with a simple difference, which made our signal shorter by one
+    # add 1 to the appropriate variables to match positions with the original image
+
+    positions += 1
+    left, right = left + 1, right + 1
+
+    return positions, left, right, width, times, main_frequency,
 
 
 def _brute_force_fft_up_down_detect(img):
@@ -285,9 +287,6 @@ def _brute_force_fft_up_down_detect(img):
     height = img.shape[0]
 
     collector = numpy.zeros(height)
-
-    # for n in range(height):
-    #    print(hori_main_freq(img[n:n+1,:]))
 
     FIRST_CALL, FROM_TOP, FROM_BOTTOM = 0, -1, 1
 

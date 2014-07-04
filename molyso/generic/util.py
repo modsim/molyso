@@ -94,18 +94,6 @@ def remove_outliers(arr, times_std=2.0):
         return arr
 
 
-def numerical_differentiation(arr):
-    rshift = numpy.zeros_like(arr)
-    rshift[1:] = arr[:-1]
-    return arr - rshift
-
-
-def corrected_numerical_differentiation(arr):
-    newarr = numerical_differentiation(arr)
-    newarr[0] = newarr[1]
-    return newarr
-
-
 def find_insides(arr):
     positions = []
 
@@ -156,35 +144,20 @@ def find_insides_w_int(arr):
     return numpy.array(positions)
 
 
-def make_false_until_false(arr, range_of_interest):
-    for n in range_of_interest:
-        if arr[n]:
-            arr[n] = False
-        else:
-            return arr
-
-
-def make_beginning_false(arr):
-    return make_false_until_false(arr, range(len(arr)))
-
-
-def make_ending_false(arr):
-    return make_false_until_false(arr, range(len(arr) - 1, -1, -1))
-
-
 def one_every_n(l, n=1, shift=0):
     signal = numpy.zeros(int(l))
     signal[numpy.around(numpy.arange(shift % n, l - 1, n)).astype(numpy.int32)] = 1
     return signal
 
 
-def each_image_slice_vertical(img, steps):
-    step = img.shape[1] // steps
-    for n in range(steps):
-        yield n, step, img[:, step * n:step * (n + 1)]
-
-
-def each_image_slice_horizontal(img, steps):
-    step = img.shape[0] // steps
-    for n in range(steps):
-        yield n, step, img[step * n:step * (n + 1), :]
+def each_image_slice(img, steps, direction='vertical'):
+    if direction == 'vertical':
+        step = img.shape[1] // steps
+        for n in range(steps):
+            yield n, step, img[:, step * n:step * (n + 1)]
+    elif direction == 'horizontal':
+        step = img.shape[0] // steps
+        for n in range(steps):
+            yield n, step, img[step * n:step * (n + 1), :]
+    else:
+        raise ValueError("Unknown direction passed.")

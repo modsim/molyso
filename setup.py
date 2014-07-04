@@ -28,15 +28,13 @@ setup(
           'Development Status :: 4 - Beta',
           'Environment :: Console',
           'Intended Audience :: Science/Research',
-          #'License :: Other/Proprietary License',
-          'License :: OSI Approved :: MIT License',
-          #'License :: OSI Approved :: BSD License',
+          'License :: OSI Approved :: BSD License',
           'Operating System :: POSIX',
           'Operating System :: POSIX :: Linux',
           'Operating System :: MacOS :: MacOS X',
           'Operating System :: Microsoft :: Windows',
           'Programming Language :: Python :: 2.7',  # has been developed/tested on
-          'Programming Language :: Python :: 3',  # should work with all of
+          'Programming Language :: Python :: 3',    # should work with all of
           'Programming Language :: Python :: 3.3',  # has been developed/tested on
           'Topic :: Scientific/Engineering :: Bio-Informatics',
           'Topic :: Scientific/Engineering :: Image Recognition',

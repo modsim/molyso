@@ -13,7 +13,7 @@ from .. import Debug, Timed
 
 
 def silent_progress_bar(iterable):
-    return iterable
+    return iter(iterable)
 
 
 try:

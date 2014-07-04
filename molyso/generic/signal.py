@@ -14,7 +14,7 @@ import warnings
 
 from .fft import fft, ifft, fftfreq, get_optimal_dft_size
 from .util import relative_maxima, relative_minima
-from .smoothing import smooth
+from .smoothing import hamming_smooth
 
 
 def find_phase(signal1=None, signal2=None,
@@ -152,8 +152,7 @@ def simple_baseline_correction(signal, window_width=None):
     if window_width is None or window_width > len(signal):
         window_width = len(signal)
 
-    smoothing_signal = numpy.hamming(window_width)
-    return signal - smooth(signal, smoothing_signal)
+    return signal - hamming_smooth(signal, window_width, no_cache=True)
 
 
 def _spectrum(arr):

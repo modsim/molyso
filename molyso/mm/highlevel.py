@@ -72,6 +72,7 @@ def create_argparser():
     argparser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true')
     argparser.add_argument('-nc', '--no-cache', dest='ignorecache', default='nothing',
                            const='everything', type=str, nargs='?')
+    argparser.add_argument('-nt', '--no-tracking', dest='no_tracking', default=False, action='store_true')
     argparser.add_argument('-rt', '--read-tunables', dest='read_tunables', type=str, default=None)
     argparser.add_argument('-wt', '--write-tunables', dest='write_tunables', type=str, default=None)
     argparser.add_argument('-zm', '--z-is-multipoint', dest='zm', default=False, action='store_true')
@@ -312,105 +313,106 @@ def main():
 
     ####################################################################################################################
 
+    if not args.no_tracking:
 
-    if 'tracking' in cache:
-        tracked_results = cache['tracking']
-    else:
+        if 'tracking' in cache:
+            tracked_results = cache['tracking']
+        else:
 
-        tracked_results = {}
+            tracked_results = {}
+
+            print_info()
+
+            print_info("Set-up for tracking ...")
+
+            pi = progress_bar(range(sum([len(l) - 1 if len(l) > 0 else 0 for l in results.values()]) - 1))
+
+            for pos, times in results.items():
+                tracked_position = TrackedPosition()
+                tracked_position.set_times(times)
+                tracked_position.align_channels(progress_indicator=pi)
+                tracked_position.remove_empty_channels()
+                tracked_position.guess_channel_orientation()
+                tracked_results[pos] = tracked_position
+
+            print_info()
+
+            print_info("Performing tracking ...")
+
+            pi = progress_bar(range(sum([tp.get_tracking_work_size() for tp in tracked_results.values()]) - 1))
+
+            for pos, times in results.items():
+                tracked_position = tracked_results[pos]
+                tracked_position.perform_tracking(progress_indicator=pi)
+                tracked_position.remove_empty_channels_post_tracking()
+
+            cache['tracking'] = tracked_results
+
+        # ( Diversion into ground truth processing, if applicable )
+
+        if args.ground_truth:
+            interactive_ground_truth_main(args, tracked_results)
+            return
+
+        #( Output of textual results: )#####################################################################################
+
+        def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
+            for pos, tracking in inner_tracked_results.items():
+                for inner_k in sorted(tracking.tracker_mapping.keys()):
+                    tracker = tracking.tracker_mapping[inner_k]
+                    channels = tracking.channel_accumulator[inner_k]
+                    yield pos, inner_k, tracking, tracker, channels
+
+
+        if args.table_output is None:
+            recipient = sys.stdout
+        else:
+            recipient = codecs.open(args.table_output, "wb+", "utf-8")
 
         print_info()
+        print_info("Outputting tabular data ...")
 
-        print_info("Set-up for tracking ...")
-
-        pi = progress_bar(range(sum([len(l) - 1 if len(l) > 0 else 0 for l in results.values()]) - 1))
-
-        for pos, times in results.items():
-            tracked_position = TrackedPosition()
-            tracked_position.set_times(times)
-            tracked_position.align_channels(progress_indicator=pi)
-            tracked_position.remove_empty_channels()
-            tracked_position.guess_channel_orientation()
-            tracked_results[pos] = tracked_position
-
-        print_info()
-
-        print_info("Performing tracking ...")
-
-        pi = progress_bar(range(sum([tp.get_tracking_work_size() for tp in tracked_results.values()]) - 1))
-
-        for pos, times in results.items():
-            tracked_position = tracked_results[pos]
-            tracked_position.perform_tracking(progress_indicator=pi)
-            tracked_position.remove_empty_channels_post_tracking()
-
-        cache['tracking'] = tracked_results
-
-    # ( Diversion into ground truth processing, if applicable )
-
-    if args.ground_truth:
-        interactive_ground_truth_main(args, tracked_results)
-        return
-
-    #( Output of textual results: )#####################################################################################
-
-    def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
-        for pos, tracking in inner_tracked_results.items():
-            for inner_k in sorted(tracking.tracker_mapping.keys()):
-                tracker = tracking.tracker_mapping[inner_k]
-                channels = tracking.channel_accumulator[inner_k]
-                yield pos, inner_k, tracking, tracker, channels
-
-
-    if args.table_output is None:
-        recipient = sys.stdout
-    else:
-        recipient = codecs.open(args.table_output, "wb+", "utf-8")
-
-    print_info()
-    print_info("Outputting tabular data ...")
-
-    flat_results = list(each_pos_k_tracking_tracker_channels_in_results(tracked_results))
-
-    try:
-        table_dumper = QuickTableDumper(recipient=recipient)
-
-        iterable = progress_bar(flat_results) if recipient is not sys.stdout else silent_progress_bar(flat_results)
-
-        for pos, k, tracking, tracker, channels in iterable:
-            analyze_tracking(tracker_to_cell_list(tracker), lambda x: table_dumper.add(x))
-
-    finally:
-        if recipient is not sys.stdout:
-            recipient.close()
-
-    #( Output of graphical tracking results: )##########################################################################
-
-    if args.tracking_output is not None:
+        flat_results = list(each_pos_k_tracking_tracker_channels_in_results(tracked_results))
 
         try:
-            import matplotlib
-            import matplotlib.pylab
-        except ImportError:
-            print_warning("Tracking output enabled but matplotlib not found! Cannot proceed.")
-            print_warning("Please install matplotlib ...")
-            raise
+            table_dumper = QuickTableDumper(recipient=recipient)
 
-        print_info("Outputting graphical tracking data ...")
+            iterable = progress_bar(flat_results) if recipient is not sys.stdout else silent_progress_bar(flat_results)
 
-        figdir = os.path.abspath(args.tracking_output)
+            for pos, k, tracking, tracker, channels in iterable:
+                analyze_tracking(tracker_to_cell_list(tracker), lambda x: table_dumper.add(x))
 
-        if not os.path.isdir(figdir):
-            os.mkdir(figdir)
+        finally:
+            if recipient is not sys.stdout:
+                recipient.close()
 
-        for pos, k, tracking, tracker, channels in progress_bar(flat_results):
-            plot_timeline(matplotlib.pylab, channels, tracker_to_cell_list(tracker),
-                          figure_presetup=
-                          lambda p: p.title("Channel #%02d (average cells = %.2f)" % (k, tracker.average_cells)),
-                          figure_finished=
-                          lambda p: p.savefig("%(dir)s/tracking_pt_%(mp)02d_chan_%(k)02d.pdf" %
-                                              {'dir': figdir, 'mp': pos, 'k': k}),
-                          show_images=True, show_overlay=True)
+        #( Output of graphical tracking results: )##########################################################################
+
+        if args.tracking_output is not None:
+
+            try:
+                import matplotlib
+                import matplotlib.pylab
+            except ImportError:
+                print_warning("Tracking output enabled but matplotlib not found! Cannot proceed.")
+                print_warning("Please install matplotlib ...")
+                raise
+
+            print_info("Outputting graphical tracking data ...")
+
+            figdir = os.path.abspath(args.tracking_output)
+
+            if not os.path.isdir(figdir):
+                os.mkdir(figdir)
+
+            for pos, k, tracking, tracker, channels in progress_bar(flat_results):
+                plot_timeline(matplotlib.pylab, channels, tracker_to_cell_list(tracker),
+                              figure_presetup=
+                              lambda p: p.title("Channel #%02d (average cells = %.2f)" % (k, tracker.average_cells)),
+                              figure_finished=
+                              lambda p: p.savefig("%(dir)s/tracking_pt_%(mp)02d_chan_%(k)02d.pdf" %
+                                                  {'dir': figdir, 'mp': pos, 'k': k}),
+                              show_images=True, show_overlay=True)
 
     #( Post-Tracking: Just write some tunables, if desired )############################################################
 
