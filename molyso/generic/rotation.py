@@ -12,10 +12,10 @@ from .smoothing import hamming_smooth
 from .signal import find_phase
 
 
-def find_rotation(im, steps=10, smoothing_signal_length=15):
+def find_rotation(image, steps=10, smoothing_signal_length=15):
     """
     tries to detect the rotation
-    :param im:
+    :param image:
     :param steps:
     :return:
     """
@@ -27,7 +27,7 @@ def find_rotation(im, steps=10, smoothing_signal_length=15):
 
     step = 0
 
-    for n, the_step, imgslice in each_image_slice(im, steps, direction='vertical'):
+    for n, the_step, imgslice in each_image_slice(image, steps, direction='vertical'):
         step = the_step
         profile = vertical_mean(imgslice)
 
@@ -39,7 +39,7 @@ def find_rotation(im, steps=10, smoothing_signal_length=15):
             last_fft = None
             continue
 
-        shift, current_fft = find_phase(last_signal, profile, last_fft, return2=True)
+        shift, current_fft = find_phase(last_signal, profile, last_fft, return_2=True)
         last_signal, last_fft = profile, current_fft
 
         shifts[n] = shift
@@ -103,27 +103,27 @@ def calculate_crop_for_angle(image, angle):
     return hd, wd
 
 
-def apply_rotate_and_cleanup(img, angle):
+def apply_rotate_and_cleanup(image, angle):
     """
 
-    :param img:
+    :param image:
     :param angle:
     :return:
     """
-    newimg = rotate_image(img, angle)
-    h, w = calculate_crop_for_angle(img, angle)
+    new_image = rotate_image(image, angle)
+    h, w = calculate_crop_for_angle(image, angle)
     lh, rh = (h, -h) if h else (None, None)
     lw, rw = (w, -w) if w else (None, None)
-    newimg = newimg[lh:rh, lw:rw]
-    return newimg, angle, h, w
+    new_image = new_image[lh:rh, lw:rw]
+    return new_image, angle, h, w
 
 
-def rotate_and_cleanup(img):
+def rotate_and_cleanup(image):
     """
 
-    :param img:
+    :param image:
     :return:
     """
-    angle = find_rotation(img)
-    return apply_rotate_and_cleanup(img, angle)
+    angle = find_rotation(image)
+    return apply_rotate_and_cleanup(image, angle)
 

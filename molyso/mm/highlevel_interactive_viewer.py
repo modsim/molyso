@@ -44,9 +44,9 @@ def interactive_main(args):
 
         fig.canvas.set_window_title("Image Viewer - [BUSY]")
 
-        img = ims.get_image(t=t - 1, pos=pos - 1, channel=0)
+        image = ims.get_image(t=t - 1, pos=pos - 1, channel=0)
         i = Image()
-        i.setup_image(img)
+        i.setup_image(image)
 
 
         def pdh(coords, **kwargs):

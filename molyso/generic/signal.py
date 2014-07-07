@@ -17,29 +17,29 @@ from .util import relative_maxima, relative_minima
 from .smoothing import hamming_smooth
 
 
-def find_phase(signal1=None, signal2=None,
-               fft1=None, fft2=None,
-               return1=False, return2=False):
+def find_phase(signal_1=None, signal_2=None,
+               fft_1=None, fft_2=None,
+               return_1=False, return_2=False):
     """
     Finds the phase (time shift) between two signals.
     Either signalX or fftX should be set; you can get the FFTs returned
     in order to cache them locally...
 
-    :param signal1: first input signal
-    :param signal2: second input signal
-    :param fft1: first input fft
-    :param fft2: second input fft
-    :param return1: whether fft1 should be returned
-    :param return2: whether fft2 should be returned
+    :param signal_1: first input signal
+    :param signal_2: second input signal
+    :param fft_1: first input fft
+    :param fft_2: second input fft
+    :param return_1: whether fft1 should be returned
+    :param return_2: whether fft2 should be returned
     :return:
     """
 
-    if signal1 is not None and fft1 is None:
-        fft1 = fft(signal1)
-    if signal2 is not None and fft2 is None:
-        fft2 = fft(signal2)
+    if signal_1 is not None and fft_1 is None:
+        fft_1 = fft(signal_1)
+    if signal_2 is not None and fft_2 is None:
+        fft_2 = fft(signal_2)
 
-    corr = ifft(fft1 * -fft2.conjugate())
+    corr = ifft(fft_1 * -fft_2.conjugate())
 
     corr = numpy.absolute(corr)
     themax = numpy.argmax(corr)
@@ -47,13 +47,13 @@ def find_phase(signal1=None, signal2=None,
     #    sur = corr[themax-1:themax+2]
     #    themax += -0.5*sur[0] + 0.5*sur[2]
 
-    themax = -themax if themax < len(fft1) / 2 else len(fft1) - themax
+    themax = -themax if themax < len(fft_1) / 2 else len(fft_1) - themax
 
     result = (themax,)
-    if return1:
-        result += (fft1,)
-    if return2:
-        result += (fft2,)
+    if return_1:
+        result += (fft_1,)
+    if return_2:
+        result += (fft_2,)
     return result
 
 
@@ -155,13 +155,13 @@ def simple_baseline_correction(signal, window_width=None):
     return signal - hamming_smooth(signal, window_width, no_cache=True)
 
 
-def _spectrum(arr):
+def _spectrum(signal):
     """
     spectrum function using alternate construction of associated frequencies
-    :param arr: input signal
+    :param signal: input signal
     :return:
     """
-    ft = fft(arr)
+    ft = fft(signal)
     ft = ft[:len(ft) // 2]
     # I say frequency but I mean 'wavelength'
     freq = 1.0 / (
@@ -170,46 +170,46 @@ def _spectrum(arr):
     return freq, ft
 
 
-def _spec_fft(arr):
-    return fft(arr)[:len(arr) // 2]
+def _spec_fft(signal):
+    return fft(signal)[:len(signal) // 2]
 
 
-def _spec_bins_n(len_arr):
-    freqs = fftfreq(len_arr)[:len_arr // 2]
+def _spec_bins_n(len_signal):
+    freqs = fftfreq(len_signal)[:len_signal // 2]
     freqs[1:] = 1.0 / freqs[1:]
     return freqs
 
 
-def _spec_bins(arr):
-    len_arr = len(arr)
+def _spec_bins(signal):
+    len_arr = len(signal)
     return _spec_bins_n(len_arr)
 
 
-def spectrum(arr):
+def spectrum(signal):
     """
     returns the spectrum (tuple of frequencies and their occurrence)
-    :param arr: input signal
+    :param signal: input signal
     :return:
     """
-    return _spec_bins(arr), _spec_fft(arr)
+    return _spec_bins(signal), _spec_fft(signal)
 
 
-def powerspectrum(arr):
+def powerspectrum(signal):
     """
     return a power (absolute/real) spectrum (as opposed to the complex spectrum returned by spectrum itself
-    :param arr:
+    :param signal:
     :return:
     """
-    freqs, fourier = spectrum(arr)
+    freqs, fourier = spectrum(signal)
     return freqs, numpy.absolute(fourier)
 
 
-def hires_powerspectrum(arr, oversampling=1):
-    arr_len = len(arr)
+def hires_powerspectrum(signal, oversampling=1):
+    arr_len = len(signal)
     xsize = get_optimal_dft_size(oversampling * arr_len)
 
     tmp_data = numpy.zeros(xsize)
-    tmp_data[:arr_len] = arr
+    tmp_data[:arr_len] = signal
 
     frequencies, fourier_values = powerspectrum(tmp_data)
     fourier_values[0] = 0
@@ -220,18 +220,18 @@ def hires_powerspectrum(arr, oversampling=1):
     return frequencies, fourier_values
 
 
-def oversample(arr, times=2):
+def oversample(signal, times=2):
     """
     oversamples the signal times times, without interpolating
-    :param arr:
+    :param signal:
     :param times:
     :return:
     """
 
     if times == 1:
-        return arr
+        return signal
 
-    newarr = numpy.zeros(len(arr) * times, dtype=arr.dtype)
+    newarr = numpy.zeros(len(signal) * times, dtype=signal.dtype)
     for num in range(0, times):
-        newarr[num::times] = arr
+        newarr[num::times] = signal
     return newarr

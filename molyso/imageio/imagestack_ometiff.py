@@ -139,14 +139,14 @@ class OMETiffStack(MultiImageStack):
         if 'pos' in kwargs:
             pos = kwargs['pos']
 
-        img = [tp for tp in self.images[pos] if tp['TheT'] == t][0]
+        image = [tp for tp in self.images[pos] if tp['TheT'] == t][0]
 
         return {
-            'calibration': lambda: img['PhysicalSizeX'],
-            'channels': lambda: img['SizeC'],
-            'position': lambda: (img['PositionX'], img['PositionY'], img['PositionZ'],),
-            'time': lambda: img['DeltaT'],
-            'timepoints': lambda: img['SizeT'],
+            'calibration': lambda: image['PhysicalSizeX'],
+            'channels': lambda: image['SizeC'],
+            'position': lambda: (image['PositionX'], image['PositionY'], image['PositionZ'],),
+            'time': lambda: image['DeltaT'],
+            'timepoints': lambda: image['SizeT'],
             'multipoints': lambda: len(self.images)
         }[what]()
 

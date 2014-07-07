@@ -81,9 +81,9 @@ def create_argparser():
 
 
 def setup_image(i, local_ims, t, pos):
-    img = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Phase_Contrast, float=True)
+    image = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Phase_Contrast, float=True)
 
-    i.setup_image(img)
+    i.setup_image(image)
 
     if getattr(i, 'setup_fluorescence', False) and local_ims.get_meta('channels') > 1:
         fimg = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Fluorescence, float=True)

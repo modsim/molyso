@@ -5,26 +5,26 @@ from .util import *
 from .signal import find_phase
 
 
-def translation_2x1d(im_a=None, im_b=None, ffts_a=(), ffts_b=(), return_a=False, return_b=False):
+def translation_2x1d(image_a=None, image_b=None, ffts_a=(), ffts_b=(), return_a=False, return_b=False):
     if ffts_a != ():
         fft_av, fft_ah = ffts_a
         signal_av, signal_ah = None, None
     else:
         fft_av, fft_ah = None, None
-        signal_av, signal_ah = vertical_mean(im_a), horizontal_mean(im_b)
+        signal_av, signal_ah = vertical_mean(image_a), horizontal_mean(image_b)
 
     if ffts_b != ():
         fft_bv, fft_bh = ffts_b
         signal_bv, signal_bh = None, None
     else:
         fft_bv, fft_bh = None, None
-        signal_bv, signal_bh = vertical_mean(im_b), horizontal_mean(im_b)
+        signal_bv, signal_bh = vertical_mean(image_b), horizontal_mean(image_b)
 
-    v, fft_av, fft_bv = find_phase(signal1=signal_av, signal2=signal_bv,
-                                   fft1=fft_av, fft2=fft_bv, return1=True, return2=True)
+    v, fft_av, fft_bv = find_phase(signal_1=signal_av, signal_2=signal_bv,
+                                   fft_1=fft_av, fft_2=fft_bv, return_1=True, return_2=True)
 
-    h, fft_ah, fft_bh = find_phase(signal1=signal_ah, signal2=signal_bh,
-                                   fft1=fft_ah, fft2=fft_bh, return1=True, return2=True)
+    h, fft_ah, fft_bh = find_phase(signal_1=signal_ah, signal_2=signal_bh,
+                                   fft_1=fft_ah, fft_2=fft_bh, return_1=True, return_2=True)
 
     result = ([float(-v), float(-h)],)
 

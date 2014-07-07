@@ -21,39 +21,39 @@ class NotReallyATree(list):
         return distances[pos], pos
 
 
-def vertical_mean(im):
-    return numpy.average(im, axis=1)
+def vertical_mean(image):
+    return numpy.average(image, axis=1)
 
 
-def horizontal_mean(im):
-    return numpy.average(im, axis=0)
+def horizontal_mean(image):
+    return numpy.average(image, axis=0)
 
 
-def relative_maxima(data, order=1):
-    value, = scipy.signal.argrelmax(data, order=order)
+def relative_maxima(signal, order=1):
+    value, = scipy.signal.argrelmax(signal, order=order)
     return value
 
 
-def relative_minima(data, order=1):
-    value, = scipy.signal.argrelmin(data, order=order)
+def relative_minima(signal, order=1):
+    value, = scipy.signal.argrelmin(signal, order=order)
     return value
 
 
-def normalize(arr):
+def normalize(data):
     """
     normalizes the values in arr to 0 - 1
-    :param arr: input array
+    :param data: input array
     :return: normalized array
     """
-    maxi = arr.max()
-    mini = arr.min()
-    return (arr - mini) / (maxi - mini)
+    maximum = data.max()
+    minimum = data.min()
+    return (data - minimum) / (maximum - minimum)
 
 
-def rescale_and_fit_to_type(img, new_dtype):
-    img_min = img.min()
-    img_max = img.max()
-    scaled_img = ((img.astype(numpy.float32) - img_min) / (img_max - img_min))
+def rescale_and_fit_to_type(image, new_dtype):
+    img_min = image.min()
+    img_max = image.max()
+    scaled_img = ((image.astype(numpy.float32) - img_min) / (img_max - img_min))
     to_type = numpy.dtype(new_dtype)
     if to_type.kind == 'f':
         return scaled_img.astype(to_type)
@@ -67,97 +67,58 @@ def rescale_and_fit_to_type(img, new_dtype):
         raise TypeError("Unsupported new_dtype value used for rescale_and_fit_to_type used!")
 
 
-def threshold_outliers(arr, times_std=2.0):
+def threshold_outliers(data, times_std=2.0):
     """
     removes outliers
-    :param arr:
+    :param data:
     :param times_std:
     :return:
     """
 
-    arr = arr.copy()
-    median = numpy.median(arr)
-    std = numpy.std(arr)
-    arr[(arr - median) > (times_std * std)] = median + (times_std * std)
-    arr[((arr - median) < 0) & (abs(arr - median) > times_std * std)] = median - (times_std * std)
-    return arr
+    data = data.copy()
+    median = numpy.median(data)
+    std = numpy.std(data)
+    data[(data - median) > (times_std * std)] = median + (times_std * std)
+    data[((data - median) < 0) & (abs(data - median) > times_std * std)] = median - (times_std * std)
+    return data
 
 
-def outliers(arr, times_std=2.0):
-    return numpy.absolute(arr - numpy.median(arr)) > (times_std * numpy.std(arr))
+def outliers(data, times_std=2.0):
+    return numpy.absolute(data - numpy.median(data)) > (times_std * numpy.std(data))
 
 
-def remove_outliers(arr, times_std=2.0):
+def remove_outliers(data, times_std=2.0):
     try:
-        return arr[~outliers(arr, times_std)]
+        return data[~outliers(data, times_std)]
     except TypeError:
-        return arr
+        return data
 
 
-def find_insides(arr):
-    positions = []
-
-    inside = False
-    beg, end = 0, 0
-
-    for n in range(len(arr)):
-        if inside:
-            if not arr[n]:
-                end = n - 1
-                positions += [[beg, end]]
-                inside = False
-        else:
-            if arr[n]:
-                inside = True
-                beg = n
-    if inside:
-        positions += [[beg, len(arr) - 1]]
-
-    return positions
+def find_insides(signal):
+    tmp = signal != numpy.roll(signal, shift=1)
+    tmp[0], tmp[-1] = signal[0], signal[-1]
+    tmp, = numpy.where(tmp)
+    if tmp[-1] == signal.size - 1:
+        tmp[-1] += 1
+    tmp = tmp.reshape((tmp.size//2, 2))
+    tmp[:, 1] -= 1
+    return tmp
 
 
-def find_insides_w_int(arr):
-    positions = []
-
-    inside = False
-    beg, end = 0, 0
-    summing = 0.0
-
-    for n in range(len(arr)):
-        if inside:
-            if not arr[n]:
-                end = n - 1
-                positions += [[beg, end, end - beg, summing, summing / (1 + end - beg)]]
-                summing = 0.0
-                inside = False
-            else:
-                summing += arr[n]
-        else:
-            if arr[n]:
-                inside = True
-                beg = n
-                summing += arr[n]
-    if inside:
-        end = len(arr) - 1
-        positions += [[beg, end, end - beg, summing, summing / (1 + end - beg)]]
-
-    return numpy.array(positions)
-
-
-def one_every_n(l, n=1, shift=0):
-    signal = numpy.zeros(int(l))
-    signal[numpy.around(numpy.arange(shift % n, l - 1, n)).astype(numpy.int32)] = 1
+def one_every_n(length, n=1, shift=0):
+    signal = numpy.zeros(int(length))
+    signal[numpy.around(numpy.arange(shift % n, length - 1, n)).astype(numpy.int32)] = 1
     return signal
 
 
-def each_image_slice(img, steps, direction='vertical'):
+def each_image_slice(image, steps, direction='vertical'):
     if direction == 'vertical':
-        step = img.shape[1] // steps
+        step = image.shape[1] // steps
         for n in range(steps):
-            yield n, step, img[:, step * n:step * (n + 1)]
+            yield n, step, image[:, step * n:step * (n + 1)]
     elif direction == 'horizontal':
-        step = img.shape[0] // steps
+        step = image.shape[0] // steps
         for n in range(steps):
-            yield n, step, img[step * n:step * (n + 1), :]
+            yield n, step, image[step * n:step * (n + 1), :]
     else:
         raise ValueError("Unknown direction passed.")

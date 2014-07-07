@@ -43,8 +43,8 @@ class Channel(object):
     def centroid(self):
         return (self.left + self.right) / 2, (self.top + self.bottom) / 2
 
-    def crop_out_of_image(self, img):
-        return img[self.real_top:self.real_bottom, self.left:self.right].copy()
+    def crop_out_of_image(self, image):
+        return image[self.real_top:self.real_bottom, self.left:self.right].copy()
 
     def get_coordinates(self):
         return [[self.left, self.bottom], [self.right, self.bottom], [self.right, self.top], [self.left, self.top],
@@ -112,14 +112,17 @@ class Channels(object):
         return [[ind, other_channels.find_nearest(cen)[1]] for ind, cen in enumerate(self.centroids)]
 
 
-def find_channels_in_profile_fft_assisted(profile):
+def horizontal_channel_detection(image):
     """
 
-    @param profile:
+    @param image:
     @return:
     """
+
+    # nothing found is a helper variable, which will be returned in case.
     nothing_found = ([], 0, 0, 0, 0, -1, )
 
+    profile = horizontal_mean(image)
     profile_diff = numpy.diff(profile)
 
     upper_profile = +(profile_diff * (profile_diff > 0))
@@ -192,7 +195,7 @@ def find_channels_in_profile_fft_assisted(profile):
     help_signal = normalize(hamming_smooth(absolute_differentiated_profile, 50))  # * new_signal
 
     # under certain conditions, the help signal may contain a totally extreme
-    # maximum (testimage), I guess it's wiser to remove it
+    # maximum (test image), I guess it's wiser to remove it
     help_signal = threshold_outliers(help_signal)
 
     threshold_factor = 0.2
@@ -244,10 +247,10 @@ def find_channels_in_profile_fft_assisted(profile):
     return positions, left, right, width, times, main_frequency,
 
 
-def _brute_force_fft_up_down_detect(img):
-    f = _spec_bins_n(img.shape[1])
+def vertical_channel_region_detection(image):
+    f = _spec_bins_n(image.shape[1])
 
-    def hori_main_freq(img_frag, clean_around=None, clean_width=0.0):
+    def horizontal_mean_frequency(img_frag, clean_around=None, clean_width=0.0):
 
         ft = numpy.absolute(_spec_fft(horizontal_mean(img_frag)))
 
@@ -261,7 +264,7 @@ def _brute_force_fft_up_down_detect(img):
 
         return ft.max(), f[numpy.argmax(ft)]
 
-    power_overall_f, overall_f = hori_main_freq(img)
+    power_overall_f, overall_f = horizontal_mean_frequency(image)
 
     d = 1.0
     power_min_quotient = 0.1
@@ -270,58 +273,59 @@ def _brute_force_fft_up_down_detect(img):
     current_clean_width = overall_f / 2.0
 
     def matches(img_frag):
-        power_local_f, local_f = hori_main_freq(img_frag, clean_around=overall_f, clean_width=current_clean_width)
+        power_local_f, local_f = horizontal_mean_frequency(
+            img_frag, clean_around=overall_f, clean_width=current_clean_width)
         return (abs(overall_f - local_f) < d) and ((power_local_f / power_overall_f) > power_min_quotient)
 
-    height = img.shape[0]
+    height = image.shape[0]
 
     collector = numpy.zeros(height)
 
     FIRST_CALL, FROM_TOP, FROM_BOTTOM = 0, -1, 1
 
-    def recurse(top, bottom, orientation=FIRST_CALL):
+    def recursive_check(top, bottom, orientation=FIRST_CALL):
         if (bottom - top) < break_condition:
             return
 
         mid = (top + bottom) // 2
 
-        upper = matches(img[top:mid, :])
-        lower = matches(img[mid:bottom, :])
+        upper = matches(image[top:mid, :])
+        lower = matches(image[mid:bottom, :])
 
         collector[top:mid] = upper
         collector[mid:bottom] = lower
 
         if orientation is FIRST_CALL:
             if upper:
-                recurse(top, mid, FROM_TOP)
+                recursive_check(top, mid, FROM_TOP)
             if lower:
-                recurse(mid, bottom, 1)
+                recursive_check(mid, bottom, 1)
         elif orientation is FROM_TOP:
             if upper and lower:
-                recurse(top, mid, FROM_TOP)
+                recursive_check(top, mid, FROM_TOP)
             elif not upper and lower:
-                recurse(mid, bottom, FROM_TOP)
+                recursive_check(mid, bottom, FROM_TOP)
         elif orientation is FROM_BOTTOM:
             if lower and upper:
-                recurse(mid, bottom, FROM_BOTTOM)
+                recursive_check(mid, bottom, FROM_BOTTOM)
             elif not lower and upper:
-                recurse(top, mid, FROM_BOTTOM)
+                recursive_check(top, mid, FROM_BOTTOM)
 
-    recurse(0, height)
+    recursive_check(0, height)
 
     return sorted(find_insides(collector), key=lambda pair: pair[1] - pair[0], reverse=True)[0]
 
 
-def find_channels(img):
+def find_channels(image):
     """
     channel finder
-    :param img:
+    :param image:
     :return:
     """
 
-    upper, lower = _brute_force_fft_up_down_detect(img)
+    upper, lower = vertical_channel_region_detection(image)
 
-    profile = horizontal_mean(img)
+    profile = horizontal_mean(image)
 
     with DebugPlot('channeldetection', 'details', 'overview', 'horizontal') as p:
         p.title("Basic horizontal overview")
@@ -329,10 +333,8 @@ def find_channels(img):
 
     with DebugPlot("channeldetection", "details", "overview", "vertical") as p:
         p.title("Basic vertical overview")
-        p.plot(vertical_mean(img))
+        p.plot(vertical_mean(image))
 
-    profile = horizontal_mean(img[upper:lower, :])
-
-    positions, left, right, width, times, mainfreq = find_channels_in_profile_fft_assisted(profile)
+    positions, left, right, width, times, mainfreq = horizontal_channel_detection(image[upper:lower, :])
 
     return positions, (upper, lower)

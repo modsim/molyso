@@ -55,9 +55,9 @@ class BaseImage(object):
 
         self.shift = [0, 0]
 
-    def setup_image(self, img):
-        self.image = img
-        self.original_image = img
+    def setup_image(self, image):
+        self.image = image
+        self.original_image = image
 
     def pixel_to_mu(self, pix):
         """
@@ -170,8 +170,8 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
         self.channel_images = None
 
-    def setup_image(self, img):
-        super(Image, self).setup_image(img)
+    def setup_image(self, image):
+        super(Image, self).setup_image(image)
         with DebugPlot("image", "input") as p:
             p.title("Input image")
             p.imshow(self.image)
@@ -229,15 +229,15 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         p.imshow(self.image)
         # noinspection PyTypeChecker
         for channel in self.channels:
-            coords = channel.get_coordinates()
-            p.poly_drawing_helper(coords, lw=1, edgecolor=channel_color, fill=False)
+            coordinates = channel.get_coordinates()
+            p.poly_drawing_helper(coordinates, lw=1, edgecolor=channel_color, fill=False)
 
             for cell in channel.cells:
-                coords = [[channel.left, cell.bottom], [channel.right, cell.bottom],
+                coordinates = [[channel.left, cell.bottom], [channel.right, cell.bottom],
                           [channel.right, cell.top], [channel.left, cell.top],
                           [channel.left, cell.bottom]]
 
-                p.poly_drawing_helper(coords, lw=0.5, edgecolor=cell_color, fill=False)
+                p.poly_drawing_helper(coordinates, lw=0.5, edgecolor=cell_color, fill=False)
 
     def guess_channel_orientation(self):
         if getattr(self, 'channel_orientation_cache', None) is None:
@@ -272,14 +272,14 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         self.channels_cells_local_top = [[cc.local_top for cc in c.cells] for c in channels]
         self.channels_cells_local_bottom = [[cc.local_bottom for cc in c.cells] for c in channels]
 
-        def _pack_image(img):
+        def _pack_image(image):
             if self.pack_channel_image is False:
-                return img
+                return image
             else:
-                if img is None:
-                    return img
+                if image is None:
+                    return image
                 else:
-                    return rescale_and_fit_to_type(img, self.pack_channel_image)
+                    return rescale_and_fit_to_type(image, self.pack_channel_image)
 
         self.channel_images = [_pack_image(c.channel_image) for c in channels]
 
@@ -292,25 +292,27 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         self.channels = self.channels_type(self, bootstrap=False)
 
         # noinspection PyTypeChecker
-        for n, _ in enumerate(self.channels_left):
-            chan = self.channels.__class__.channel_type(self, self.channels_left[n], self.channels_right[n],
-                                                        self.channels_real_top[n], self.channels_real_bottom[n])
+        for channel_num, _ in enumerate(self.channels_left):
+            channel = self.channels.__class__.channel_type(self, self.channels_left[channel_num],
+                                                           self.channels_right[channel_num],
+                                                           self.channels_real_top[channel_num],
+                                                           self.channels_real_bottom[channel_num])
 
-            chan.putative_orientation = self.channels_putative_orientations[n]
+            channel.putative_orientation = self.channels_putative_orientations[channel_num]
 
-            chan.channel_image = self.channel_images[n]
+            channel.channel_image = self.channel_images[channel_num]
 
-            self.channels.channels_list.append(chan)
-            cells = chan.__class__.cells_type(chan, bootstrap=False)
+            self.channels.channels_list.append(channel)
+            cells = channel.__class__.cells_type(channel, bootstrap=False)
 
-            chan.cells = cells
+            channel.cells = cells
 
-            for cn, __ in enumerate(self.channels_cells_local_top[n]):
-                ltop, lbottom = self.channels_cells_local_top[n][cn], self.channels_cells_local_bottom[n][cn]
-
-                cell = cells.cell_type(ltop, lbottom, chan)
-
-                cells.cells_list.append(cell)
+            for cell_num, __ in enumerate(self.channels_cells_local_top[channel_num]):
+                cells.cells_list.append(cells.cell_type(
+                    self.channels_cells_local_top[channel_num][cell_num],
+                    self.channels_cells_local_bottom[channel_num][cell_num],
+                    channel
+                ))
 
         self.flattened = False
 
