@@ -5,7 +5,7 @@ fastest available library call, and various helper functions to calculate crop z
 """
 
 from __future__ import division, unicode_literals, print_function
-from math import tan, atan, pi
+import math
 import numpy
 
 from .signal import find_phase, vertical_mean, remove_outliers, each_image_slice, hamming_smooth
@@ -45,7 +45,7 @@ def find_rotation(image, steps=10, smoothing_signal_length=15):
 
     shifts = remove_outliers(shifts)
 
-    return atan(numpy.mean(shifts) / step) * 180.0 / pi
+    return math.atan(numpy.mean(shifts) / step) * 180.0 / math.pi
 
 
 try:
@@ -96,8 +96,8 @@ def calculate_crop_for_angle(image, angle):
     :param angle:
     :return:
     """
-    wd = (image.shape[0] * 0.5) * tan(angle / (180.0 / pi))
-    hd = (image.shape[1] * 0.5) * tan(angle / (180.0 / pi))
+    wd = (image.shape[0] * 0.5) * math.tan(angle / (180.0 / math.pi))
+    hd = (image.shape[1] * 0.5) * math.tan(angle / (180.0 / math.pi))
     hd, wd = int(abs(hd)), int(abs(wd))
     return hd, wd
 

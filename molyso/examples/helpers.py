@@ -55,10 +55,16 @@ def run_the_processor(parser_hook=None, process_hook=None, plot_hook=None, desc=
     if process_hook:
         process_hook(data, environment, output)
 
+    max_len = max(len(_) for _ in output.values())
+
+    for k in output.keys():
+        if len(output[k]) < max_len:
+            output[k] = numpy.r_[output[k], [float('NaN')] * (max_len - len(output[k]))]
+
     if len(output) > 0:
         o = pandas.DataFrame(data=output, columns=[k for k in sorted(output.keys()) if k.startswith('time')] +
                                                   [k for k in sorted(output.keys()) if not k.startswith('time')])
-        o.to_csv(args.outfile, sep='\t', index=False)
+        o.to_csv(args.outfile, sep='\t', index=False, na_rep='NaN')
 
     if plot_hook:
         if args.figure_output != '':

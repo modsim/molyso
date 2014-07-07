@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 documentation
@@ -29,10 +30,22 @@ def process(data, env, output):
     env.ages = numpy.log(2) / env.process(gdd.mean().division_age)
     env.age_times = env.process(gdd.mean().timepoint)
 
+
     env.counts = env.process(gdd.count().division_age)
+
+    env.ages_original = env.ages.copy()
+
+    env.ages[env.counts < 5] = float('NaN')
 
     env.cell_counts = env.process(ad.count().division_age)
     env.cell_times = env.process(ad.mean().timepoint)
+
+    output.growth_mu = env.ages
+    output.growth_times = env.age_times
+
+    output.fluorescence_f = env.fluor
+    output.fluorescence_times = env.times
+
 
 
 def ploting(env):
@@ -40,14 +53,17 @@ def ploting(env):
     ylabel('growth rate [min $^{-1}$]')
 
     plot(env.age_times, env.ages, label='µ')
-
+    print(env.ages)
     ax2 = twinx()
     ax2.set_ylabel('fluorescence [a.u.]')
     ax2.plot(0, 0, label='µ')
-    # ax2.plot(env.times, env.fluor, label='fluorescence')
+    ax2.plot(env.times, env.fluor, label='fluorescence')
     #ax2.plot(env.times, env.fluor_bg - env.fluor_bg.min(), label='fluorescence background')
-    ax2.plot(env.age_times, env.counts)
-    ax2.plot(env.cell_times, env.cell_counts)
+
+#    plot(env.age_times, env.counts)
+    #ax2.plot(env.age_times, env.counts)
+    #print(repr(env.cell_times), repr(env.cell_counts))
+    #ax2.plot(env.cell_times, env.cell_counts)
     legend()
 
 
