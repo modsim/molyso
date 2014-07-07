@@ -6,8 +6,7 @@ from __future__ import division, unicode_literals, print_function
 
 from .. import tunable
 from .tracking_infrastructure import CellTracker, CellCrossingCheckingGlobalDuoOptimizerQueue
-from ..generic.smoothing import hamming_smooth
-from ..generic.signal import find_extrema_and_prominence
+from ..generic.signal import find_extrema_and_prominence, hamming_smooth
 
 from .tracking_output import *
 
@@ -34,6 +33,7 @@ class TrackedPosition(object):
 
         self.tracker_mapping = {}
         self.channel_accumulator = {}
+        self.cell_centroid_accumulator = {}
         self.cell_counts = {}
 
     def set_times(self, times):

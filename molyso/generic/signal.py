@@ -5,16 +5,14 @@ signal processing helper routines
 
 from __future__ import division, unicode_literals, print_function
 from collections import namedtuple
+import warnings
 
 import numpy
 import scipy.signal
 import scipy.interpolate
 
-import warnings
-
-from .fft import fft, ifft, fftfreq, get_optimal_dft_size
-from .util import relative_maxima, relative_minima
 from .smoothing import hamming_smooth
+from .fft import *
 
 
 def find_phase(signal_1=None, signal_2=None,
@@ -155,83 +153,104 @@ def simple_baseline_correction(signal, window_width=None):
     return signal - hamming_smooth(signal, window_width, no_cache=True)
 
 
-def _spectrum(signal):
+def vertical_mean(image):
+    return numpy.average(image, axis=1)
+
+
+def horizontal_mean(image):
+    return numpy.average(image, axis=0)
+
+
+def relative_maxima(signal, order=1):
+    value, = scipy.signal.argrelmax(signal, order=order)
+    return value
+
+
+def relative_minima(signal, order=1):
+    value, = scipy.signal.argrelmin(signal, order=order)
+    return value
+
+
+def normalize(data):
     """
-    spectrum function using alternate construction of associated frequencies
-    :param signal: input signal
-    :return:
+    normalizes the values in arr to 0 - 1
+    :param data: input array
+    :return: normalized array
     """
-    ft = fft(signal)
-    ft = ft[:len(ft) // 2]
-    # I say frequency but I mean 'wavelength'
-    freq = 1.0 / (
-        numpy.array([1] + range(1, len(ft))).astype(numpy.float)
-        / float(len(ft)) * 0.5)
-    return freq, ft
+    maximum = data.max()
+    minimum = data.min()
+    return (data - minimum) / (maximum - minimum)
 
 
-def _spec_fft(signal):
-    return fft(signal)[:len(signal) // 2]
+def rescale_and_fit_to_type(image, new_dtype):
+    img_min = image.min()
+    img_max = image.max()
+    scaled_img = ((image.astype(numpy.float32) - img_min) / (img_max - img_min))
+    to_type = numpy.dtype(new_dtype)
+    if to_type.kind == 'f':
+        return scaled_img.astype(to_type)
+    elif to_type.kind == 'u':
+        return (scaled_img * 2 ** (to_type.itemsize * 8)).astype(to_type)
+    elif to_type.kind == 'i':
+        return (scaled_img * 2 ** (to_type.itemsize * 8 - 1)).astype(to_type)
+    elif to_type.kind == 'b':
+        return scaled_img > 0.5
+    else:
+        raise TypeError("Unsupported new_dtype value used for rescale_and_fit_to_type used!")
 
 
-def _spec_bins_n(len_signal):
-    freqs = fftfreq(len_signal)[:len_signal // 2]
-    freqs[1:] = 1.0 / freqs[1:]
-    return freqs
-
-
-def _spec_bins(signal):
-    len_arr = len(signal)
-    return _spec_bins_n(len_arr)
-
-
-def spectrum(signal):
+def threshold_outliers(data, times_std=2.0):
     """
-    returns the spectrum (tuple of frequencies and their occurrence)
-    :param signal: input signal
-    :return:
-    """
-    return _spec_bins(signal), _spec_fft(signal)
-
-
-def powerspectrum(signal):
-    """
-    return a power (absolute/real) spectrum (as opposed to the complex spectrum returned by spectrum itself
-    :param signal:
-    :return:
-    """
-    freqs, fourier = spectrum(signal)
-    return freqs, numpy.absolute(fourier)
-
-
-def hires_powerspectrum(signal, oversampling=1):
-    arr_len = len(signal)
-    xsize = get_optimal_dft_size(oversampling * arr_len)
-
-    tmp_data = numpy.zeros(xsize)
-    tmp_data[:arr_len] = signal
-
-    frequencies, fourier_values = powerspectrum(tmp_data)
-    fourier_values[0] = 0
-
-    fourier_values = fourier_values[frequencies < arr_len]
-    frequencies = frequencies[frequencies < arr_len]
-
-    return frequencies, fourier_values
-
-
-def oversample(signal, times=2):
-    """
-    oversamples the signal times times, without interpolating
-    :param signal:
-    :param times:
+    removes outliers
+    :param data:
+    :param times_std:
     :return:
     """
 
-    if times == 1:
-        return signal
+    data = data.copy()
+    median = numpy.median(data)
+    std = numpy.std(data)
+    data[(data - median) > (times_std * std)] = median + (times_std * std)
+    data[((data - median) < 0) & (abs(data - median) > times_std * std)] = median - (times_std * std)
+    return data
 
-    newarr = numpy.zeros(len(signal) * times, dtype=signal.dtype)
-    for num in range(0, times):
-        newarr[num::times] = signal
-    return newarr
+
+def outliers(data, times_std=2.0):
+    return numpy.absolute(data - numpy.median(data)) > (times_std * numpy.std(data))
+
+
+def remove_outliers(data, times_std=2.0):
+    try:
+        return data[~outliers(data, times_std)]
+    except TypeError:
+        return data
+
+
+def find_insides(signal):
+    tmp = signal != numpy.roll(signal, shift=1)
+    tmp[0], tmp[-1] = signal[0], signal[-1]
+    tmp, = numpy.where(tmp)
+    if tmp[-1] == signal.size - 1:
+        tmp[-1] += 1
+    tmp = tmp.reshape((tmp.size//2, 2))
+    tmp[:, 1] -= 1
+    return tmp
+
+
+def one_every_n(length, n=1, shift=0):
+    signal = numpy.zeros(int(length))
+    signal[numpy.around(numpy.arange(shift % n, length - 1, n)).astype(numpy.int32)] = 1
+    return signal
+
+
+def each_image_slice(image, steps, direction='vertical'):
+    if direction == 'vertical':
+        step = image.shape[1] // steps
+        for n in range(steps):
+            yield n, step, image[:, step * n:step * (n + 1)]
+    elif direction == 'horizontal':
+        step = image.shape[0] // steps
+        for n in range(steps):
+            yield n, step, image[step * n:step * (n + 1), :]
+    else:
+        raise ValueError("Unknown direction passed.")

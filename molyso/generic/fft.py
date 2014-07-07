@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+fft.py contains Fourier transform related helper functions
+mainly it abstracts the Fourier transform itself
+(currently just passing the calls through to the numpy functions),
+as well as providing the get_optimal_dft_size command, which will provide
+a Fourier length which will yield faster results (for many sizes)
+"""
 # variable dft_sizes below is taken from OpenCV's modules/core/src/dxt.cpp
 # ( https://github.com/Itseez/opencv/blob/a6ef45aa139ceb0cca2b86f95ef8298294a45d3b/modules/core/src/dxt.cpp )
 # below is OpenCV's modules/core/src/dxt.cpp license text
@@ -238,3 +245,53 @@ get_optimal_dft_size = get_optimal_dft_size_w_numpy
 fft = numpy.fft.fft
 ifft = numpy.fft.ifft
 fftfreq = numpy.fft.fftfreq
+
+
+def spectrum_fourier(signal):
+    return fft(signal)[:len(signal) // 2]
+
+
+def spectrum_bins_by_length(len_signal):
+    freqs = fftfreq(len_signal)[:len_signal // 2]
+    freqs[1:] = 1.0 / freqs[1:]
+    return freqs
+
+
+def spectrum_bins(signal):
+    len_arr = len(signal)
+    return spectrum_bins_by_length(len_arr)
+
+
+def spectrum(signal):
+    """
+    returns the spectrum (tuple of frequencies and their occurrence)
+    :param signal: input signal
+    :return:
+    """
+    return spectrum_bins(signal), spectrum_fourier(signal)
+
+
+def power_spectrum(signal):
+    """
+    return a power (absolute/real) spectrum (as opposed to the complex spectrum returned by spectrum itself
+    :param signal:
+    :return:
+    """
+    freqs, fourier = spectrum(signal)
+    return freqs, numpy.absolute(fourier)
+
+
+def hires_power_spectrum(signal, oversampling=1):
+    arr_len = len(signal)
+    xsize = get_optimal_dft_size(oversampling * arr_len)
+
+    tmp_data = numpy.zeros(xsize)
+    tmp_data[:arr_len] = signal
+
+    frequencies, fourier_values = power_spectrum(tmp_data)
+    fourier_values[0] = 0
+
+    fourier_values = fourier_values[frequencies < arr_len]
+    frequencies = frequencies[frequencies < arr_len]
+
+    return frequencies, fourier_values

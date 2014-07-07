@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-documentation
+smoothing.py contains the main smoothing function, which works by convolving a signal with a smoothing kernel,
+a signals function which acts as a cache for kernels, as well as the hamming_smooth function, which is the only
+one currently used by external files, providing a simplified interface for smoothing with hamming kernels.
 """
 from __future__ import division, unicode_literals, print_function
 

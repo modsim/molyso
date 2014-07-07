@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+otsu.py contains an implementation of Otsu's thresholding method, taken verbatim from scikit-image.
+"""
 # Taken from scikit-image, to remove dependency on scikit-image (for merely using one function)
 
 # This file

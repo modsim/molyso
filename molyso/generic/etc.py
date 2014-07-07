@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-documentation
+etc.py contains various helper functions and classes, which are not directly related to data processing.
 """
 from __future__ import division, unicode_literals, print_function
 import os
@@ -131,8 +131,6 @@ def parse_range(s, allow_open_interval=True):
         else:
             ranges += [int(frag)]
     ranges += tail
-
-    print(ranges)
     return ranges
 
 
@@ -173,3 +171,16 @@ class Cache(object):
             with open(self.__class__.build_cache_filename(self.filename, suffix), 'wb+') as fp:
                 self.__class__.printer("Setting")
                 pickle.dump(data, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+class NotReallyATree(list):
+    def __init__(self, iterable):
+        super(NotReallyATree, self).__init__(self)
+        for i in iterable:
+            self.append(i)
+        self.na = numpy.array(iterable)
+
+    def query(self, q):  # w_numpy
+        distances = numpy.sqrt(numpy.sum(numpy.power(self.na - q, 2.0), 1))
+        pos = numpy.argmin(distances, 0)
+        return distances[pos], pos

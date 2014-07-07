@@ -7,12 +7,10 @@ from __future__ import division, unicode_literals, print_function
 import numpy
 
 from .. import DebugPlot, tunable
-from ..generic.signal import _spec_fft, _spec_bins_n, hires_powerspectrum, find_phase, find_extrema_and_prominence
-from ..generic.smoothing import hamming_smooth
-from ..generic.util import horizontal_mean, vertical_mean, NotReallyATree, find_insides, \
-    one_every_n, normalize, threshold_outliers
+from ..generic.signal import find_phase, find_extrema_and_prominence, spectrum_fourier, spectrum_bins_by_length, hires_power_spectrum,\
+    vertical_mean, horizontal_mean, normalize, threshold_outliers, find_insides, one_every_n, hamming_smooth
 from .cell_detection import Cells
-
+from ..generic.etc import NotReallyATree
 
 class Channel(object):
     cells_type = Cells
@@ -143,7 +141,7 @@ def horizontal_channel_detection(image):
     n = 4
 
     def calc_bins_freqs_main(the_profile):
-        frequencies, fourier_value = hires_powerspectrum(the_profile, oversampling=n)
+        frequencies, fourier_value = hires_power_spectrum(the_profile, oversampling=n)
         fourier_value = hamming_smooth(fourier_value, 3)
         return frequencies, fourier_value, frequencies[numpy.argmax(fourier_value)]
 
@@ -248,11 +246,11 @@ def horizontal_channel_detection(image):
 
 
 def vertical_channel_region_detection(image):
-    f = _spec_bins_n(image.shape[1])
+    f = spectrum_bins_by_length(image.shape[1])
 
     def horizontal_mean_frequency(img_frag, clean_around=None, clean_width=0.0):
 
-        ft = numpy.absolute(_spec_fft(horizontal_mean(img_frag)))
+        ft = numpy.absolute(spectrum_fourier(horizontal_mean(img_frag)))
 
         ft /= 0.5 * ft[0]
         ft[0] = 0

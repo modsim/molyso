@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+registration.py contains a simple 2D image registration function,
+which registers images by checking the individual horizontal and vertical shifts
+"""
 from __future__ import division, unicode_literals, print_function
 
-from .util import *
-from .signal import find_phase
+from .signal import find_phase, vertical_mean, horizontal_mean
 
 
 def translation_2x1d(image_a=None, image_b=None, ffts_a=(), ffts_b=(), return_a=False, return_b=False):

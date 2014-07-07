@@ -6,12 +6,7 @@ documentation
 from __future__ import division, unicode_literals, print_function
 
 import numpy
-from ..imageio.imagestack import MultiImageStack
-from ..imageio.imagestack_ometiff import OMETiffStack
-from .image import Image
 
-
-OMETiffStack = OMETiffStack
 
 
 def interactive_ground_truth_main(args, tracked_results):
@@ -93,7 +88,7 @@ def interactive_ground_truth_main(args, tracked_results):
         if e.button == 3:
             last_point_x, last_point_y = env['last_point_x'], env['last_point_y']
 
-            if last_point_x != None:
+            if last_point_x is not None:
 
                 if env['used'] + 3 >= env['points'].shape[0]:
                     oldmask = env['points'].mask[:env['used']]

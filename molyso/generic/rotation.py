@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-rotation.py
+rotation.py contains a find_rotation orientation detection function, a rotate_image function which will use the
+fastest available library call, and various helper functions to calculate crop zones of rotated images.
 """
 
 from __future__ import division, unicode_literals, print_function
 import math
 import numpy
 
-from .util import each_image_slice, vertical_mean, remove_outliers
-from .smoothing import hamming_smooth
-from .signal import find_phase
+from .signal import find_phase, vertical_mean, remove_outliers, each_image_slice, hamming_smooth
 
 
 def find_rotation(image, steps=10, smoothing_signal_length=15):
@@ -116,14 +115,4 @@ def apply_rotate_and_cleanup(image, angle):
     lw, rw = (w, -w) if w else (None, None)
     new_image = new_image[lh:rh, lw:rw]
     return new_image, angle, h, w
-
-
-def rotate_and_cleanup(image):
-    """
-
-    :param image:
-    :return:
-    """
-    angle = find_rotation(image)
-    return apply_rotate_and_cleanup(image, angle)
 

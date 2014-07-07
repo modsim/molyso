@@ -34,7 +34,6 @@ class FluorescentCell(Cell):
     def fluorescence(self):
         return self.fluorescence_mean - self.channel.image.background_fluorescence
 
-
     @property
     def fluorescence_raw(self):
         return self.fluorescence_mean
@@ -62,7 +61,6 @@ class FluorescentImage(Image):
         self.background_fluorescence = float('NaN')
 
         self.channels_cells_fluorescence_mean = None
-
 
     def setup_fluorescence(self, fimg):
         self.image_fluorescence = fimg
@@ -110,7 +108,6 @@ class FluorescentImage(Image):
         super(FluorescentImage, self).flatten()
 
         self.channels_cells_fluorescence_mean = [[cc.fluorescence_mean for cc in c.cells] for c in channels]
-
 
     def unflatten(self):
         super(FluorescentImage, self).unflatten()

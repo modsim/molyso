@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+
+"""
+tunable.py contains a tunable (settings to be changed depending on input data) management class
+"""
 from __future__ import division, unicode_literals, print_function
 
 

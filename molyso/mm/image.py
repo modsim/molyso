@@ -7,12 +7,11 @@
 from __future__ import division, unicode_literals, print_function
 
 import math
-from ..generic.util import rescale_and_fit_to_type
+from ..generic.signal import rescale_and_fit_to_type
 from ..generic.rotation import find_rotation, apply_rotate_and_cleanup
 from ..generic.registration import translation_2x1d
 from .channel_detection import Channels
 from .. import DebugPlot
-
 
 class BaseImage(object):
     """

@@ -5,13 +5,10 @@ documentation
 from __future__ import division, unicode_literals, print_function
 
 import numpy
-import scipy
-import scipy.signal
 
 from ..generic.otsu import threshold_otsu
-from ..generic.smoothing import hamming_smooth
-from ..generic.util import vertical_mean, threshold_outliers, find_insides
-from ..generic.signal import simple_baseline_correction, find_extrema_and_prominence
+from ..generic.signal import hamming_smooth,  simple_baseline_correction, find_extrema_and_prominence, \
+    vertical_mean, threshold_outliers
 
 from .. import DebugPlot, tunable
 

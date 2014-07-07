@@ -5,7 +5,8 @@ documentation
 
 from __future__ import division, unicode_literals, print_function
 
-__citation__ = "molyso: Image Analysis Software for Automated High-Throughput Analysis of Mother Machine Microfluidic Experiments.\nSachs et al."
+__citation__ = \
+    """molyso: Image Analysis Software for Automated High-Throughput Analysis of Mother Machine Microfluidic Experiments.\nSachs et al."""
 
 import argparse
 import sys
@@ -16,7 +17,7 @@ import codecs
 import json
 import multiprocessing
 
-from .. import Debug, DebugPlot, TunableManager
+from .. import Debug, TunableManager
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
     silent_progress_bar, fancy_progress_bar, Cache
