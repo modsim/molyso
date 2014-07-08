@@ -42,10 +42,11 @@ def process(data, env, output):
 
     output.growth_mu = env.ages
     output.growth_times = env.age_times
+    output.growth_times_hours = env.age_times / 60.0 / 60.0
 
     output.fluorescence_f = env.fluor
     output.fluorescence_times = env.times
-
+    output.fluorescence_times_hours = env.times / 60.0 / 60.0
 
 
 def ploting(env):
@@ -53,7 +54,7 @@ def ploting(env):
     ylabel('growth rate [min $^{-1}$]')
 
     plot(env.age_times, env.ages, label='µ')
-    print(env.ages)
+
     ax2 = twinx()
     ax2.set_ylabel('fluorescence [a.u.]')
     ax2.plot(0, 0, label='µ')
