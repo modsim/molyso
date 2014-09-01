@@ -6,7 +6,8 @@ documentation
 from __future__ import division, unicode_literals, print_function
 
 __citation__ = \
-    """molyso: Image Analysis Software for Automated High-Throughput Analysis of Mother Machine Microfluidic Experiments.\nSachs et al."""
+    """molyso: Image Analysis Software for Automated High-Throughput Analysis""" +\
+    """of Mother Machine Microfluidic Experiments.\nSachs et al."""
 
 import argparse
 import sys
@@ -70,6 +71,7 @@ def create_argparser():
     argparser.add_argument('-nb', '--no-banner', dest='nb', default=False, action='store_true')
     argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
     argparser.add_argument('-debug', '--debug', dest='debug', default=False, action='store_true')
+    argparser.add_argument('-nci', '--no-channel-images', dest='keepchan', default=True, action='store_false')
     argparser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true')
     argparser.add_argument('-nc', '--no-cache', dest='ignorecache', default='nothing',
                            const='everything', type=str, nargs='?')
@@ -139,7 +141,7 @@ def check_or_get_first_frame(pos):
         return image
 
 
-def processing_frame(t, pos):
+def processing_frame(args, t, pos):
     first = check_or_get_first_frame(pos)
 
     if ims.get_meta('channels') > 1:
@@ -151,7 +153,7 @@ def processing_frame(t, pos):
 
     Debug.set_context(t=t, pos=pos)
 
-    image.keep_channel_image = True  # False  # True
+    image.keep_channel_image = args.keepchan
     image.pack_channel_image = numpy.uint8
 
     image.autorotate()
@@ -288,7 +290,7 @@ def main():
             processing_setup(args)
 
             for t, pos in progress_bar(to_process):
-                results[pos][t] = processing_frame(t, pos)
+                results[pos][t] = processing_frame(args, t, pos)
         else:
             print_info("... parallel on %(cores)d cores" % {'cores': args.mp})
 
@@ -297,7 +299,7 @@ def main():
             workerstates = []
 
             for t, pos in to_process:
-                workerstates.append((t, pos, pool.apply_async(processing_frame, (t, pos))))
+                workerstates.append((t, pos, pool.apply_async(processing_frame, (args, t, pos))))
 
             progressbar_states = progress_bar(range(total))
 
@@ -355,7 +357,7 @@ def main():
             interactive_ground_truth_main(args, tracked_results)
             return
 
-        #( Output of textual results: )#####################################################################################
+        #( Output of textual results: )#################################################################################
 
         def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
             for pos, tracking in inner_tracked_results.items():
@@ -387,7 +389,7 @@ def main():
             if recipient is not sys.stdout:
                 recipient.close()
 
-        #( Output of graphical tracking results: )##########################################################################
+        #( Output of graphical tracking results: )######################################################################
 
         if args.tracking_output is not None:
 
@@ -421,7 +423,7 @@ def main():
         print_info()
         if os.path.isfile(args.write_tunables):
             print_warning("Tunable output will not overwrite existing files!")
-            print_warning("NOT outputint tunables.")
+            print_warning("NOT outputing tunables.")
         else:
             fname = os.path.abspath(args.write_tunables)
             print_info("Writing tunables to \"%(fname)s\"" % {'fname': fname})

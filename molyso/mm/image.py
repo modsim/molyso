@@ -11,7 +11,7 @@ from ..generic.signal import rescale_and_fit_to_type
 from ..generic.rotation import find_rotation, apply_rotate_and_cleanup
 from ..generic.registration import translation_2x1d
 from .channel_detection import Channels
-from .. import DebugPlot
+from .. import DebugPlot, tunable
 
 class BaseImage(object):
     """
@@ -96,7 +96,7 @@ class AutoRotationProvider(object):
         """
 
         if self.angle != self.angle:
-            self.angle = find_rotation(self.image)
+            self.angle = find_rotation(self.image, steps=tunable("orientation-detection.strips", 10))
 
         # noinspection PyAttributeOutsideInit
         self.image, self.angle, self.crop_height, self.crop_width = \
@@ -130,8 +130,8 @@ class AutoRegistrationProvider(object):
         self.shift = [yn, xn]
 
 
-cell_color = '#005b82'
-channel_color = '#e7af12'
+cell_color = tunable('colors.cell', '#005b82')
+channel_color = tunable('colors.channel', '#e7af12')
 
 
 class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):

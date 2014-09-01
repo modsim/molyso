@@ -183,19 +183,18 @@ def analyse_cell_fates(tracker, previous_cells, current_cells):
     # original_current_cells = current_cells
     current_cells = current_cells.cells_list
 
-    def outcome_it_is_same(previous_cell, current_cell):
-        tracker.get_cell_by_observation(previous_cell).add_observation(current_cell)
+    def outcome_it_is_same(the_previous_cell, the_current_cell):
+        tracker.get_cell_by_observation(the_previous_cell).add_observation(the_current_cell)
 
+    def outcome_it_is_children(the_previous_cell, the_current_cells):
+        tracker.get_cell_by_observation(the_previous_cell). \
+            add_children(tracker.new_observed_cell(the_current_cells[0]),
+                         tracker.new_observed_cell(the_current_cells[1]))
 
-    def outcome_it_is_children(previous_cell, current_cells):
-        tracker.get_cell_by_observation(previous_cell). \
-            add_children(tracker.new_observed_cell(current_cells[0]), tracker.new_observed_cell(current_cells[1]))
+    def outcome_it_is_new(_, the_current_cell):
+        tracker.new_observed_origin(the_current_cell)
 
-
-    def outcome_it_is_new(_, current_cell):
-        tracker.new_observed_origin(current_cell)
-
-    outcome_it_is_lost = None  # lambda pcell, ccell: None
+    outcome_it_is_lost = None
 
     opt = CellCrossingCheckingGlobalDuoOptimizerQueue()
 
