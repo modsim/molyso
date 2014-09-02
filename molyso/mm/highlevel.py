@@ -63,7 +63,7 @@ def create_argparser():
 
     argparser.add_argument('input', metavar='input', type=str, help="input file")
     argparser.add_argument('-p', '--process', dest='process', default=False, action='store_true')
-    argparser.add_argument('-gt', '--ground-truth', dest='ground_truth', default=False, action='store_true')
+    argparser.add_argument('-gt', '--ground-truth', dest='ground_truth', type=str, default=None)
     argparser.add_argument('-tp', '--timepoints', dest='timepoints', default=[0, float('inf')], type=parse_range)
     argparser.add_argument('-mp', '--multipoints', dest='multipoints', default=[0, float('inf')], type=parse_range)
     argparser.add_argument('-o', '--table-output', dest='table_output', type=str, default=None)
