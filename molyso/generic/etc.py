@@ -9,7 +9,7 @@ import numpy
 import hashlib
 import time
 
-from .. import Debug, Timed
+from .. import Debug
 
 
 def silent_progress_bar(iterable):

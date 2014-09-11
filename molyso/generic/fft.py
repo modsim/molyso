@@ -240,7 +240,18 @@ def get_optimal_dft_size_w_numpy(n):
     return dft_sizes[numpy.searchsorted(dft_sizes, n)]
 
 
-get_optimal_dft_size = get_optimal_dft_size_w_numpy
+def get_optimal_dft_size(n):
+    """
+    Due to the nature of the FFT algorithm, certain sizes of transforms are vastly faster than others.
+    This function will yield a number >= n, which will yield a fast FFT.
+    A lookup table from OpenCV is used.
+
+    :param n: desired size
+    :type n: int
+    :return: optimal size
+    :rtype: n
+    """
+    return get_optimal_dft_size_w_numpy(n)
 
 fft = numpy.fft.fft
 ifft = numpy.fft.ifft
@@ -248,40 +259,82 @@ fftfreq = numpy.fft.fftfreq
 
 
 def spectrum_fourier(signal):
+    """
+    Calls the Fourier transform, and returns only the first half of the transform results
+
+    :param signal: input signal
+    :type signal: numpy.array
+    :return: Fourier transformed data
+    :rtype: numpy.array
+    """
     return fft(signal)[:len(signal) // 2]
 
 
 def spectrum_bins_by_length(len_signal):
+    """
+    Returns the bins associated with a Fourier transform of a signal of the length len_signal
+
+    :param len_signal: length of the desired bin distribution
+    :type len_signal: int
+    :return: frequency bins
+    :rtype: numpy.array
+    """
     freqs = fftfreq(len_signal)[:len_signal // 2]
     freqs[1:] = 1.0 / freqs[1:]
     return freqs
 
 
 def spectrum_bins(signal):
+    """
+    Returns the bins associated with a Fourier transform of a signal of the same length of signal
+
+    :param signal: input signal
+    :type signal: numpy.array
+    :return: frequency bins
+    :rtype: numpy.array
+    """
     len_arr = len(signal)
     return spectrum_bins_by_length(len_arr)
 
 
 def spectrum(signal):
     """
-    returns the spectrum (tuple of frequencies and their occurrence)
+    Return a raw spectrum (values are complex). Use :func:`power_spectrum` to directly get real values.
+
     :param signal: input signal
-    :return:
+    :type signal: numpy.array
+    :return: frequencies and fourier transformed values
+    :rtype: tuple(numpy.array, numpy.array)
     """
     return spectrum_bins(signal), spectrum_fourier(signal)
 
 
 def power_spectrum(signal):
     """
-    return a power (absolute/real) spectrum (as opposed to the complex spectrum returned by spectrum itself
-    :param signal:
-    :return:
+    Return a power (absolute/real) spectrum (as opposed to the complex spectrum returned by :func:`spectrum` itself)
+
+    :param signal: input signal
+    :type signal: numpy.array
+    :return: frequencies and fourier transformed values
+    :rtype: tuple(numpy.array, numpy.array)
     """
     freqs, fourier = spectrum(signal)
     return freqs, numpy.absolute(fourier)
 
 
 def hires_power_spectrum(signal, oversampling=1):
+    """
+    Return a high resolution power spectrum (compare :func:`power_spectrum`)
+    Resolution is enhanced by feeding the FFT a n times larger, zero-padded signal,
+    which will yield frequency values of higher precision.
+
+    :param signal: input signal
+    :type signal: numpy.array
+    :param oversampling: oversampling factor
+    :type oversampling: int
+    :return: frequencies and fourier transformed values
+    :rtype: tuple(numpy.array, numpy.array)
+    """
     arr_len = len(signal)
     xsize = get_optimal_dft_size(oversampling * arr_len)
 
