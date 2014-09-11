@@ -9,7 +9,7 @@ import os
 import inspect
 import sys
 
-if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))), "molyso")):
+if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))), 'molyso')):
     import molyso.mm.highlevel
 else:
     sys.path = list(reversed(sys.path))

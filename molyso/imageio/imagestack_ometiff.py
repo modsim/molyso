@@ -132,12 +132,9 @@ class OMETiffStack(MultiImageStack):
 
     def _get_meta(self, *args, **kwargs):
         what = args[0]
-        t = 0
-        if 't' in kwargs:
-            t = kwargs['t']
-        pos = 0
-        if 'pos' in kwargs:
-            pos = kwargs['pos']
+
+        t = kwargs['t'] if 't' in kwargs else 0
+        pos = kwargs['pos'] if 'pos' in kwargs else 0
 
         image = [tp for tp in self.images[pos] if tp['TheT'] == t][0]
 
@@ -153,3 +150,42 @@ class OMETiffStack(MultiImageStack):
 
 MultiImageStack.ExtensionRegistry['.ome.tiff'] = OMETiffStack
 MultiImageStack.ExtensionRegistry['.ome.tif'] = OMETiffStack
+
+
+class PlainTiffStack(MultiImageStack):
+    SimpleMapping = {
+        MultiImageStack.Phase_Contrast: 0,
+        MultiImageStack.DIC: 0,
+        MultiImageStack.Fluorescence: 1,
+    }
+
+    def __init__(self, filename='', treat_z_as_mp=False):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            self.tiff = TiffFile(filename)
+        self.fp = self.tiff.pages[0]
+
+    def _get_image(self, **kwargs):
+        return self.tiff.pages[kwargs['t']].asarray()
+
+    def _get_meta(self, *args, **kwargs):
+        what = args[0]
+        t = 0
+        if 't' in kwargs:
+            t = kwargs['t']
+        pos = 0
+        if 'pos' in kwargs:
+            pos = kwargs['pos']
+
+        return {
+            'calibration': lambda: 1.0,
+            'channels': lambda: 1,
+            'position': lambda: (0.0, 0.0, 0.0,),
+            'time': lambda: t,
+            'timepoints': lambda: len(self.tiff.pages),
+            'multipoints': lambda: 1
+        }[what]()
+
+
+MultiImageStack.ExtensionRegistry['.tiff'] = PlainTiffStack
+MultiImageStack.ExtensionRegistry['.tif'] = PlainTiffStack

@@ -52,6 +52,10 @@ def catch_index_error(what, otherwise):
         return otherwise
 
 
+def embedded_assert(expression):
+    assert expression
+    return True
+
 def plot_timeline(p, channels, cells,
                   figure_presetup=None, figure_finished=None,
                   show_images=True, show_overlay=True,
@@ -233,14 +237,16 @@ def analyze_tracking(cells, receptor):
                 'uid_track': id(cell),
                 'uid_thiscell': id(sa),
                 'uid_cell': id(cell),
-                'uid_parent': id(cell.parent),
+                'uid_parent': id(cell.parent) if cell.parent and embedded_assert(id(cell.parent) != 0) else 0,  # None has an id !
                 'timepoint': sa.channel.image.timepoint,
                 'timepoint_num': sa.channel.image.timepoint_num,
                 'cellyposition': sa.centroid_1d,
+                'cellxposition': (sa.channel.left + sa.channel.right)/2,
                 'multipoint': sa.channel.image.multipoint,
                 'channel_in_multipoint': sa.channel.image.channels.channels_list.index(sa.channel),
                 'channel_average_cells': cell.tracker.average_cells,
                 'channel_orientation': sa.channel.image.guess_channel_orientation(),
+                'channel_width': sa.channel.image.pixel_to_mu(abs(sa.channel.left - sa.channel.right)),
                 'about_to_divide': int(
                     ((sn + 1) == len(cell.seen_as)) and (cell.parent is not None) and (len(cell.children) > 0)
                 ),
@@ -249,5 +255,6 @@ def analyze_tracking(cells, receptor):
                         cell.children[0].seen_as[0].channel.image.timepoint - cell.seen_as[0].channel.image.timepoint
                     ), float('NaN')),
                 'fluorescence': getattr(sa, 'fluorescence', float('NaN')),
+                'fluorescence_std': getattr(sa, 'fluorescence_std', float('NaN')),
                 'fluorescence_background': getattr(sa.channel.image, 'background_fluorescence', float('NaN')),
             })

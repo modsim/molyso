@@ -227,14 +227,21 @@ def remove_outliers(data, times_std=2.0):
 
 
 def find_insides(signal):
-    tmp = signal != numpy.roll(signal, shift=1)
-    tmp[0], tmp[-1] = signal[0], signal[-1]
-    tmp, = numpy.where(tmp)
-    if tmp[-1] == signal.size - 1:
-        tmp[-1] += 1
-    tmp = tmp.reshape((tmp.size//2, 2))
-    tmp[:, 1] -= 1
-    return tmp
+    # had a nicer numpy using solution ... which failed in some cases ...
+    # plain, but works.
+    pairs = []
+    last_true = None
+    for n, i in enumerate(signal):
+        if i and not last_true:
+            last_true = n
+        elif not i and last_true:
+            pairs.append([last_true, n])
+            last_true = None
+
+    if last_true:
+        pairs.append([last_true, len(signal)-1])
+
+    return numpy.array(pairs)
 
 
 def one_every_n(length, n=1, shift=0):

@@ -62,6 +62,7 @@ def create_argparser():
     argparser.error = _error
 
     argparser.add_argument('input', metavar='input', type=str, help="input file")
+    argparser.add_argument('-m', '--module', dest='modules', type=str, default=None, action='append')
     argparser.add_argument('-p', '--process', dest='process', default=False, action='store_true')
     argparser.add_argument('-gt', '--ground-truth', dest='ground_truth', type=str, default=None)
     argparser.add_argument('-tp', '--timepoints', dest='timepoints', default=[0, float('inf')], type=parse_range)
@@ -169,11 +170,28 @@ def processing_frame(args, t, pos):
     return image
 
 
+def setup_modules(modules):
+    import importlib
+    for module in modules:
+        try:
+            importlib.import_module("molyso_%s" % module)
+        except ImportError:
+            try:
+                importlib.import_module(module)
+            except ImportError:
+                print("WARNING: Could not load either module molyso_%s or %s!" % (module, module,))
+
+
+
 def processing_setup(args):
     global ims
     global first_to_look_at
 
     first_to_look_at = args.timepoints[0]
+
+
+    if args.modules:
+        setup_modules(args.modules)
 
     if ims is None:
         ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
@@ -210,6 +228,9 @@ def main():
 
     if not args.nb:
         print_info(banner())
+
+    if args.modules:
+        setup_modules(args.modules)
 
     if not args.process:
         return interactive_main(args)

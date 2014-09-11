@@ -29,10 +29,10 @@ class MultiImageStack(object):
     def get_image(self, *args, **kwargs):
         image = self._get_image(*args, **kwargs)
 
-        if "float" in kwargs and kwargs["float"]:
+        if 'float' in kwargs and kwargs['float']:
             return image.astype(np.float32)
 
-        if "raw" in kwargs and kwargs["raw"]:
+        if 'raw' in kwargs and kwargs['raw']:
             return image
         return image
 
@@ -52,7 +52,7 @@ class MultiImageStack(object):
         :return:
         """
 
-        for k, v in cls.ExtensionRegistry.items():
+        for k, v in sorted(list(cls.ExtensionRegistry.items()), key=lambda inp: len(inp[0]), reverse=True):
             if filename.lower().endswith(k):
                 i = v(filename, *args, **kwargs)
                 return i

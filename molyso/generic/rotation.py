@@ -59,9 +59,11 @@ try:
         :param angle:
         :return:
         """
+
         return cv2.warpAffine(image,
                               cv2.getRotationMatrix2D((image.shape[1] * 0.5, image.shape[0] * 0.5), angle, 1.0),
                               (image.shape[1], image.shape[0]))
+
 except ImportError:
     try:
         # noinspection PyUnresolvedReferences

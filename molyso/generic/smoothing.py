@@ -7,7 +7,6 @@ one currently used by external files, providing a simplified interface for smoot
 from __future__ import division, unicode_literals, print_function
 
 import numpy
-import scipy.signal
 
 
 def smooth(signal, kernel):

@@ -12,7 +12,7 @@ from ..generic.rotation import apply_rotate_and_cleanup
 
 
 class FluorescentCell(Cell):
-    __slots__ = ['fluorescence_mean']
+    __slots__ = ['fluorescence_mean', 'fluorescence_std']
 
     def __init__(self, *args, **kwargs):
         super(FluorescentCell, self).__init__(*args, **kwargs)
@@ -26,9 +26,11 @@ class FluorescentCell(Cell):
                        self.channel.left:self.channel.right]
 
             self.fluorescence_mean = float(cell_img.mean())
+            self.fluorescence_std = float(numpy.std(cell_img))
 
         except AttributeError:
             self.fluorescence_mean = float('nan')
+            self.fluorescence_std = float('nan')
 
     @property
     def fluorescence(self):
@@ -108,10 +110,13 @@ class FluorescentImage(Image):
         super(FluorescentImage, self).flatten()
 
         self.channels_cells_fluorescence_mean = [[cc.fluorescence_mean for cc in c.cells] for c in channels]
+        self.channels_cells_fluorescence_std = [[cc.fluorescence_std for cc in c.cells] for c in channels]
 
     def unflatten(self):
         super(FluorescentImage, self).unflatten()
         for n, channel in enumerate(self.channels):
             for cn, cell in enumerate(channel.cells):
                 cell.fluorescence_mean = self.channels_cells_fluorescence_mean[n][cn]
+                cell.fluorescence_std = self.channels_cells_fluorescence_std[n][cn]
         self.channels_cells_fluorescence_mean = None
+        self.channels_cells_fluorescence_std = None
