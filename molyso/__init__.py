@@ -6,4 +6,4 @@ from .debugging.debug import Debug
 from .debugging.debugplot import DebugPlot
 from .generic.tunable import tunable, TunableManager
 
-__version__ = "0.1"
+__version__ = '0.1'

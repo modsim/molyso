@@ -34,7 +34,16 @@ except ImportError:
             eta = " ETA %.2fs" % (numpy.mean(times[:n + 1]) * (len(iterable) - (n + 1)))
             print("processed %d/%d [took %.3fs%s]" % (n + 1, len(iterable), times[n], eta))
 
-progress_bar = fancy_progress_bar
+def iter_time(what):
+    start_time = time.time()
+    for n in what:
+        yield n
+    stop_time = time.time()
+    print("whole step took %.3fs" % (stop_time - start_time,))
+
+_fancy_progress_bar = fancy_progress_bar
+
+fancy_progress_bar = lambda x: iter_time(_fancy_progress_bar(x))
 
 
 class QuickTableDumper(object):
@@ -45,8 +54,8 @@ class QuickTableDumper(object):
         self.recipient = recipient
         self.headers = []
 
-        self.delim = "\t"
-        self.lineend = "\n"
+        self.delim = '\t'
+        self.lineend = '\n'
         self.precision = 8
 
     def write(self, s):
@@ -86,7 +95,7 @@ try:
 except ImportError:
     import _thread as thread
 
-if os.name != "nt":
+if os.name != 'nt':
     def correct_windows_signal_handlers():
         pass
 else:
@@ -118,9 +127,9 @@ def parse_range(s, allow_open_interval=True):
     ranges = []
     tail = []
     for frag in s.replace(';', ',').split(','):
-        if "-" in frag:
-            f, t = frag.split("-")
-            if t == "":
+        if '-' in frag:
+            f, t = frag.split('-')
+            if t == '':
                 if allow_open_interval:
                     tail = [int(f), float('Inf')]
                 else:

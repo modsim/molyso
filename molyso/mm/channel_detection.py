@@ -132,8 +132,8 @@ def horizontal_channel_detection(image):
     upper_profile = hamming_smooth(upper_profile, 5)  # 5
     lower_profile = hamming_smooth(lower_profile, 5)  # 5
 
-    with DebugPlot('channeldetection', 'details', 'differentials', 'smoothed') as p:
-        p.title("Channeldetection/Differentials/Smoothed")
+    with DebugPlot('channel_detection', 'details', 'differentials', 'smoothed') as p:
+        p.title("Channel detection/Differentials/Smoothed")
         p.plot(upper_profile)
         p.plot(lower_profile)
 
@@ -149,12 +149,12 @@ def horizontal_channel_detection(image):
     frequencies_upper, fourier_value_upper, mainfrequency_upper = calc_bins_freqs_main(upper_profile)
     frequencies_lower, fourier_value_lower, mainfrequency_lower = calc_bins_freqs_main(lower_profile)
 
-    with DebugPlot('channeldetection', 'details', 'powerspectra', 'upper') as p:
+    with DebugPlot('channel_detection', 'details', 'powerspectra', 'upper') as p:
         p.title("Powerspectrum (upper)")
         p.semilogx(frequencies_upper, fourier_value_upper)
         p.title("mainfreq=%f" % mainfrequency_upper)
 
-    with DebugPlot('channeldetection', 'details', 'powerspectra', 'lower') as p:
+    with DebugPlot('channel_detection', 'details', 'powerspectra', 'lower') as p:
         p.title("Powerspectrum (lower)")
         p.semilogx(frequencies_lower, fourier_value_lower)
         p.title("mainfreq=%f" % mainfrequency_lower)
@@ -325,11 +325,11 @@ def find_channels(image):
 
     profile = horizontal_mean(image)
 
-    with DebugPlot('channeldetection', 'details', 'overview', 'horizontal') as p:
+    with DebugPlot('channel_detection', 'details', 'overview', 'horizontal') as p:
         p.title("Basic horizontal overview")
         p.plot(profile)
 
-    with DebugPlot("channeldetection", "details", "overview", "vertical") as p:
+    with DebugPlot('channel_detection', 'details', 'overview', 'vertical') as p:
         p.title("Basic vertical overview")
         p.plot(vertical_mean(image))
 

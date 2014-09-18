@@ -4,6 +4,8 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
+from .. import tunable
+
 import numpy
 
 
@@ -17,6 +19,11 @@ def iterate_over_cells(cells):
 
     for cell in cells:
         _rec(cell)
+
+    # for reproducible results, sort the cells
+
+    collector = sorted(collector, key=lambda cell: (cell.seen_as[0].channel.image.timepoint, cell.seen_as[0].local_top))
+
     return collector
 
 
@@ -56,11 +63,15 @@ def embedded_assert(expression):
     assert expression
     return True
 
+
 def plot_timeline(p, channels, cells,
                   figure_presetup=None, figure_finished=None,
                   show_images=True, show_overlay=True,
                   leave_open=False):
     from ..debugging.debugplot import poly_drawing_helper
+    import matplotlib.colors
+
+    colors = list(matplotlib.colors.cnames.keys())
 
     time_points = numpy.sort([cc.image.timepoint for cc in channels])
 
@@ -86,7 +97,7 @@ def plot_timeline(p, channels, cells,
 
         ne = time_points[bs] if 0 <= bs < len(time_points) else time_point
 
-        pre = time_points[bs - 2] if 0 <= bs < len(time_points) else time_point
+        pre = time_points[bs - 2] if 0 <= bs - 2 < len(time_points) else time_point
 
         left = max(0.0, time_point - abs(time_point - pre) / 2.0)
         right = min(time_points[-1], time_point + abs(ne - time_point) / 2.0)
@@ -122,30 +133,16 @@ def plot_timeline(p, channels, cells,
 
     needed_length = sum(len(cell.seen_as) for cell in cells) + len(cells)
 
-    # divisions = numpy.zeros((needed_length, 3))
-    # divisions_used = 0
-
-    # for cell in cells:
-    # if cell.parent is not None:
-    # if len(cell.children) > 0:
-    # child = cell.children[0]
-    #     # cell took first_occurrence_parent to first_occurrence_child time to divide!
-    #     t1 = cell.seen_as[0].channel.image.timepoint
-    #     t2 = child.seen_as[0].channel.image.timepoint
-    #
-    #     divisions[divisions_used, 0] = s_to_h(t2 - t1)
-    #     divisions[divisions_used, 1] = t2
-    #     divisions[divisions_used, 2] = cell.seen_as[-1].centroid1dloc
-    #
-    #     divisions_used += 1
-    # divisions = divisions[:divisions_used, :]
-
     scatter_collector = numpy.zeros((needed_length, 5))  # type, x, y, int, length
     scatter_used = 0
 
-    # "constants"
+    # constants
+
+    pos_type, pos_time_point, pos_centroid, pos_fluorescence, pos_length = 0, 1, 2, 3, 4
 
     type_nothing, type_start, type_stop, type_junction = 0.0, 1.0, 2.0, 3.0
+
+    numpy.random.seed(tunable('colors.visualization.track.random.seed', 3141592653))
 
     for cell in cells:
         old_scatter_used = scatter_used
@@ -153,11 +150,11 @@ def plot_timeline(p, channels, cells,
         if cell.parent is not None:
             parent_cell = cell.parent.seen_as[-1]
 
-            scatter_collector[scatter_used, 0] = type_nothing
-            scatter_collector[scatter_used, 1] = parent_cell.channel.image.timepoint
-            scatter_collector[scatter_used, 2] = parent_cell.centroid_1d
-            scatter_collector[scatter_used, 3] = getattr(parent_cell, 'fluorescence', 0.0)
-            scatter_collector[scatter_used, 4] = parent_cell.length
+            scatter_collector[scatter_used, pos_type] = type_nothing
+            scatter_collector[scatter_used, pos_time_point] = parent_cell.channel.image.timepoint
+            scatter_collector[scatter_used, pos_centroid] = parent_cell.centroid_1d
+            scatter_collector[scatter_used, pos_fluorescence] = getattr(parent_cell, 'fluorescence', 0.0)
+            scatter_collector[scatter_used, pos_length] = parent_cell.length
 
             scatter_used += 1
 
@@ -172,53 +169,58 @@ def plot_timeline(p, channels, cells,
             else:
                 the_type = type_nothing
 
-            scatter_collector[scatter_used, 0] = the_type
-            scatter_collector[scatter_used, 1] = cell_appearance.channel.image.timepoint
-            scatter_collector[scatter_used, 2] = cell_appearance.centroid_1d
-            scatter_collector[scatter_used, 3] = getattr(cell_appearance, 'fluorescence', 0.0)
-            scatter_collector[scatter_used, 4] = cell_appearance.length
+            scatter_collector[scatter_used, pos_type] = the_type
+            scatter_collector[scatter_used, pos_time_point] = cell_appearance.channel.image.timepoint
+            scatter_collector[scatter_used, pos_centroid] = cell_appearance.centroid_1d
+            scatter_collector[scatter_used, pos_fluorescence] = getattr(cell_appearance, 'fluorescence', 0.0)
+            scatter_collector[scatter_used, pos_length] = cell_appearance.length
 
             scatter_used += 1
 
-        col = '#005B82'
+        color = tunable('colors.visualization.track.color', '#005B82')
+        color_alpha = tunable('colors.visualization.track.alpha', 0.3)
+
+        if tunable('colors.visualization.track.random', 1) == 1:
+            color = colors[numpy.random.randint(0, len(colors))]
+
         if show_overlay:
             slice_of_interest = scatter_collector[old_scatter_used:scatter_used, :]
             p.plot(
-                slice_of_interest[:, 1],
-                slice_of_interest[:, 2],
-                marker=None, lw=0.5, c=col, zorder=1.4)  # marker='o', markersize=0.1
+                slice_of_interest[:, pos_time_point],
+                slice_of_interest[:, pos_centroid],
+                marker=None, lw=0.5, c=color, zorder=1.4)  # marker='o', markersize=0.1
             p.fill_between(
-                slice_of_interest[:, 1],
-                slice_of_interest[:, 2] - 0.5 * slice_of_interest[:, 4],
-                slice_of_interest[:, 2] + 0.5 * slice_of_interest[:, 4],
-                lw=0, alpha=0.3, facecolor=col, zorder=1.3)
+                slice_of_interest[:, pos_time_point],
+                slice_of_interest[:, pos_centroid] - 0.5 * slice_of_interest[:, pos_length],
+                slice_of_interest[:, pos_centroid] + 0.5 * slice_of_interest[:, pos_length],
+                lw=0, alpha=color_alpha, facecolor=color, zorder=1.3)
 
     scatter_collector = scatter_collector[:scatter_used, :]
 
-    sc = None
+    has_fluorescence = not (scatter_collector[:, pos_fluorescence] == 0.0).all()
 
     if show_overlay:
-        starts = scatter_collector[scatter_collector[:, 0] == type_start, :]
-        stops = scatter_collector[scatter_collector[:, 0] == type_stop, :]
-        junctions = scatter_collector[scatter_collector[:, 0] == type_junction, :]
+        starts = scatter_collector[scatter_collector[:, pos_type] == type_start, :]
+        stops = scatter_collector[scatter_collector[:, pos_type] == type_stop, :]
+        junctions = scatter_collector[scatter_collector[:, pos_type] == type_junction, :]
 
-        p.scatter(starts[:, 1], starts[:, 2],
+        p.scatter(starts[:, pos_time_point], starts[:, pos_centroid],
                   c='green', s=10, marker='>', lw=0, zorder=1.5)
-        p.scatter(stops[:, 1], stops[:, 2],
+        p.scatter(stops[:, pos_time_point], stops[:, pos_centroid],
                   c='red', s=10, marker='8', lw=0, zorder=1.5)
-        p.scatter(junctions[:, 1], junctions[:, 2],
+        p.scatter(junctions[:, pos_time_point], junctions[:, pos_centroid],
                   c='blue', s=10, marker='D', lw=0, zorder=1.5)
 
-        sc = p.scatter(scatter_collector[:, 1],
-                       scatter_collector[:, 2],
-                       c=scatter_collector[:, 3],
-                       s=5, cmap='jet', lw=0, zorder=10.0)
-        p.colorbar(sc)
-
-    if show_images and sc is None:
-        sc = p.scatter([time_points[0], time_points[0]], [max_h * 0.5, max_h * 0.5], c=[0.0, 1.0],
-                       s=5, cmap='jet', lw=0, zorder=-1.0)
-        p.colorbar(sc)
+        if has_fluorescence:
+            sc = p.scatter(scatter_collector[:, pos_time_point],
+                           scatter_collector[:, pos_centroid],
+                           c=scatter_collector[:, pos_fluorescence],
+                           s=5, cmap='jet', lw=0, zorder=10.0)
+            p.colorbar(sc)
+        else:
+            p.scatter(scatter_collector[:, pos_time_point],
+                      scatter_collector[:, pos_centroid],
+                      s=5, lw=0, zorder=10.0)
 
     if figure_finished:
         figure_finished(p)

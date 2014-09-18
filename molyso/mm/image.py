@@ -34,19 +34,19 @@ class BaseImage(object):
         self.timepoint = 0.0
         self.timepoint_num = 0
 
-        self.calibration_px_to_mu = 1.0  # "uncalibrated"
+        self.calibration_px_to_mu = 1.0  # uncalibrated
 
         # metadata
 
-        self.metadata = {"x": 0.0,
-                         "y": 0.0,
-                         "z": 0.0,
-                         "time": 0.0,
-                         "timepoint": 0,
-                         "multipoint": 0,
-                         "calibration_px_to_mu": 1.0,
-                         "tag": "",
-                         "tag_number": 0}
+        self.metadata = {'x': 0.0,
+                         'y': 0.0,
+                         'z': 0.0,
+                         'time': 0.0,
+                         'timepoint': 0,
+                         'multipoint': 0,
+                         'calibration_px_to_mu': 1.0,
+                         'tag': '',
+                         'tag_number': 0}
 
         self.angle = float('NaN')
         self.crop_height = 0
@@ -96,7 +96,7 @@ class AutoRotationProvider(object):
         """
 
         if self.angle != self.angle:
-            self.angle = find_rotation(self.image, steps=tunable("orientation-detection.strips", 10))
+            self.angle = find_rotation(self.image, steps=tunable('orientation-detection.strips', 10))
 
         # noinspection PyAttributeOutsideInit
         self.image, self.angle, self.crop_height, self.crop_width = \
@@ -157,6 +157,8 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
         self.channels = None
 
+        self.channel_orientation_cache = 0
+
         # empty data structures for flattening/unflattening
         self.channels_left = None
         self.channels_right = None
@@ -171,7 +173,7 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
     def setup_image(self, image):
         super(Image, self).setup_image(image)
-        with DebugPlot("image", "input") as p:
+        with DebugPlot('image', 'input') as p:
             p.title("Input image")
             p.imshow(self.image)
 
@@ -183,7 +185,7 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
         super(Image, self).autorotate()
 
-        with DebugPlot("image", "rotated") as p:
+        with DebugPlot('image', 'rotated') as p:
             p.title("Rotated image")
             p.imshow(self.image)
 
@@ -195,14 +197,14 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
         self.channels = self.__class__.channels_type(self)
 
-        with DebugPlot('channeldetection', 'result', 'onoriginal') as p:
+        with DebugPlot('channel_detection', 'result', 'on_original') as p:
             p.title("Detected channels (on original image)")
             p.imshow(self.original_image)
             for chan in self.channels:
                 coords = [self.cp(*pp) for pp in chan.get_coordinates()]
                 p.poly_drawing_helper(coords, lw=1, edgecolor=channel_color, fill=False, closed=True)
 
-        with DebugPlot('channeldetection', 'result', 'rotated') as p:
+        with DebugPlot('channel_detection', 'result', 'rotated') as p:
             p.title("Detected channels")
             p.imshow(self.image)
             for chan in self.channels:
@@ -220,7 +222,7 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         for channel in self.channels:
             channel.detect_cells()
 
-        with DebugPlot('celldetection', 'result', 'rotated') as p:
+        with DebugPlot('cell_detection', 'result', 'rotated') as p:
             self.debug_print_cells(p)
 
     def debug_print_cells(self, p):

@@ -15,11 +15,11 @@ def poly_drawing_helper(p, coords, **kwargs):
 
     actions = [Path.MOVETO] + [Path.LINETO] * (len(coords) - 1)
 
-    if "closed" in kwargs:
-        if kwargs["closed"]:
+    if 'closed' in kwargs:
+        if kwargs['closed']:
             actions.append(Path.CLOSEPOLY)
             coords.append((0, 0))
-        del kwargs["closed"]
+        del kwargs['closed']
 
     gca.add_patch(PathPatch(Path(coords, actions), **kwargs))
 

@@ -108,12 +108,11 @@ class TrackedPosition(object):
         cell_means = {k: (float(sum(v)) / len(v)) if len(v) > 0 else 0.0 for k, v in self.cell_counts.items()}
 
         for k, mean_cellcount in cell_means.items():
-            if mean_cellcount < tunable("tracking.empty_channel_filtering.minimum_mean_cells", 2.0):
+            if mean_cellcount < tunable('tracking.empty_channel_filtering.minimum_mean_cells', 2.0):
                 del self.tracker_mapping[k]
                 del self.channel_accumulator[k]
                 del self.cell_counts[k]
                 del self.cell_centroid_accumulator[k]
-
 
     def guess_channel_orientation(self):
         for channel_num in self.channel_accumulator.keys():
@@ -163,9 +162,9 @@ class TrackedPosition(object):
 
     def remove_empty_channels_post_tracking(self):
         minimum_average_cells = 2.0
-        shouldskip = True
+        should_skip = True
         for k, tracker in list(self.tracker_mapping.items()):
-            if shouldskip and tracker.average_cells < minimum_average_cells:  # 0.5:
+            if should_skip and tracker.average_cells < minimum_average_cells:  # 0.5:
                 del self.tracker_mapping[k]
                 del self.channel_accumulator[k]
                 del self.cell_counts[k]

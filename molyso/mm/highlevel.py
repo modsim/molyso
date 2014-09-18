@@ -17,6 +17,7 @@ import itertools
 import codecs
 import json
 import multiprocessing
+import datetime
 
 from .. import Debug, TunableManager
 
@@ -47,13 +48,13 @@ def banner():
 
      %(citation)s
      --------------------------------------------------------------------
-    """ % {"citation": __citation__}
+    """ % {'citation': __citation__}
 
 
 def create_argparser():
     argparser = argparse.ArgumentParser(description="molyso: MOther machine anaLYsis SOftware")
 
-    def _error(message=""):
+    def _error(message=''):
         print(banner())
         argparser.print_help()
         sys.stderr.write("%serror: %s%s" % (os.linesep, message, os.linesep,))
@@ -229,6 +230,8 @@ def main():
     if not args.nb:
         print_info(banner())
 
+    print_info("molyso started at %s" % (str(datetime.datetime.now())))
+
     if args.modules:
         setup_modules(args.modules)
 
@@ -298,7 +301,6 @@ def main():
         results = {pos: {} for pos in positions_to_process}
 
         total = len(timepoints_to_process) * len(positions_to_process)
-        processed = 0
 
         if args.mp < 0:
             args.mp = multiprocessing.cpu_count()
@@ -313,7 +315,7 @@ def main():
             for t, pos in progress_bar(to_process):
                 results[pos][t] = processing_frame(args, t, pos)
         else:
-            print_info("... parallel on %(cores)d cores" % {'cores': args.mp})
+            print_info("... parallel with %(process_count)d processes" % {'process_count': args.mp})
 
             pool = multiprocessing.Pool(args.mp, processing_setup, [args])
 
@@ -321,6 +323,8 @@ def main():
 
             for t, pos in to_process:
                 workerstates.append((t, pos, pool.apply_async(processing_frame, (args, t, pos))))
+
+            pool.close()
 
             progressbar_states = progress_bar(range(total))
 
@@ -331,7 +335,12 @@ def main():
                         del workerstates[i]
                         next(progressbar_states)
 
-            pool.close()
+            try:
+                # to output the progress bar, the iterator must be pushed beyond its end
+                next(progressbar_states)
+            except StopIteration:
+                pass
+
 
         cache['imageanalysis'] = results
 
@@ -391,7 +400,7 @@ def main():
         if args.table_output is None:
             recipient = sys.stdout
         else:
-            recipient = codecs.open(args.table_output, "wb+", "utf-8")
+            recipient = codecs.open(args.table_output, 'wb+', 'utf-8')
 
         print_info()
         print_info("Outputting tabular data ...")
@@ -448,6 +457,8 @@ def main():
         else:
             fname = os.path.abspath(args.write_tunables)
             print_info("Writing tunables to \"%(fname)s\"" % {'fname': fname})
-            with codecs.open(fname, "wb+", "utf-8") as fp:
+            with codecs.open(fname, 'wb+', 'utf-8') as fp:
                 json.dump(TunableManager.get_defaults(), fp, indent=4, sort_keys=True)
+
+    print_info("molyso finished at %s" % (str(datetime.datetime.now())))
 
