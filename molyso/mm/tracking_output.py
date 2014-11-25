@@ -236,7 +236,7 @@ def analyze_tracking(cells, receptor):
                 'cell_age': s_to_h(sa.channel.image.timepoint - cell.seen_as[0].channel.image.timepoint),
                 'elongation_rate': catch_index_error(lambda: cell.raw_elongation_rates[sn], float('NaN')),
                 'length': sa.channel.image.pixel_to_mu(sa.length),
-                'uid_track': id(cell),
+                'uid_track': id(cell.ultimate_parent),
                 'uid_thiscell': id(sa),
                 'uid_cell': id(cell),
                 'uid_parent': id(cell.parent) if cell.parent and embedded_assert(id(cell.parent) != 0) else 0,  # None has an id !

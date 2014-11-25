@@ -63,6 +63,13 @@ class TrackedCell(object):
         self.raw_trajectories = [0.0]
 
     @property
+    def ultimate_parent(self):
+        if self.parent is None:
+            return self
+        else:
+            return self.parent.ultimate_parent
+
+    @property
     def elongation_rates(self):
         # if self.parent:
         # return self.parent.elongation_rates + self.raw_elongation_rates
