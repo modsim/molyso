@@ -143,6 +143,7 @@ def find_extrema_and_prominence(signal, order=5):
 def simple_baseline_correction(signal, window_width=None):
     """
     performs a simple baseline correction by subtracting a strongly smoothed version of the signal from itself
+
     :param signal: input signal
     :param window_width: smoothing window width
     :return:
@@ -174,6 +175,7 @@ def relative_minima(signal, order=1):
 def normalize(data):
     """
     normalizes the values in arr to 0 - 1
+
     :param data: input array
     :return: normalized array
     """
@@ -202,6 +204,7 @@ def rescale_and_fit_to_type(image, new_dtype):
 def threshold_outliers(data, times_std=2.0):
     """
     removes outliers
+
     :param data:
     :param times_std:
     :return:

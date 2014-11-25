@@ -5,9 +5,7 @@ documentation
 
 from __future__ import division, unicode_literals, print_function
 
-__citation__ = \
-    """molyso: Image Analysis Software for Automated High-Throughput Analysis""" +\
-    """of Mother Machine Microfluidic Experiments.\nSachs et al."""
+from .. import __citation__
 
 import argparse
 import sys

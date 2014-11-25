@@ -7,3 +7,6 @@ from .debugging.debugplot import DebugPlot
 from .generic.tunable import tunable, TunableManager
 
 __version__ = '0.1'
+
+__citation__ = \
+    """molyso. 2014. In preparation. Please check back for the correct citation."""

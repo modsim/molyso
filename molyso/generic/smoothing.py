@@ -12,8 +12,9 @@ import numpy
 def smooth(signal, kernel):
     """
     Generic smoothing function, smoothes by convolving one signal with another.
+
     :param signal: input signal to be smoothed
-    :param kernel: smoothing kernel to be used. will be normalized to $\Sum=1$
+    :param kernel: smoothing kernel to be used. will be normalized to :math:`\sum=1`
     :return:
     """
 
@@ -26,6 +27,7 @@ def smooth(signal, kernel):
 def hamming_smooth(signal, window_width, no_cache=False):
     """
     Smoothes a signal by convolving with a hamming window of given width. Caches by the hamming windows by default.
+
     :param signal: input signal to be smoothed
     :param window_width: window width for the hamming kernel
     :param no_cache: default False, disables caching, e.g. for non-standard window sizes
@@ -42,10 +44,10 @@ def signals(function, parameters):
     """
     Signal cache helper function. Either retrieves or creates and stores a signal which can be created by calling
     the given function with the given parameters.
-    Returns function(*parameters)
+
     :param function: Window function to be called
     :param parameters: Parameters to be passed to the function
-    :return:
+    :return: function(*parameters)
     """
     global _signals
     if function not in _signals:
