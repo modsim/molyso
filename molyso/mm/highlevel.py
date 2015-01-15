@@ -329,7 +329,12 @@ def main():
             while len(workerstates) > 0:
                 for i, (t, pos, state) in reversed(list(enumerate(workerstates))):
                     if state.ready():
-                        results[pos][t] = state.get()
+                        try:
+                            results[pos][t] = state.get()
+                        except Exception as e:
+                            print("ERROR: Exception occured at pos: %(pos)d, time %(time)d: %(e)s" %
+                                  {'pos': pos, 'time': t, 'e': str(e)})
+
                         del workerstates[i]
                         next(progressbar_states)
 
