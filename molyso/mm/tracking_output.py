@@ -133,7 +133,7 @@ def plot_timeline(p, channels, cells,
 
     needed_length = sum(len(cell.seen_as) for cell in cells) + len(cells)
 
-    scatter_collector = numpy.zeros((needed_length, 5))  # type, x, y, fluor, length
+    scatter_collector = numpy.zeros((needed_length, 5), dtype=numpy.float32)  # type, x, y, fluor, length
     scatter_used = 0
 
     # constants
@@ -155,7 +155,7 @@ def plot_timeline(p, channels, cells,
             scatter_collector[scatter_used, pos_centroid] = parent_cell.centroid_1d
             # TODO different visualization?
             scatter_collector[scatter_used, pos_length] = parent_cell.length
-            scatter_collector[scatter_used, pos_fluorescence_start] = getattr(parent_cell, 'fluorescences', [0.0])[0]
+            scatter_collector[scatter_used, pos_fluorescence_start] = catch_index_error(lambda: getattr(parent_cell, 'fluorescences', [0.0])[0], 0.0)
 
             scatter_used += 1
 
@@ -174,7 +174,7 @@ def plot_timeline(p, channels, cells,
             scatter_collector[scatter_used, pos_time_point] = cell_appearance.channel.image.timepoint
             scatter_collector[scatter_used, pos_centroid] = cell_appearance.centroid_1d
             scatter_collector[scatter_used, pos_length] = cell_appearance.length
-            scatter_collector[scatter_used, pos_fluorescence_start] = getattr(cell_appearance, 'fluorescence', 0.0)
+            scatter_collector[scatter_used, pos_fluorescence_start] = catch_index_error(lambda: getattr(cell_appearance, 'fluorescences', [0.0])[0], 0.0)
 
             scatter_used += 1
 
@@ -261,10 +261,10 @@ def analyze_tracking(cells, receptor):
                 'fluorescence_count': len(getattr(sa, 'fluorescences', []))
             }
 
-            for f in range(len(len(getattr(sa, 'fluorescences', [])))):
+            for f in range(len(getattr(sa, 'fluorescences', []))):
                 tmp['fluorescence_' + str(f)] = sa.fluorescences[f]
                 tmp['fluorescence_raw_' + str(f)] = sa.fluorescences_raw[f]
                 tmp['fluorescence_std_' + str(f)] = sa.fluorescences_std[f]
                 tmp['fluorescence_background_' + str(f)] = sa.channel.image.background_fluorescences[f]
 
-            receptor(receptor)
+            receptor(tmp)

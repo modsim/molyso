@@ -88,7 +88,7 @@ def setup_image(i, local_ims, t, pos):
 
     i.setup_image(image)
 
-    if getattr(i, 'setup_fluorescence', False) and local_ims.get_meta('channels') > 1:
+    if getattr(i, 'setup_add_fluorescence', False) and local_ims.get_meta('channels') > 1:
         for channel in local_ims.get_meta('fluorescenceChannels'):
             fimg = local_ims.get_image(t=t, pos=pos, channel=channel, float=True)
             i.setup_add_fluorescence(fimg)

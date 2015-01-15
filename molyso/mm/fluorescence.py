@@ -27,15 +27,17 @@ class FluorescentCell(Cell):
               # keep calm and carry on!
 
             for f in range(fluor_count):
-
+                if self.channel.image.image_fluorescences[f] is None:
+                    continue
                 cell_img = self.channel.image.image_fluorescences[f][
                            (self.local_top + self.channel.real_top):(self.local_bottom + self.channel.real_top),
                            self.channel.left:self.channel.right]
 
+
                 self.fluorescences_mean[f] = float(cell_img.mean())
                 self.fluorescences_std[f] = float(numpy.std(cell_img))
 
-        except AttributeError:
+        except (AttributeError, TypeError):
             pass
 
     @property
@@ -85,8 +87,9 @@ class FluorescentImage(Image):
 
     def clean(self):
         super(FluorescentImage, self).clean()
-        self.image_fluorescences = []
-        self.original_image_fluorescences = []
+        fluor_count = len(self.image_fluorescences)
+        self.image_fluorescences = [None] * fluor_count
+        self.original_image_fluorescences = [None] * fluor_count
 
     def find_channels(self):
         super(FluorescentImage, self).find_channels()
@@ -125,10 +128,11 @@ class FluorescentImage(Image):
 
         fluor_count = len(self.image_fluorescences)
 
-        super(FluorescentImage, self).flatten()
-
         self.channels_cells_fluorescences_mean = [[[cc.fluorescences_mean[f] for cc in c.cells] for c in channels] for f in range(fluor_count)]
         self.channels_cells_fluorescences_std = [[[cc.fluorescences_std[f] for cc in c.cells] for c in channels] for f in range(fluor_count)]
+
+        super(FluorescentImage, self).flatten()
+
 
     def unflatten(self):
         super(FluorescentImage, self).unflatten()
