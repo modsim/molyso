@@ -141,6 +141,7 @@ class OMETiffStack(MultiImageStack):
         return {
             'calibration': lambda: image['PhysicalSizeX'],
             'channels': lambda: image['SizeC'],
+            'fluorescenceChannels': lambda: list(range(1, image['SizeC'])),
             'position': lambda: (image['PositionX'], image['PositionY'], image['PositionZ'],),
             'time': lambda: image['DeltaT'],
             'timepoints': lambda: image['SizeT'],
@@ -159,7 +160,7 @@ class PlainTiffStack(MultiImageStack):
         MultiImageStack.Fluorescence: 1,
     }
 
-    def __init__(self, filename='', treat_z_as_mp=False):
+    def __init__(self, filename=''):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             self.tiff = TiffFile(filename)
@@ -180,6 +181,7 @@ class PlainTiffStack(MultiImageStack):
         return {
             'calibration': lambda: 1.0,
             'channels': lambda: 1,
+            'fluorescenceChannels': lambda: [],
             'position': lambda: (0.0, 0.0, 0.0,),
             'time': lambda: t,
             'timepoints': lambda: len(self.tiff.pages),

@@ -44,7 +44,8 @@ def interactive_main(args):
 
         fig.canvas.set_window_title("Image Viewer - [BUSY]")
 
-        image = ims.get_image(t=t - 1, pos=pos - 1, channel=0)
+        image = ims.get_image(t=t - 1, pos=pos - 1, channel=ims.__class__.Phase_Contrast, float=True)
+
         i = Image()
         i.setup_image(image)
 
