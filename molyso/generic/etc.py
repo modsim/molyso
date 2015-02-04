@@ -146,15 +146,19 @@ def parse_range(s, allow_open_interval=True):
 class Cache(object):
     printer = print
 
-    @classmethod
-    def build_cache_filename(cls, file, suffix):
-        return "%s.%s.%s.cache" % (
-            os.path.basename(file).replace('.', '_'),
-            hashlib.sha1(str(os.path.abspath(file).lower()).encode()).hexdigest()[:8],
-            suffix,)
+    def build_cache_filename(self, suffix):
+        return "%s.%s.cache" % (self.cache_token, suffix,)
 
-    def __init__(self, file, ignore_cache):
+    def __init__(self, file, ignore_cache, cache_token=None):
         self.filename = file
+
+        if cache_token is None:
+            self.cache_token = "%s.%s" % (
+                os.path.basename(file).replace('.', '_').replace('?', '_').replace(',', '_'),
+                hashlib.sha1(str(os.path.abspath(file).lower()).encode()).hexdigest()[:8])
+        else:
+            self.cache_token = cache_token
+
         if ignore_cache == 'everything':
             self.ignore_cache = True
         elif ignore_cache == 'nothing':
@@ -166,19 +170,19 @@ class Cache(object):
         if self.ignore_cache is True or suffix in self.ignore_cache:
             return False
         else:
-            return os.path.isfile(self.__class__.build_cache_filename(self.filename, suffix))
+            return os.path.isfile(self.build_cache_filename(suffix))
 
     def __getitem__(self, suffix):
-        with open(self.__class__.build_cache_filename(self.filename, suffix), 'rb') as fp:
-            self.__class__.printer("Getting")
+        with open(self.build_cache_filename(suffix), 'rb') as fp:
+            self.__class__.printer("Getting data for '%s'" % (suffix,))
             return pickle.load(fp)
 
     def __setitem__(self, suffix, data):
         if self.ignore_cache is True or suffix in self.ignore_cache:
             return
         else:
-            with open(self.__class__.build_cache_filename(self.filename, suffix), 'wb+') as fp:
-                self.__class__.printer("Setting")
+            with open(self.build_cache_filename(suffix), 'wb+') as fp:
+                self.__class__.printer("Setting data for '%s'" % (suffix,))
                 pickle.dump(data, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
 

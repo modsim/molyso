@@ -36,16 +36,17 @@ OMETiffStack = OMETiffStack
 
 def banner():
     return """
-      \   /\  /\  /                             -------------------------
-       | | |O| | |    molyso                    Developed  2013 - 2014 by
-       | | | | |O|                              Christian   C.  Sachs  at
-       |O| |O| |O|    MOther    machine         Microscale Bioengineering
-       \_/ \_/ \_/    anaLYsis SOftware         Research  Center  Juelich
-     --------------------------------------------------------------------
-     If you use this software in a publication, please cite our paper:
+     \   /\  /\  /                             -------------------------
+      | | |O| | |    molyso                    Developed  2013 - 2015 by
+      | | | | |O|                              Christian   C.  Sachs  at
+      |O| |O| |O|    MOther    machine         Microscale Bioengineering
+      \_/ \_/ \_/    anaLYsis SOftware         Research  Center  Juelich
+    --------------------------------------------------------------------
+    If you use this software in a publication, please cite our paper:
 
-     %(citation)s
-     --------------------------------------------------------------------
+    %(citation)s
+
+    --------------------------------------------------------------------
     """ % {'citation': __citation__}
 
 
@@ -64,6 +65,7 @@ def create_argparser():
     argparser.add_argument('-m', '--module', dest='modules', type=str, default=None, action='append')
     argparser.add_argument('-p', '--process', dest='process', default=False, action='store_true')
     argparser.add_argument('-gt', '--ground-truth', dest='ground_truth', type=str, default=None)
+    argparser.add_argument('-ct', '--cache-token', dest='cache_token', type=str, default=None)
     argparser.add_argument('-tp', '--timepoints', dest='timepoints', default=[0, float('inf')], type=parse_range)
     argparser.add_argument('-mp', '--multipoints', dest='multipoints', default=[0, float('inf')], type=parse_range)
     argparser.add_argument('-o', '--table-output', dest='table_output', type=str, default=None)
@@ -78,7 +80,6 @@ def create_argparser():
     argparser.add_argument('-nt', '--no-tracking', dest='no_tracking', default=False, action='store_true')
     argparser.add_argument('-rt', '--read-tunables', dest='read_tunables', type=str, default=None)
     argparser.add_argument('-wt', '--write-tunables', dest='write_tunables', type=str, default=None)
-    argparser.add_argument('-zm', '--z-is-multipoint', dest='zm', default=False, action='store_true')
 
     return argparser
 
@@ -110,6 +111,8 @@ def setup_image(i, local_ims, t, pos):
 
     i.metadata['tag'] = ''
     i.metadata['tag_number'] = 0
+
+    print(i.metadata)
 
 
 # globals
@@ -181,19 +184,17 @@ def setup_modules(modules):
                 print("WARNING: Could not load either module molyso_%s or %s!" % (module, module,))
 
 
-
 def processing_setup(args):
     global ims
     global first_to_look_at
 
     first_to_look_at = args.timepoints[0]
 
-
     if args.modules:
         setup_modules(args.modules)
 
     if ims is None:
-        ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
+        ims = MultiImageStack.open(args.input)
 
     correct_windows_signal_handlers()
 
@@ -260,98 +261,101 @@ def main():
                       "and it will significantly reduce functionality!")
 
     Cache.printer = print_info
-    cache = Cache(args.input, ignore_cache=args.ignorecache)
+    cache = Cache(args.input, ignore_cache=args.ignorecache, cache_token=args.cache_token)
 
-    if 'imageanalysis' in cache:
-        results = cache['imageanalysis']
-    else:
-        ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
+    if not 'tracking' in cache:
 
-        positions_to_process = args.multipoints
-
-        if positions_to_process[-1] == float('Inf'):
-            f = positions_to_process[-2]
-            del positions_to_process[len(positions_to_process) - 2:len(positions_to_process)]
-            positions_to_process += range(f, ims.get_meta('multipoints'))
-
-        positions_to_process = [p for p in positions_to_process if 0 <= p <= ims.get_meta('multipoints')]
-
-        timepoints_to_process = args.timepoints
-
-        if timepoints_to_process[-1] == float('Inf'):
-            f = timepoints_to_process[-2]
-            del timepoints_to_process[len(timepoints_to_process) - 2:len(timepoints_to_process)]
-
-            timepoints_to_process += range(f, ims.get_meta('timepoints'))
-
-        timepoints_to_process = [t for t in timepoints_to_process if 0 <= t <= ims.get_meta('timepoints')]
-
-        prettify_numpy_array = lambda arr, spaces: \
-            repr(numpy.array(arr)).replace(')', '').replace('array(', ' ' * 6).replace(' ' * 6, ' ' * spaces)
-
-        print_info("Beginning Processing:")
-        #           123456789ABC :)
-        print_info("Positions : " + prettify_numpy_array(positions_to_process, 0xC).lstrip())
-        print_info("Timepoints: " + prettify_numpy_array(timepoints_to_process, 0xC).lstrip())
-
-        ims = None
-
-        results = {pos: {} for pos in positions_to_process}
-
-        total = len(timepoints_to_process) * len(positions_to_process)
-
-        if args.mp < 0:
-            args.mp = multiprocessing.cpu_count()
-
-        print_info("Performing image analysis ...")
-
-        to_process = list(itertools.product(timepoints_to_process, positions_to_process))
-
-        if args.mp == 0:
-            processing_setup(args)
-
-            for t, pos in progress_bar(to_process):
-                results[pos][t] = processing_frame(args, t, pos)
+        if 'imageanalysis' in cache:
+            results = cache['imageanalysis']
         else:
-            print_info("... parallel with %(process_count)d processes" % {'process_count': args.mp})
+            ims = MultiImageStack.open(args.input)
 
-            pool = multiprocessing.Pool(args.mp, processing_setup, [args])
+            positions_to_process = args.multipoints
 
-            workerstates = []
+            if positions_to_process[-1] == float('Inf'):
+                f = positions_to_process[-2]
+                del positions_to_process[len(positions_to_process) - 2:len(positions_to_process)]
+                positions_to_process += range(f, ims.get_meta('multipoints'))
 
-            for t, pos in to_process:
-                workerstates.append((t, pos, pool.apply_async(processing_frame, (args, t, pos))))
+            positions_to_process = [p for p in positions_to_process if 0 <= p <= ims.get_meta('multipoints')]
 
-            pool.close()
+            timepoints_to_process = args.timepoints
 
-            progressbar_states = progress_bar(range(total))
+            if timepoints_to_process[-1] == float('Inf'):
+                f = timepoints_to_process[-2]
+                del timepoints_to_process[len(timepoints_to_process) - 2:len(timepoints_to_process)]
 
-            while len(workerstates) > 0:
-                for i, (t, pos, state) in reversed(list(enumerate(workerstates))):
-                    if state.ready():
-                        try:
-                            results[pos][t] = state.get()
-                        except Exception as e:
-                            print("ERROR: Exception occured at pos: %(pos)d, time %(time)d: %(e)s" %
-                                  {'pos': pos, 'time': t, 'e': str(e)})
+                timepoints_to_process += range(f, ims.get_meta('timepoints'))
 
-                        del workerstates[i]
-                        next(progressbar_states)
+            timepoints_to_process = [t for t in timepoints_to_process if 0 <= t <= ims.get_meta('timepoints')]
 
-            try:
-                # to output the progress bar, the iterator must be pushed beyond its end
-                next(progressbar_states)
-            except StopIteration:
-                pass
+            prettify_numpy_array = lambda arr, spaces: \
+                repr(numpy.array(arr)).replace(')', '').replace('array(', ' ' * 6).replace(' ' * 6, ' ' * spaces)
+
+            print_info("Beginning Processing:")
+            #           123456789ABC :)
+            print_info("Positions : " + prettify_numpy_array(positions_to_process, 0xC).lstrip())
+            print_info("Timepoints: " + prettify_numpy_array(timepoints_to_process, 0xC).lstrip())
+
+            ims = None
+
+            results = {pos: {} for pos in positions_to_process}
+
+            total = len(timepoints_to_process) * len(positions_to_process)
+
+            if args.mp < 0:
+                args.mp = multiprocessing.cpu_count()
+
+            print_info("Performing image analysis ...")
+
+            to_process = list(itertools.product(timepoints_to_process, positions_to_process))
+
+            if args.mp == 0:
+                processing_setup(args)
+
+                for t, pos in progress_bar(to_process):
+                    results[pos][t] = processing_frame(args, t, pos)
+            else:
+                print_info("... parallel with %(process_count)d processes" % {'process_count': args.mp})
+
+                pool = multiprocessing.Pool(args.mp, processing_setup, [args])
+
+                workerstates = []
+
+                for t, pos in to_process:
+                    workerstates.append((t, pos, pool.apply_async(processing_frame, (args, t, pos))))
+
+                pool.close()
+
+                progressbar_states = progress_bar(range(total))
+
+                while len(workerstates) > 0:
+                    for i, (t, pos, state) in reversed(list(enumerate(workerstates))):
+                        if state.ready():
+                            try:
+                                results[pos][t] = state.get()
+                            except Exception as e:
+                                print("ERROR: Exception occured at pos: %(pos)d, time %(time)d: %(e)s" %
+                                      {'pos': pos, 'time': t, 'e': str(e)})
+
+                            del workerstates[i]
+                            next(progressbar_states)
+
+                try:
+                    # to output the progress bar, the iterator must be pushed beyond its end
+                    next(progressbar_states)
+                except StopIteration:
+                    pass
 
 
-        cache['imageanalysis'] = results
+            cache['imageanalysis'] = results
 
     ####################################################################################################################
 
     if not args.no_tracking:
 
         if 'tracking' in cache:
+            results = None  # free up some ram?
             tracked_results = cache['tracking']
         else:
 
@@ -390,7 +394,7 @@ def main():
             interactive_ground_truth_main(args, tracked_results)
             return
 
-        #( Output of textual results: )#################################################################################
+        # ( Output of textual results: )################################################################################
 
         def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
             for pos, tracking in inner_tracked_results.items():
@@ -422,7 +426,7 @@ def main():
             if recipient is not sys.stdout:
                 recipient.close()
 
-        #( Output of graphical tracking results: )######################################################################
+        # ( Output of graphical tracking results: )#####################################################################
 
         if args.tracking_output is not None:
 
@@ -450,7 +454,7 @@ def main():
                                                   {'dir': figdir, 'mp': pos, 'k': k}),
                               show_images=True, show_overlay=True)
 
-    #( Post-Tracking: Just write some tunables, if desired )############################################################
+    # ( Post-Tracking: Just write some tunables, if desired )###########################################################
 
     if args.write_tunables:
         print_info()

@@ -23,14 +23,16 @@ class OMETiffStack(MultiImageStack):
         MultiImageStack.Fluorescence: 1,
     }
 
-    def __init__(self, filename='', treat_z_as_mp=False):
-        self.treat_z_as_mp = treat_z_as_mp
+    def __init__(self, parameters):
+        self.generate_parameters_from_defaults({'treat_z_as_mp': False}, parameters)
+
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self.tiff = TiffFile(filename)
+            self.tiff = TiffFile(self.parameters['filename'])
+
         self.fp = self.tiff.pages[0]
         if not self.fp.is_ome:
-            raise Exception('OMETiffStack')
+            raise Exception('Not an OMETiffStack')
         self.xml = None
         self.ns = ''
         self.xml_str = self.fp.tags['image_description'].value
@@ -59,7 +61,7 @@ class OMETiffStack(MultiImageStack):
 
         images = {}
 
-        if self.treat_z_as_mp:  # handling for malencoded files
+        if bool(self.parameters['treat_z_as_mp']):  # handling for malencoded files
             image_nodes = [n for n in root.getchildren() if n.tag == ElementTree.QName(ns, 'Image')]
             # there will be only one image node
             imn = image_nodes[0]
@@ -160,10 +162,16 @@ class PlainTiffStack(MultiImageStack):
         MultiImageStack.Fluorescence: 1,
     }
 
-    def __init__(self, filename=''):
+    def __init__(self, parameters):
+        self.generate_parameters_from_defaults({
+            'interval': 1,
+            'calibration': 1
+        }, parameters)
+
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self.tiff = TiffFile(filename)
+            self.tiff = TiffFile(self.parameters['filename'])
+
         self.fp = self.tiff.pages[0]
 
     def _get_image(self, **kwargs):
@@ -179,11 +187,11 @@ class PlainTiffStack(MultiImageStack):
             pos = kwargs['pos']
 
         return {
-            'calibration': lambda: 1.0,
+            'calibration': lambda: float(self.parameters['calibration']),
             'channels': lambda: 1,
             'fluorescenceChannels': lambda: [],
             'position': lambda: (0.0, 0.0, 0.0,),
-            'time': lambda: t,
+            'time': lambda: float(self.parameters['interval']) * t,
             'timepoints': lambda: len(self.tiff.pages),
             'multipoints': lambda: 1
         }[what]()

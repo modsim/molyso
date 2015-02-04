@@ -9,4 +9,6 @@ from .generic.tunable import tunable, TunableManager
 __version__ = '0.1'
 
 __citation__ = \
-    """molyso. 2014. In preparation. Please check back for the correct citation."""
+    """Image Analysis of Mother Machine Microfluidic Experiments:
+    A Software for Unsupervised High-Throughput Processing.
+    Sachs et al. 2015."""

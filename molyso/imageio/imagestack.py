@@ -6,6 +6,15 @@ from __future__ import division, unicode_literals, print_function
 
 import numpy as np
 
+class AttributeAsKeyDict(dict):
+    def __getattr__(self, item):
+        if item in self:
+            return self[item]
+        else:
+            return super(AttributeAsKeyDict, self).__getattribute__(item)
+
+    def __setattr__(self, key, value):
+        self[key] = value
 
 class MultiImageStack(object):
     """
@@ -19,6 +28,12 @@ class MultiImageStack(object):
     Fluorescence = -3
 
     ExtensionRegistry = {}
+
+    def generate_parameters_from_defaults(self, defaults, parameters):
+        self.parameters = defaults
+
+        for k, v in parameters.items():
+            self.parameters[k] = v
 
     def __getitem__(self, *args, **kwargs):
         return self.get_image(*args, **kwargs)
@@ -43,7 +58,7 @@ class MultiImageStack(object):
         raise NotImplementedError("Virtual function")
 
     @classmethod
-    def open(cls, filename, *args, **kwargs):
+    def open(cls, filename):
         """
         Opens an image stack file.
         Will look up its registry if any image stack class is registered for the extension.
@@ -52,9 +67,18 @@ class MultiImageStack(object):
         :return:
         """
 
+        parameters = {}
+
+        if '?' in filename:
+            filename, parameter_string = filename.split('?')
+            for k, v in (p.split('=') for p in parameter_string.split(',')):
+                parameters[k] = v
+
+        parameters['filename'] = filename
+
         for k, v in sorted(list(cls.ExtensionRegistry.items()), key=lambda inp: len(inp[0]), reverse=True):
             if filename.lower().endswith(k):
-                i = v(filename, *args, **kwargs)
+                i = v(parameters)
                 return i
 
         raise Exception("Unknown format")
