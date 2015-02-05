@@ -138,7 +138,29 @@ def interactive_ground_truth_main(args, tracked_results):
             o_scatter.set_offsets(env['points'][:env['used'], :2])
             fig.canvas.draw()
 
+        def show_help():
+            print("""
+            Ground Truth Mode:
+            = Mouse =====================================
+            Mark division events by right click:
+            First a division, then a child's division.
+            = Keys ======================================
+            h       show  this help
+            p       print growth rates
+                    (last is based on mean division time)
+            d       delete last division event
+            n/N     next/previous multipoint
+            m/M     next/previous channel
+            o       output tabular data
+            w       write data
+                    (to previously specified filename)
+            i       start interactive python console
+            q       quit ground truth mode
+            """)
+
         refresh()
+
+        show_help()
 
         def click(e):
             x, y = e.xdata, e.ydata
@@ -219,7 +241,9 @@ def interactive_ground_truth_main(args, tracked_results):
             #     multipoint.set_val(max(1, int(multipoint.val) - 1))
             # elif event.key == 'up':
             #     multipoint.set_val(min(mp_max, int(multipoint.val) + 1))
-            if event.key == 'p':
+            if event.key == 'h':
+                show_help()
+            elif event.key == 'p':
                 show_stats()
             elif event.key == 'd':
                 env['used'] -= 3

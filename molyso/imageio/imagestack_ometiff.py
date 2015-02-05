@@ -55,7 +55,15 @@ class OMETiffStack(MultiImageStack):
 
         self.ns = ns = root.tag.split('}')[0][1:]
 
-        float_or_int = lambda s: float(s) if '.' in s else int(s)
+        # sometimes string properties creep up, but then we don't care as we don't plan on using them ...
+        def float_or_int(s):
+            try:
+                if '.' in s:
+                    return float(s)
+                else:
+                    return int(s)
+            except ValueError:
+                return s
 
         keep_pa = {'SizeZ', 'SizeY', 'SizeX', 'SignificantBits', 'PhysicalSizeX', 'PhysicalSizeY', 'SizeC', 'SizeT'}
 

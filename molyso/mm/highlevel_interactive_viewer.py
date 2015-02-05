@@ -18,7 +18,7 @@ def interactive_main(args):
     from matplotlib.widgets import Slider
     from .image import cell_color, channel_color
 
-    ims = MultiImageStack.open(args.input, treat_z_as_mp=args.zm)
+    ims = MultiImageStack.open(args.input)
 
     mp_max = ims.get_meta('multipoints')
     tp_max = ims.get_meta('timepoints')

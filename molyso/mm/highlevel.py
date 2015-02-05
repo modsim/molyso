@@ -112,8 +112,6 @@ def setup_image(i, local_ims, t, pos):
     i.metadata['tag'] = ''
     i.metadata['tag_number'] = 0
 
-    print(i.metadata)
-
 
 # globals
 
