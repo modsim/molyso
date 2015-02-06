@@ -39,7 +39,7 @@ def banner():
      \   /\  /\  /                             -------------------------
       | | |O| | |    molyso                    Developed  2013 - 2015 by
       | | | | |O|                              Christian   C.  Sachs  at
-      |O| |O| |O|    MOther    machine         Microscale Bioengineering
+      |O| |O| |O|    MOther    machine         Microscale / ModSim Group
       \_/ \_/ \_/    anaLYsis SOftware         Research  Center  Juelich
     --------------------------------------------------------------------
     If you use this software in a publication, please cite our paper:

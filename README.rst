@@ -1,4 +1,10 @@
-# coding=utf-8
+molyso Readme
+=============
+
+Ways to install molyso
+======================
+
+If you have a
 
 Note that this software contains the following portions from other authors, under the following licenses:
 
