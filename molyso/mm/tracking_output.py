@@ -59,6 +59,7 @@ def catch_index_error(what, otherwise):
         return otherwise
 
 
+
 def embedded_assert(expression):
     assert expression
     return True

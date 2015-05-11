@@ -5,6 +5,7 @@ documentation
 
 from __future__ import division, unicode_literals, print_function
 
+import warnings
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
 from .image import Image
@@ -23,6 +24,7 @@ def interactive_main(args):
     mp_max = ims.get_meta('multipoints')
     tp_max = ims.get_meta('timepoints')
 
+
     fig, ax = plt.subplots()
 
     plt.subplots_adjust(left=0.25, bottom=0.25)
@@ -32,8 +34,10 @@ def interactive_main(args):
     ax_mp = plt.axes([0.25, 0.1, 0.65, 0.03], axisbg=channel_color)
     ax_tp = plt.axes([0.25, 0.15, 0.65, 0.03], axisbg=channel_color)
 
-    multipoint = Slider(ax_mp, 'Multipoint', 1, mp_max, valinit=1, valfmt="%d", color=cell_color)
-    timepoint = Slider(ax_tp, 'Timepoint', 1, tp_max, valinit=1, valfmt="%d", color=cell_color)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        multipoint = Slider(ax_mp, 'Multipoint', 1, mp_max, valinit=1, valfmt="%d", color=cell_color)
+        timepoint = Slider(ax_tp, 'Timepoint', 1, tp_max, valinit=1, valfmt="%d", color=cell_color)
 
     env = {'show': True, 'rotated': True}
 
@@ -113,6 +117,8 @@ def interactive_main(args):
 
     fig.canvas.mpl_connect('key_press_event', key_press)
 
-    fig.tight_layout()
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        fig.tight_layout()
 
     plt.show()

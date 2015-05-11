@@ -73,6 +73,10 @@ def find_extrema_and_prominence(signal, order=5):
             continue
         break
 
+    if len(maxima) == 0:
+        maxima = numpy.array([numpy.argmax(signal)])
+
+
     minima = numpy.array([numpy.argmin(signal)])
     iorder = order
     while iorder > 0:
@@ -82,6 +86,9 @@ def find_extrema_and_prominence(signal, order=5):
             iorder -= 1
             continue
         break
+    if len(minima) == 0:
+        minima = numpy.array([numpy.argmin(signal)])
+
 
     maximaintpx = numpy.zeros(len(maxima) + 2)
     maximaintpy = numpy.copy(maximaintpx)

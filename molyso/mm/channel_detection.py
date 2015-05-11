@@ -8,7 +8,7 @@ import numpy
 
 from .. import DebugPlot, tunable
 from ..generic.signal import find_phase, find_extrema_and_prominence, spectrum_fourier, spectrum_bins_by_length, hires_power_spectrum,\
-    vertical_mean, horizontal_mean, normalize, threshold_outliers, find_insides, one_every_n, hamming_smooth
+    vertical_mean, horizontal_mean, normalize, threshold_outliers, find_insides, one_every_n, hamming_smooth, each_image_slice
 from .cell_detection import Cells
 from ..generic.etc import NotReallyATree
 
@@ -244,12 +244,13 @@ def horizontal_channel_detection(image):
 
     return positions, left, right, width, times, main_frequency,
 
+# TODO fix the proper one, or merge them, or document this here, or use just the new one
 
-def vertical_channel_region_detection(image):
+def alternate_vertical_channel_region_detection(image):
+
     f = spectrum_bins_by_length(image.shape[1])
 
     def horizontal_mean_frequency(img_frag, clean_around=None, clean_width=0.0):
-
         ft = numpy.absolute(spectrum_fourier(horizontal_mean(img_frag)))
 
         ft /= 0.5 * ft[0]
@@ -262,10 +263,53 @@ def vertical_channel_region_detection(image):
 
         return ft.max(), f[numpy.argmax(ft)]
 
-    power_overall_f, overall_f = horizontal_mean_frequency(image)
+    split_factor = 50
 
-    d = 1.0
-    power_min_quotient = 0.1
+    collector = numpy.zeros(image.shape[0])
+
+    for n, the_step, image_slice in each_image_slice(image, split_factor, direction='horizontal'):
+        power_local_f, local_f = horizontal_mean_frequency(image_slice)
+
+        collector[n*the_step:(n+1)*the_step] = local_f
+
+    numpy.set_printoptions(threshold=numpy.nan)
+
+    int_collector = collector.astype(numpy.int32)
+
+    bins = numpy.bincount(int_collector)
+    winner = numpy.argmax(bins[1:]) + 1
+
+    delta = 5
+
+    collector = numpy.absolute(int_collector - winner) < delta
+
+    return sorted(find_insides(collector), key=lambda pair: pair[1] - pair[0], reverse=True)[0]
+
+
+def vertical_channel_region_detection(image):
+    f = spectrum_bins_by_length(image.shape[1])
+
+    def horizontal_mean_frequency(img_frag, clean_around=None, clean_width=0.0):
+
+        ft = numpy.absolute(spectrum_fourier(horizontal_mean(img_frag)))
+
+        ft /= 0.5 * ft[0]
+
+        ft[0] = 0
+
+
+        #ft = hamming_smooth(ft, 3)
+
+        if clean_around:
+            ft[numpy.absolute(f - clean_around) > clean_width] = 0.0
+
+        return ft.max(), f[numpy.argmax(ft)]
+
+    power_overall_f, overall_f = horizontal_mean_frequency(image)
+    print(power_overall_f, overall_f)
+
+    d = 2.0
+    power_min_quotient = 0.005
     break_condition = 2.0
 
     current_clean_width = overall_f / 2.0
@@ -273,6 +317,7 @@ def vertical_channel_region_detection(image):
     def matches(img_frag):
         power_local_f, local_f = horizontal_mean_frequency(
             img_frag, clean_around=overall_f, clean_width=current_clean_width)
+        #print(power_local_f, local_f)
         return (abs(overall_f - local_f) < d) and ((power_local_f / power_overall_f) > power_min_quotient)
 
     height = image.shape[0]
@@ -292,6 +337,8 @@ def vertical_channel_region_detection(image):
 
         collector[top:mid] = upper
         collector[mid:bottom] = lower
+
+        #print("recursive_check(%d, %d, %s) [upper=%d, lower=%d]" % (top, bottom, {0: 'FIRST_CALL', -1: 'FROM_TOP', 1: 'FROM_BOTTOM'}[orientation], int(upper), int(lower)))
 
         if orientation is FIRST_CALL:
             if upper:
@@ -321,7 +368,8 @@ def find_channels(image):
     :return:
     """
 
-    upper, lower = vertical_channel_region_detection(image)
+    upper, lower = alternate_vertical_channel_region_detection(image)
+    #upper, lower = vertical_channel_region_detection(image)
 
     profile = horizontal_mean(image)
 
