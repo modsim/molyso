@@ -7,7 +7,7 @@
 from __future__ import division, unicode_literals, print_function
 
 import math
-from ..generic.signal import rescale_and_fit_to_type
+from ..generic.signal import fit_to_type
 from ..generic.rotation import find_rotation, apply_rotate_and_cleanup
 from ..generic.registration import translation_2x1d
 from .channel_detection import Channels
@@ -273,16 +273,17 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         self.channels_cells_local_top = [[cc.local_top for cc in c.cells] for c in channels]
         self.channels_cells_local_bottom = [[cc.local_bottom for cc in c.cells] for c in channels]
 
-        def _pack_image(image):
-            if self.pack_channel_image is False:
-                return image
-            else:
-                if image is None:
+        if self.keep_channel_image:
+            def _pack_image(image):
+                if self.pack_channel_image is False:
                     return image
                 else:
-                    return rescale_and_fit_to_type(image, self.pack_channel_image)
+                    if image is None:
+                        return image
+                    else:
+                        return fit_to_type(image, self.pack_channel_image)
 
-        self.channel_images = [_pack_image(c.channel_image) for c in channels]
+            self.channel_images = [_pack_image(c.channel_image) for c in channels]
 
     def unflatten(self):
         """
@@ -301,7 +302,8 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
             channel.putative_orientation = self.channels_putative_orientations[channel_num]
 
-            channel.channel_image = self.channel_images[channel_num]
+            if self.channel_images is not None:
+                channel.channel_image = self.channel_images[channel_num]
 
             self.channels.channels_list.append(channel)
             cells = channel.__class__.cells_type(channel, bootstrap=False)

@@ -143,6 +143,14 @@ def parse_range(s, allow_open_interval=True):
     return ranges
 
 
+def bits_to_numpy_type(bits):
+    # this is supposed to throw an error
+    return {
+        8: numpy.uint8,
+        16: numpy.uint16,
+        32: numpy.float32
+    }[int(bits)]
+
 class Cache(object):
     printer = print
 

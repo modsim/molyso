@@ -191,13 +191,13 @@ def normalize(data):
     return (data - minimum) / (maximum - minimum)
 
 
-def rescale_and_fit_to_type(image, new_dtype):
+def fit_to_type(image, new_dtype):
     img_min = image.min()
     img_max = image.max()
     scaled_img = ((image.astype(numpy.float32) - img_min) / (img_max - img_min))
     to_type = numpy.dtype(new_dtype)
     if to_type.kind == 'f':
-        return scaled_img.astype(to_type)
+        return image
     elif to_type.kind == 'u':
         return (scaled_img * 2 ** (to_type.itemsize * 8)).astype(to_type)
     elif to_type.kind == 'i':

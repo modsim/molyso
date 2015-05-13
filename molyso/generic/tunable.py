@@ -25,6 +25,12 @@ class TunableManager(object):
 
     force_default = False
 
+    print_tunables = False
+
+    @classmethod
+    def set_printing(cls, state):
+        cls.print_tunables = state
+
     @classmethod
     def load_tunables(cls, data):
         """
@@ -61,10 +67,20 @@ class TunableManager(object):
         """
         cls.defaults[what] = default
         if cls.force_default:
+            if cls.print_tunables:
+                print("[TUNABLE] getting \"%(name)s\", forcing default: \"%(value)s\"" %
+                      {'name': what, 'value': repr(default)})
             return default
         if what in cls.current:
+            if cls.print_tunables:
+                print("[TUNABLE] getting \"%(name)s\", using override: \"%(value)s\"" %
+                      {'name': what, 'value': repr(type(default)(cls.current[what]))})
+
             return type(default)(cls.current[what])
         else:
+            if cls.print_tunables:
+                print("[TUNABLE] getting \"%(name)s\", using default: \"%(value)s\"" %
+                      {'name': what, 'value': repr(default)})
             return default
 
 

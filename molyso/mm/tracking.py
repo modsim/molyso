@@ -161,10 +161,10 @@ class TrackedPosition(object):
                 previous = current
 
     def remove_empty_channels_post_tracking(self):
-        minimum_average_cells = 2.0
+        minimum_average_cells = tunable('tracking.empty_channel_filtering.minimum_mean_cells', 2.0)
         should_skip = True
         for k, tracker in list(self.tracker_mapping.items()):
-            if should_skip and tracker.average_cells < minimum_average_cells:  # 0.5:
+            if should_skip and tracker.average_cells < minimum_average_cells:
                 del self.tracker_mapping[k]
                 del self.channel_accumulator[k]
                 del self.cell_counts[k]

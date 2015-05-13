@@ -16,11 +16,12 @@ import codecs
 import json
 import multiprocessing
 import datetime
+import traceback
 
 from .. import Debug, TunableManager
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
-    silent_progress_bar, fancy_progress_bar, Cache
+    silent_progress_bar, fancy_progress_bar, bits_to_numpy_type, Cache
 
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
@@ -39,7 +40,7 @@ def banner():
      \   /\  /\  /                             -------------------------
       | | |O| | |    molyso                    Developed  2013 - 2015 by
       | | | | |O|                              Christian   C.  Sachs  at
-      |O| |O| |O|    MOther    machine         Microscale / ModSim Group
+      |O| |O| |O|    MOther    machine         ModSim / Microscale Group
       \_/ \_/ \_/    anaLYsis SOftware         Research  Center  Juelich
     --------------------------------------------------------------------
     If you use this software in a publication, please cite our paper:
@@ -74,10 +75,15 @@ def create_argparser():
     argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
     argparser.add_argument('-debug', '--debug', dest='debug', default=False, action='store_true')
     argparser.add_argument('-nci', '--no-channel-images', dest='keepchan', default=True, action='store_false')
+    argparser.add_argument('-cfi', '--channel-fluorescence-images', dest='keepfluorchan', default=False, action='store_true')
+    argparser.add_argument('-ccb', '--channel-image-channel-bits', dest='channel_bits', default=numpy.uint8, type=bits_to_numpy_type)
+    argparser.add_argument('-cfb', '--channel-image-fluorescence-bits', dest='channel_fluorescence_bits', default=numpy.float32, type=bits_to_numpy_type)
     argparser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true')
     argparser.add_argument('-nc', '--no-cache', dest='ignorecache', default='nothing',
                            const='everything', type=str, nargs='?')
     argparser.add_argument('-nt', '--no-tracking', dest='no_tracking', default=False, action='store_true')
+    argparser.add_argument('-t', '--tunables', dest='tunables', type=str, default=None)
+    argparser.add_argument('-pt', '--print-tunables', dest='print_tunables', default=False, action='store_true')
     argparser.add_argument('-rt', '--read-tunables', dest='read_tunables', type=str, default=None)
     argparser.add_argument('-wt', '--write-tunables', dest='write_tunables', type=str, default=None)
 
@@ -155,7 +161,11 @@ def processing_frame(args, t, pos):
     Debug.set_context(t=t, pos=pos)
 
     image.keep_channel_image = args.keepchan
-    image.pack_channel_image = numpy.uint8
+    image.pack_channel_image = args.channel_bits
+
+    if type(image) == FluorescentImage:
+        image.keep_fluorescences_image = args.keepfluorchan
+        image.pack_fluorescences_image = args.channel_fluorescence_bits
 
     image.autorotate()
     image.autoregister(first)
@@ -201,7 +211,6 @@ def processing_setup(args):
     except ImportError:
         pass
 
-
 def main():
     global ims
 
@@ -232,11 +241,29 @@ def main():
     if args.modules:
         setup_modules(args.modules)
 
+    # load tunables
+    if args.read_tunables:
+        with open(args.read_tunables, 'r') as tunable_file:
+            tunables = json.load(tunable_file)
+            print_info("Loaded tunable file \"%(filename)s\" with data: %(data)s" % {'filename': args.read_tunables, 'data': repr(tunables)})
+            TunableManager.load_tunables(tunables)
+
+    if args.tunables:
+        tunables = json.loads(args.tunables)
+        print_info("Loaded command line tunables: %(data)s" % {'data': repr(tunables)})
+        TunableManager.load_tunables(tunables)
+
+    if args.print_tunables:
+        TunableManager.set_printing(True)
+
+    if sys.maxsize <= 2 ** 32:
+        print_warning("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
+                      "and it will significantly reduce functionality!")
+
     if not args.process:
         return interactive_main(args)
 
-    if args.ground_truth:
-        args.debug = False
+
 
     try:
         if not args.ground_truth:
@@ -254,9 +281,8 @@ def main():
             print_warning("Debugging enabled, concurrent processing disabled!")
             args.mp = 0
 
-    if sys.maxsize <= 2 ** 32:
-        print_warning("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
-                      "and it will significantly reduce functionality!")
+    if args.ground_truth:
+        args.debug = False
 
     Cache.printer = print_info
     cache = Cache(args.input, ignore_cache=args.ignorecache, cache_token=args.cache_token)
@@ -333,8 +359,8 @@ def main():
                             try:
                                 results[pos][t] = state.get()
                             except Exception as e:
-                                print("ERROR: Exception occured at pos: %(pos)d, time %(time)d: %(e)s" %
-                                      {'pos': pos, 'time': t, 'e': str(e)})
+                                print("ERROR: Exception occured at pos: %(pos)d, time %(time)d: %(e)s\n%(traceback)s" %
+                                      {'pos': pos, 'time': t, 'e': str(e), 'traceback': traceback.format_exc()})
 
                             del workerstates[i]
                             next(progressbar_states)
