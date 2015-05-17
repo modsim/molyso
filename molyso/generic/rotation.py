@@ -66,6 +66,8 @@ try:
 
 except ImportError:
     try:
+        raise ImportError
+        # this function reduces float silently to uint8, which introduced bugs
         # noinspection PyUnresolvedReferences
         from scipy.misc import imrotate
 
