@@ -14,7 +14,7 @@ def translation_2x1d(image_a=None, image_b=None, ffts_a=(), ffts_b=(), return_a=
         signal_av, signal_ah = None, None
     else:
         fft_av, fft_ah = None, None
-        signal_av, signal_ah = vertical_mean(image_a), horizontal_mean(image_b)
+        signal_av, signal_ah = vertical_mean(image_a), horizontal_mean(image_a)
 
     if ffts_b != ():
         fft_bv, fft_bh = ffts_b
