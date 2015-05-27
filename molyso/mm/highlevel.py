@@ -21,7 +21,7 @@ import traceback
 from .. import Debug, TunableManager
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
-    silent_progress_bar, fancy_progress_bar, bits_to_numpy_type, Cache
+    silent_progress_bar, fancy_progress_bar, replace_inf_with_maximum, prettify_numpy_array, bits_to_numpy_type, Cache
 
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
@@ -75,9 +75,12 @@ def create_argparser():
     argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
     argparser.add_argument('-debug', '--debug', dest='debug', default=False, action='store_true')
     argparser.add_argument('-nci', '--no-channel-images', dest='keepchan', default=True, action='store_false')
-    argparser.add_argument('-cfi', '--channel-fluorescence-images', dest='keepfluorchan', default=False, action='store_true')
-    argparser.add_argument('-ccb', '--channel-image-channel-bits', dest='channel_bits', default=numpy.uint8, type=bits_to_numpy_type)
-    argparser.add_argument('-cfb', '--channel-image-fluorescence-bits', dest='channel_fluorescence_bits', default=numpy.float32, type=bits_to_numpy_type)
+    argparser.add_argument('-cfi', '--channel-fluorescence-images', dest='keepfluorchan',
+                           default=False, action='store_true')
+    argparser.add_argument('-ccb', '--channel-image-channel-bits', dest='channel_bits',
+                           default=numpy.uint8, type=bits_to_numpy_type)
+    argparser.add_argument('-cfb', '--channel-image-fluorescence-bits', dest='channel_fluorescence_bits',
+                           default=numpy.float32, type=bits_to_numpy_type)
     argparser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true')
     argparser.add_argument('-nc', '--no-cache', dest='ignorecache', default='nothing',
                            const='everything', type=str, nargs='?')
@@ -294,32 +297,12 @@ def main():
         else:
             ims = MultiImageStack.open(args.input)
 
-            positions_to_process = args.multipoints
-
-            if positions_to_process[-1] == float('Inf'):
-                f = positions_to_process[-2]
-                del positions_to_process[len(positions_to_process) - 2:len(positions_to_process)]
-                positions_to_process += range(f, ims.get_meta('multipoints'))
-
-            positions_to_process = [p for p in positions_to_process if 0 <= p <= ims.get_meta('multipoints')]
-
-            timepoints_to_process = args.timepoints
-
-            if timepoints_to_process[-1] == float('Inf'):
-                f = timepoints_to_process[-2]
-                del timepoints_to_process[len(timepoints_to_process) - 2:len(timepoints_to_process)]
-
-                timepoints_to_process += range(f, ims.get_meta('timepoints'))
-
-            timepoints_to_process = [t for t in timepoints_to_process if 0 <= t <= ims.get_meta('timepoints')]
-
-            prettify_numpy_array = lambda arr, spaces: \
-                repr(numpy.array(arr)).replace(')', '').replace('array(', ' ' * 6).replace(' ' * 6, ' ' * spaces)
+            positions_to_process = replace_inf_with_maximum(args.multipoints, ims.get_meta('multipoints'))
+            timepoints_to_process = replace_inf_with_maximum(args.timepoints, ims.get_meta('timepoints'))
 
             print_info("Beginning Processing:")
-            #           123456789ABC :)
-            print_info("Positions : " + prettify_numpy_array(positions_to_process, 0xC).lstrip())
-            print_info("Timepoints: " + prettify_numpy_array(timepoints_to_process, 0xC).lstrip())
+            print_info(prettify_numpy_array(positions_to_process,  "Positions : "))
+            print_info(prettify_numpy_array(timepoints_to_process, "Timepoints: "))
 
             ims = None
 

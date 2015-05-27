@@ -143,6 +143,27 @@ def parse_range(s, allow_open_interval=True):
     return ranges
 
 
+def replace_inf_with_maximum(array, maximum):
+    if array[-1] == float('Inf'):
+        f = array[-2]
+        del array[len(array) - 2:len(array)]
+        array += range(f, maximum)
+
+    array = [e for e in array if 0 <= e <= maximum]
+
+    return array
+
+
+def prettify_numpy_array(arr, space_or_prefix):
+    six_spaces = ' ' * 6
+    prepared = repr(numpy.array(arr)).replace(')', '').replace('array(', six_spaces)
+    if type(space_or_prefix) == int:
+        return prepared.replace(six_spaces, ' ' * space_or_prefix)
+    else:
+        return space_or_prefix + prepared.replace(six_spaces, ' ' * len(space_or_prefix)).lstrip()
+
+
+
 def bits_to_numpy_type(bits):
     # this is supposed to throw an error
     return {
