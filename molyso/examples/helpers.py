@@ -4,7 +4,6 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
-import sys
 import argparse
 import numpy
 import pandas
@@ -12,6 +11,7 @@ import pandas
 from matplotlib.pylab import *
 
 try:
+    # noinspection PyUnresolvedReferences
     import seaborn
 except ImportError:
     pass

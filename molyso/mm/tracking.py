@@ -122,7 +122,10 @@ class TrackedPosition(object):
             for pos, times in cells_in_channel.items():
                 signal[pos - minpos] = times
 
-            helper_parabola = numpy.linspace(-signal.size / 2, +signal.size / 2, signal.size) ** 2 / signal.size ** 2
+            signal_len = len(signal)
+
+            # noinspection PyTypeChecker
+            helper_parabola = numpy.linspace(-signal_len / 2, +signal_len / 2, signal_len) ** 2 / signal_len ** 2
 
             signal = hamming_smooth(signal, 15)
             signal *= helper_parabola

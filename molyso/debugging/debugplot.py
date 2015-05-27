@@ -122,11 +122,9 @@ class DebugPlot(object):
 
         return proxy
 
-
     def poly_drawing_helper(self, coords, **kwargs):
         if self.gca():
             return poly_drawing_helper(self, coords, **kwargs)
-
 
     def __enter__(self):
         if self.active:

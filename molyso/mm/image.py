@@ -13,6 +13,7 @@ from ..generic.registration import translation_2x1d
 from .channel_detection import Channels
 from .. import DebugPlot, tunable
 
+
 class BaseImage(object):
     """
         An image object stores the original image, rotation and cropping information as well as the modified image.
@@ -234,9 +235,11 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
             p.poly_drawing_helper(coordinates, lw=1, edgecolor=channel_color, fill=False)
 
             for cell in channel.cells:
-                coordinates = [[channel.left, cell.bottom], [channel.right, cell.bottom],
-                          [channel.right, cell.top], [channel.left, cell.top],
-                          [channel.left, cell.bottom]]
+                coordinates = [
+                    [channel.left, cell.bottom], [channel.right, cell.bottom],
+                    [channel.right, cell.top], [channel.left, cell.top],
+                    [channel.left, cell.bottom]
+                ]
 
                 p.poly_drawing_helper(coordinates, lw=0.5, edgecolor=cell_color, fill=False)
 
@@ -247,7 +250,6 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
             self.channel_orientation_cache = 1 if (sum(orientations) / len(orientations)) > 0 else -1
 
         return self.channel_orientation_cache
-
 
     def flatten(self):
         """

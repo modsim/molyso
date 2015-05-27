@@ -51,7 +51,7 @@ class Debug(object):
     @classmethod
     def filter(cls, *what):
         what = list(what)
-        for n in range(len(what)):
+        for _ in range(len(what)):
             s = cls.filter_to_str(what)
             if s in cls.filter_map:
                 return cls.filter_map[s]

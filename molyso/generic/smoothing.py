@@ -40,6 +40,7 @@ def hamming_smooth(signal, window_width, no_cache=False):
 
 _signals = {}
 
+
 def signals(function, parameters):
     """
     Signal cache helper function. Either retrieves or creates and stores a signal which can be created by calling

@@ -6,6 +6,7 @@ from __future__ import division, unicode_literals, print_function
 
 import numpy
 
+
 class CellTracker(object):
     """
 
@@ -128,7 +129,6 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
         self.run = []
 
         self.debug_output = ''
-
 
     def add_outcome(self, cost, involved_a, involved_b, what):
         # nan check

@@ -8,6 +8,7 @@ from __future__ import division, unicode_literals, print_function
 from helpers import *
 
 
+# noinspection PyUnusedLocal
 def parser(parser):
     pass
 

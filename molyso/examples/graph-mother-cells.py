@@ -8,18 +8,20 @@ from __future__ import division, unicode_literals, print_function
 from helpers import *
 
 
+# noinspection PyUnusedLocal
 def parser(parser):
     pass
 
 
+# noinspection PyUnusedLocal
 def process(data, env, output):
-    dgk = data.groupby(by=('channel_in_multipoint'))
+    dgk = data.groupby(by='channel_in_multipoint')
     env.times = {}
     env.lens = {}
     for chan, dataset in dgk:
         env.times[chan] = []
         env.lens[chan] = []
-        for tpn, sdataset in dataset.groupby(by=('timepoint_num')):
+        for tpn, sdataset in dataset.groupby(by='timepoint_num'):
             o = next(iter(sdataset.channel_orientation))
             d = sdataset.sort('cellyposition', ascending=(o != 1))
 

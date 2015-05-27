@@ -6,6 +6,7 @@ from __future__ import division, unicode_literals, print_function
 
 import numpy as np
 
+
 class AttributeAsKeyDict(dict):
     def __getattr__(self, item):
         if item in self:
@@ -15,6 +16,7 @@ class AttributeAsKeyDict(dict):
 
     def __setattr__(self, key, value):
         self[key] = value
+
 
 class MultiImageStack(object):
     """
@@ -30,6 +32,7 @@ class MultiImageStack(object):
     ExtensionRegistry = {}
 
     def generate_parameters_from_defaults(self, defaults, parameters):
+        # noinspection PyAttributeOutsideInit
         self.parameters = defaults
 
         for k, v in parameters.items():

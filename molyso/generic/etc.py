@@ -31,8 +31,9 @@ except ImportError:
             yield i
             stop_time = time.time()
             times[n] = stop_time - start_time
-            eta = " ETA %.2fs" % (numpy.mean(times[:n + 1]) * (len(iterable) - (n + 1)))
+            eta = " ETA %.2fs" % float(numpy.mean(times[:n + 1]) * (len(iterable) - (n + 1)))
             print("processed %d/%d [took %.3fs%s]" % (n + 1, len(iterable), times[n], eta))
+
 
 def iter_time(what):
     start_time = time.time()
@@ -163,7 +164,6 @@ def prettify_numpy_array(arr, space_or_prefix):
         return space_or_prefix + prepared.replace(six_spaces, ' ' * len(space_or_prefix)).lstrip()
 
 
-
 def bits_to_numpy_type(bits):
     # this is supposed to throw an error
     return {
@@ -172,19 +172,20 @@ def bits_to_numpy_type(bits):
         32: numpy.float32
     }[int(bits)]
 
+
 class Cache(object):
     printer = print
 
     def build_cache_filename(self, suffix):
         return "%s.%s.cache" % (self.cache_token, suffix,)
 
-    def __init__(self, file, ignore_cache, cache_token=None):
-        self.filename = file
+    def __init__(self, filename, ignore_cache, cache_token=None):
+        self.filename = filename
 
         if cache_token is None:
             self.cache_token = "%s.%s" % (
-                os.path.basename(file).replace('.', '_').replace('?', '_').replace(',', '_'),
-                hashlib.sha1(str(os.path.abspath(file).lower()).encode()).hexdigest()[:8])
+                os.path.basename(filename).replace('.', '_').replace('?', '_').replace(',', '_'),
+                hashlib.sha1(str(os.path.abspath(filename).lower()).encode()).hexdigest()[:8])
         else:
             self.cache_token = cache_token
 
@@ -211,6 +212,7 @@ class Cache(object):
             return
         else:
             with open(self.build_cache_filename(suffix), 'wb+') as fp:
+                # noinspection PyCallByClass
                 self.__class__.printer("Setting data for '%s'" % (suffix,))
                 pickle.dump(data, fp, protocol=pickle.HIGHEST_PROTOCOL)
 

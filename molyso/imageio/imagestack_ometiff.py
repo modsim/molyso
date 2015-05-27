@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 documentation
-'''
+"""
 from __future__ import division, unicode_literals, print_function
 
 from .imagestack import MultiImageStack
@@ -39,7 +39,8 @@ class OMETiffStack(MultiImageStack):
 
         self.images = self._parse_ome_xml(self.xml_str)
 
-    def pixel_attrib_sanity_check(self, pa):
+    @staticmethod
+    def pixel_attrib_sanity_check(pa):
         if pa['BigEndian'] == 'true':
             raise Exception("Unsupported Pixel format")
         if pa['Interleaved'] == 'true':
@@ -127,7 +128,6 @@ class OMETiffStack(MultiImageStack):
 
         return images
 
-
     def _get_image(self, **kwargs):
         channel = 0
         if 'channel' in kwargs:
@@ -190,9 +190,10 @@ class PlainTiffStack(MultiImageStack):
         t = 0
         if 't' in kwargs:
             t = kwargs['t']
-        pos = 0
-        if 'pos' in kwargs:
-            pos = kwargs['pos']
+
+        # pos = 0
+        # if 'pos' in kwargs:
+        #     pos = kwargs['pos']
 
         return {
             'calibration': lambda: float(self.parameters['calibration']),

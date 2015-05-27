@@ -17,14 +17,17 @@ try:
 except ImportError:
     import pickle
 
+
 def interactive_ground_truth_main(args, tracked_results):
     def plots_info():
         print("Positions " + str(list(tracked_results.keys())))
-        print("Channels per Positition " + str({p: list(tracked_results[p].channel_accumulator.keys()) for p in list(tracked_results.keys())}))
+        print("Channels per Positition " + str(
+            {p: list(tracked_results[p].channel_accumulator.keys()) for p in list(tracked_results.keys())}
+        ))
 
-    acceptable_pos_chans = {p: \
-        range(len(tracked_results[list(tracked_results.keys())[p]].channel_accumulator.keys()))
-        for p in range(len(tracked_results.keys()))}
+    acceptable_pos_chans = \
+        {p: range(len(tracked_results[list(tracked_results.keys())[p]].channel_accumulator.keys()))
+            for p in range(len(tracked_results.keys()))}
 
     plots_info()
 
@@ -44,8 +47,6 @@ def interactive_ground_truth_main(args, tracked_results):
 
     next_dataset = [0, 0]
 
-
-
     def perform_it():
         next_pos, next_chan = next_dataset
 
@@ -59,10 +60,8 @@ def interactive_ground_truth_main(args, tracked_results):
             }
             return env
 
-
         if (next_pos, next_chan) not in all_envs:
             all_envs[(next_pos, next_chan)] = empty_env()
-
 
         env = all_envs[(next_pos, next_chan)]
 
@@ -74,7 +73,6 @@ def interactive_ground_truth_main(args, tracked_results):
         channels = tracking.channel_accumulator[chan_num]
 
         print("Opening position %d, channel %d" % (pos, chan_num,))
-
 
         data = numpy.zeros((len(channels), 6))
 
@@ -102,8 +100,8 @@ def interactive_ground_truth_main(args, tracked_results):
         for n, cc in enumerate(channels):
             lower_border = int(numpy.floor(data[n, n_top] - low))
             large_image[
-            lower_border:int(lower_border + data[n, n_height]),
-            int(data[n, n_width_cumsum] - data[n, n_width]):int(data[n, n_width_cumsum])
+                lower_border:int(lower_border + data[n, n_height]),
+                int(data[n, n_width_cumsum] - data[n, n_width]):int(data[n, n_width_cumsum])
             ] = cc.channel_image
 
         import matplotlib.pyplot as plt
@@ -174,7 +172,7 @@ def interactive_ground_truth_main(args, tracked_results):
                     if env['used'] + 3 >= env['points'].shape[0]:
                         oldmask = env['points'].mask[:env['used']]
                         env['points'] = numpy.ma.array(numpy.r_[env['points'], env['points_empty']])
-                        env['points'].mask = numpy.zeros_like(env['points']).astype(bool)  # [:env['used']]
+                        env['points'].mask = numpy.zeros_like(env['points']).astype(numpy.dtype(bool))  # [:env['used']]
                         env['points'].mask[:env['used']] = oldmask
 
                     n_x = numpy.searchsorted(data[:, n_width_cumsum], x, side='right')
@@ -197,12 +195,10 @@ def interactive_ground_truth_main(args, tracked_results):
 
                     refresh()
 
-
                     # print(n, data[n, n_timepoint])
                     env['last_point_x'], env['last_point_y'] = None, None
                 else:
                     env['last_point_x'], env['last_point_y'] = x, y
-
 
         def key_press(event):
             def show_stats():
@@ -214,8 +210,8 @@ def interactive_ground_truth_main(args, tracked_results):
                 print(mu, numpy.mean(mu))
 
             def try_new_poschan(p, c):
-                #next_pos, next_chan
-                #next_dataset
+                # next_pos, next_chan
+                # next_dataset
                 if (next_pos + p) not in acceptable_pos_chans:
                     print("Position does not exist")
                     return
@@ -252,15 +248,15 @@ def interactive_ground_truth_main(args, tracked_results):
             # n next position, m next channel
 
             elif event.key == 'n':
-                try_new_poschan(1,0)
+                try_new_poschan(1, 0)
             elif event.key == 'N':
-                try_new_poschan(-1,0)
+                try_new_poschan(-1, 0)
             elif event.key == 'm':
-                try_new_poschan(0,1)
+                try_new_poschan(0, 1)
             elif event.key == 'M':
-                try_new_poschan(0,-1)
+                try_new_poschan(0, -1)
             elif event.key == 'o':
-                #output
+                # output
 
                 out = QuickTableDumper()
 

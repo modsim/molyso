@@ -110,9 +110,9 @@ def find_cells_in_channel(image):
 
     # based on the following lambda,
     # it will be decided whether a pair of extrema marks a cell or not
-    ##1# size must be larger than zero
-    ##2# the cell must have a certain 'blackness' (based on the Otsu binarization)
-    ##3# the cell must have a certain prominence (difference from background brightness)
+    # #1# size must be larger than zero
+    # #2# the cell must have a certain 'blackness' (based on the Otsu binarization)
+    # #3# the cell must have a certain prominence (difference from background brightness)
     is_a_cell = lambda last_pos, pos: \
         pos - last_pos > 2 and \
         numpy.mean(profile_of_binary_image[last_pos:pos]) < tunable('cells.filtering.maximum_brightness', 0.5) and \

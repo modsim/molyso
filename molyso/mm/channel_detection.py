@@ -7,11 +7,13 @@ from __future__ import division, unicode_literals, print_function
 import numpy
 
 from .. import DebugPlot, tunable
-from ..generic.signal import find_phase, find_extrema_and_prominence, spectrum_fourier, spectrum_bins_by_length, hires_power_spectrum,\
-    vertical_mean, horizontal_mean, normalize, threshold_outliers, find_insides, one_every_n, hamming_smooth, each_image_slice
+from ..generic.signal import find_phase, find_extrema_and_prominence, spectrum_fourier, spectrum_bins_by_length,\
+    hires_power_spectrum, vertical_mean, horizontal_mean, normalize, threshold_outliers, find_insides, one_every_n,\
+    hamming_smooth, each_image_slice
 from .cell_detection import Cells
 from ..generic.etc import NotReallyATree
 from ..generic.tunable import tunable
+
 
 class Channel(object):
     cells_type = Cells
@@ -83,7 +85,6 @@ class Channels(object):
         positions, (upper, lower) = find_channels(self.image.image)
 
         for begin, end in positions:
-            #noinspection PyMethodFirstArgAssignment
             self.channels_list.append(self.__class__.channel_type(self.image, begin, end, upper, lower))
 
     def __len__(self):
@@ -127,8 +128,10 @@ def horizontal_channel_detection(image):
     upper_profile = +(profile_diff * (profile_diff > 0))
     lower_profile = -(profile_diff * (profile_diff < 0))
 
-    upper_profile[upper_profile < upper_profile.max() * 0.5] *= tunable('channels.horizontal.noise_suppression_factor.upper', 0.1)
-    lower_profile[lower_profile < lower_profile.max() * 0.5] *= tunable('channels.horizontal.noise_suppression_factor.lower', 0.1)
+    upper_profile[upper_profile < upper_profile.max() * 0.5] *= \
+        tunable('channels.horizontal.noise_suppression_factor.upper', 0.1)
+    lower_profile[lower_profile < lower_profile.max() * 0.5] *= \
+        tunable('channels.horizontal.noise_suppression_factor.lower', 0.1)
 
     with DebugPlot('channel_detection', 'details', 'differentials', 'smoothed') as p:
         p.title("Channel detection/Differentials/Smoothed")
@@ -175,10 +178,10 @@ def horizontal_channel_detection(image):
     elif width < 0:
         width = int(width + main_frequency)
 
-    main_frequency += (width / ((profile_diff_len / main_frequency)))
+    main_frequency += (width / (profile_diff_len / main_frequency))
 
-    preliminary_signal = one_every_n(profile_diff_len, main_frequency) + \
-                         one_every_n(profile_diff_len, main_frequency, shift=width)
+    preliminary_signal = \
+        one_every_n(profile_diff_len, main_frequency) + one_every_n(profile_diff_len, main_frequency, shift=width)
 
     tempoary_signal = numpy.zeros_like(absolute_differentiated_profile)
 
@@ -247,6 +250,7 @@ def horizontal_channel_detection(image):
 
 # TODO fix the proper one, or merge them, or document this here, or use just the new one
 
+
 def alternate_vertical_channel_region_detection(image):
 
     f = spectrum_bins_by_length(image.shape[1])
@@ -275,7 +279,7 @@ def alternate_vertical_channel_region_detection(image):
         collector[n*the_step:(n+1)*the_step] = local_f
 
     numpy.set_printoptions(threshold=numpy.nan)
-    #print(collector)
+    # print(collector)
     int_collector = collector.astype(numpy.int32)
 
     bins = numpy.bincount(int_collector)
@@ -286,6 +290,8 @@ def alternate_vertical_channel_region_detection(image):
     collector = (numpy.absolute(int_collector - winner) < delta) | (numpy.absolute(int_collector - 2*winner) < delta)
 
     return sorted(find_insides(collector), key=lambda pair: pair[1] - pair[0], reverse=True)[0]
+
+FIRST_CALL, FROM_TOP, FROM_BOTTOM = 0, -1, 1
 
 
 def vertical_channel_region_detection(image):
@@ -309,8 +315,6 @@ def vertical_channel_region_detection(image):
         return ft.max(), f[numpy.argmax(ft)]
 
     power_overall_f, overall_f = horizontal_mean_frequency(image)
-    print(power_overall_f, overall_f)
-
 
     d = tunable('channels.vertical.recursive.maximum_delta', 2.0)
     power_min_quotient = tunable('channels.vertical.recursive.power_min_quotient', 0.005)
@@ -327,8 +331,6 @@ def vertical_channel_region_detection(image):
 
     collector = numpy.zeros(height)
 
-    FIRST_CALL, FROM_TOP, FROM_BOTTOM = 0, -1, 1
-
     def recursive_check(top, bottom, orientation=FIRST_CALL):
         if (bottom - top) < break_condition:
             return
@@ -340,8 +342,6 @@ def vertical_channel_region_detection(image):
 
         collector[top:mid] = upper
         collector[mid:bottom] = lower
-
-        #print("recursive_check(%d, %d, %s) [upper=%d, lower=%d]" % (top, bottom, {0: 'FIRST_CALL', -1: 'FROM_TOP', 1: 'FROM_BOTTOM'}[orientation], int(upper), int(lower)))
 
         if orientation is FIRST_CALL:
             if upper:

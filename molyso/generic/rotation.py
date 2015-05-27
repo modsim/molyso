@@ -65,32 +65,17 @@ try:
                               (image.shape[1], image.shape[0]))
 
 except ImportError:
-    try:
-        raise ImportError
-        # this function reduces float silently to uint8, which introduced bugs
-        # noinspection PyUnresolvedReferences
-        from scipy.misc import imrotate
+    # DO NOT USE from scipy.misc import imrotate
+    from scipy.ndimage.interpolation import rotate
 
-        def rotate_image(image, angle):
-            """
+    def rotate_image(image, angle):
+        """
 
-            :param image:
-            :param angle:
-            :return:
-            """
-
-            return imrotate(image, angle)
-    except ImportError:
-        from scipy.ndimage.interpolation import rotate
-
-        def rotate_image(image, angle):
-            """
-
-            :param image:
-            :param angle:
-            :return:
-            """
-            return rotate(image, angle=angle, reshape=False)
+        :param image:
+        :param angle:
+        :return:
+        """
+        return rotate(image, angle=angle, reshape=False)
 
 
 def calculate_crop_for_angle(image, angle):

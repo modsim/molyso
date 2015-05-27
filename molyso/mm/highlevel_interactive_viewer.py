@@ -24,7 +24,6 @@ def interactive_main(args):
     mp_max = ims.get_meta('multipoints')
     tp_max = ims.get_meta('timepoints')
 
-
     fig, ax = plt.subplots()
 
     plt.subplots_adjust(left=0.25, bottom=0.25)
@@ -41,7 +40,6 @@ def interactive_main(args):
 
     env = {'show': True, 'rotated': True}
 
-
     def update(_):
         t = int(timepoint.val)
         pos = int(multipoint.val)
@@ -52,7 +50,6 @@ def interactive_main(args):
 
         i = Image()
         i.setup_image(image)
-
 
         def pdh(coords, **kwargs):
             from ..debugging.debugplot import poly_drawing_helper as _pdh

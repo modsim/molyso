@@ -59,7 +59,6 @@ def catch_index_error(what, otherwise):
         return otherwise
 
 
-
 def embedded_assert(expression):
     assert expression
     return True
@@ -156,7 +155,8 @@ def plot_timeline(p, channels, cells,
             scatter_collector[scatter_used, pos_centroid] = parent_cell.centroid_1d
             # TODO different visualization?
             scatter_collector[scatter_used, pos_length] = parent_cell.length
-            scatter_collector[scatter_used, pos_fluorescence_start] = catch_index_error(lambda: getattr(parent_cell, 'fluorescences', [0.0])[0], 0.0)
+            scatter_collector[scatter_used, pos_fluorescence_start] = \
+                catch_index_error(lambda: getattr(parent_cell, 'fluorescences', [0.0])[0], 0.0)
 
             scatter_used += 1
 
@@ -175,7 +175,8 @@ def plot_timeline(p, channels, cells,
             scatter_collector[scatter_used, pos_time_point] = cell_appearance.channel.image.timepoint
             scatter_collector[scatter_used, pos_centroid] = cell_appearance.centroid_1d
             scatter_collector[scatter_used, pos_length] = cell_appearance.length
-            scatter_collector[scatter_used, pos_fluorescence_start] = catch_index_error(lambda: getattr(cell_appearance, 'fluorescences', [0.0])[0], 0.0)
+            scatter_collector[scatter_used, pos_fluorescence_start] = \
+                catch_index_error(lambda: getattr(cell_appearance, 'fluorescences', [0.0])[0], 0.0)
 
             scatter_used += 1
 
@@ -242,7 +243,8 @@ def analyze_tracking(cells, receptor):
                 'uid_track': id(cell.ultimate_parent),
                 'uid_thiscell': id(sa),
                 'uid_cell': id(cell),
-                'uid_parent': id(cell.parent) if cell.parent and embedded_assert(id(cell.parent) != 0) else 0,  # None has an id !
+                # None has an id !
+                'uid_parent': id(cell.parent) if cell.parent and embedded_assert(id(cell.parent) != 0) else 0,
                 'timepoint': sa.channel.image.timepoint,
                 'timepoint_num': sa.channel.image.timepoint_num,
                 'cellyposition': sa.centroid_1d,

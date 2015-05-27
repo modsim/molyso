@@ -8,13 +8,14 @@ from __future__ import division, unicode_literals, print_function
 from helpers import *
 
 
+# noinspection PyUnusedLocal
 def parser(parser):
     pass
 
 
 def process(data, env, output):
     data = data[data.fluorescence == data.fluorescence]  # NaN check
-    gtp = data.groupby(by=('timepoint_num'))
+    gtp = data.groupby(by='timepoint_num')
 
     env.fluor = env.process(gtp.mean().fluorescence)
     env.fluor_bg = env.process(gtp.mean().fluorescence_background)
@@ -23,13 +24,12 @@ def process(data, env, output):
     all_cells = data
     division_data = data[data.about_to_divide == 1]
 
-    ad = all_cells.groupby(by=('timepoint_num'))
+    ad = all_cells.groupby(by='timepoint_num')
 
-    gdd = division_data.groupby(by=('timepoint_num'))
+    gdd = division_data.groupby(by='timepoint_num')
 
     env.ages = numpy.log(2) / env.process(gdd.mean().division_age)
     env.age_times = env.process(gdd.mean().timepoint)
-
 
     env.counts = env.process(gdd.count().division_age)
 
@@ -59,12 +59,12 @@ def ploting(env):
     ax2.set_ylabel('fluorescence [a.u.]')
     ax2.plot(0, 0, label='µ')
     ax2.plot(env.times, env.fluor, label='fluorescence')
-    #ax2.plot(env.times, env.fluor_bg - env.fluor_bg.min(), label='fluorescence background')
+    # ax2.plot(env.times, env.fluor_bg - env.fluor_bg.min(), label='fluorescence background')
 
-#    plot(env.age_times, env.counts)
-    #ax2.plot(env.age_times, env.counts)
-    #print(repr(env.cell_times), repr(env.cell_counts))
-    #ax2.plot(env.cell_times, env.cell_counts)
+    # plot(env.age_times, env.counts)
+    # ax2.plot(env.age_times, env.counts)
+    # print(repr(env.cell_times), repr(env.cell_counts))
+    # ax2.plot(env.cell_times, env.cell_counts)
     legend()
 
 

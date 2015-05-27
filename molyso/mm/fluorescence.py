@@ -23,17 +23,18 @@ class FluorescentCell(Cell):
         self.fluorescences_mean = [float('nan')] * fluor_count
         self.fluorescences_std = [float('nan')] * fluor_count
 
-        try:  # reconstitution from flattened state will fail
-              # due to missing image_fluorescence.
-              # keep calm and carry on!
+        try:
+            # reconstitution from flattened state will fail
+            # due to missing image_fluorescence.
+            # keep calm and carry on!
 
             for f in range(fluor_count):
                 if self.channel.image.image_fluorescences[f] is None:
                     continue
                 cell_img = self.channel.image.image_fluorescences[f][
-                           (self.local_top + self.channel.real_top):(self.local_bottom + self.channel.real_top),
-                           self.channel.left:self.channel.right]
-
+                    (self.local_top + self.channel.real_top):(self.local_bottom + self.channel.real_top),
+                    self.channel.left:self.channel.right
+                ]
 
                 self.fluorescences_mean[f] = float(cell_img.mean())
                 self.fluorescences_std[f] = float(numpy.std(cell_img))
@@ -43,7 +44,10 @@ class FluorescentCell(Cell):
 
     @property
     def fluorescences(self):
-        return [self.fluorescences_mean[f] - self.channel.image.background_fluorescences[f] for f in range(len(self.channel.image.image_fluorescences))]
+        return [
+            self.fluorescences_mean[f] - self.channel.image.background_fluorescences[f]
+            for f in range(len(self.channel.image.image_fluorescences))
+        ]
 
     @property
     def fluorescences_raw(self):
@@ -70,7 +74,6 @@ class FluorescentChannel(Channel):
                 continue
 
             self.fluorescences_channel_image[f] = self.crop_out_of_image(image.image_fluorescences[f])
-
 
 
 class FluorescentChannels(Channels):
@@ -133,24 +136,32 @@ class FluorescentImage(Image):
 
                 previous_channel = next(channel_iterator)
                 for n, next_channel in enumerate(channel_iterator):
-                    background_fragment = fluorescence_image[next_channel.real_top:next_channel.real_bottom,
-                                          previous_channel.right:next_channel.left]
+                    background_fragment = fluorescence_image[
+                        next_channel.real_top:next_channel.real_bottom,
+                        previous_channel.right:next_channel.left
+                    ]
                     background_fluorescence_means[n, 0] = background_fragment.mean()
                     background_fluorescence_means[n, 1] = background_fragment.size
                     previous_channel = next_channel
 
                 background_fluorescence_means[:, 0] *= background_fluorescence_means[:, 1]
 
-                self.background_fluorescences[i] = numpy.sum(background_fluorescence_means[:, 0]) / \
-                                                   numpy.sum(background_fluorescence_means[:, 1])
+                self.background_fluorescences[i] = \
+                    numpy.sum(background_fluorescence_means[:, 0]) / numpy.sum(background_fluorescence_means[:, 1])
 
     def flatten(self):
         channels = self.channels
 
         fluor_count = len(self.image_fluorescences)
 
-        self.channels_cells_fluorescences_mean = [[[cc.fluorescences_mean[f] for cc in c.cells] for c in channels] for f in range(fluor_count)]
-        self.channels_cells_fluorescences_std = [[[cc.fluorescences_std[f] for cc in c.cells] for c in channels] for f in range(fluor_count)]
+        self.channels_cells_fluorescences_mean = [
+            [[cc.fluorescences_mean[f] for cc in c.cells] for c in channels]
+            for f in range(fluor_count)
+        ]
+        self.channels_cells_fluorescences_std = [
+            [[cc.fluorescences_std[f] for cc in c.cells] for c in channels]
+            for f in range(fluor_count)
+        ]
 
         if self.keep_fluorescences_image:
             def _pack_image(image):
@@ -162,11 +173,11 @@ class FluorescentImage(Image):
                     else:
                         return fit_to_type(image, self.pack_fluorescences_image)
 
-            self.channel_fluorescences_images = [[_pack_image(ci) for ci in c.fluorescences_channel_image] for c in channels]
-
+            self.channel_fluorescences_images = [
+                [_pack_image(ci) for ci in c.fluorescences_channel_image] for c in channels
+            ]
 
         super(FluorescentImage, self).flatten()
-
 
     def unflatten(self):
         super(FluorescentImage, self).unflatten()

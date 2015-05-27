@@ -41,6 +41,7 @@ def translation_2x1d(image_a=None, image_b=None, ffts_a=(), ffts_b=(), return_a=
 
     return result
 
+
 def shift_image(image, shift, background='input'):
     vertical, horizontal = shift
     height, width = image.shape

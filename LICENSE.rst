@@ -1,5 +1,5 @@
 License Information
-==================
+===================
 
 The 2-clause BSD License
 ------------------------

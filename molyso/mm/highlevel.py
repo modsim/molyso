@@ -35,8 +35,9 @@ from .highlevel_interactive_ground_truth import interactive_ground_truth_main
 
 OMETiffStack = OMETiffStack
 
+
 def banner():
-    return """
+    return r"""
      \   /\  /\  /                             -------------------------
       | | |O| | |    molyso                    Developed  2013 - 2015 by
       | | | | |O|                              Christian   C.  Sachs  at
@@ -214,6 +215,7 @@ def processing_setup(args):
     except ImportError:
         pass
 
+
 def main():
     global ims
 
@@ -248,7 +250,8 @@ def main():
     if args.read_tunables:
         with open(args.read_tunables, 'r') as tunable_file:
             tunables = json.load(tunable_file)
-            print_info("Loaded tunable file \"%(filename)s\" with data: %(data)s" % {'filename': args.read_tunables, 'data': repr(tunables)})
+            print_info("Loaded tunable file \"%(filename)s\" with data: %(data)s" %
+                       {'filename': args.read_tunables, 'data': repr(tunables)})
             TunableManager.load_tunables(tunables)
 
     if args.tunables:
@@ -265,8 +268,6 @@ def main():
 
     if not args.process:
         return interactive_main(args)
-
-
 
     try:
         if not args.ground_truth:
@@ -290,7 +291,7 @@ def main():
     Cache.printer = print_info
     cache = Cache(args.input, ignore_cache=args.ignorecache, cache_token=args.cache_token)
 
-    if not 'tracking' in cache:
+    if 'tracking' not in cache:
 
         if 'imageanalysis' in cache:
             results = cache['imageanalysis']
@@ -354,7 +355,6 @@ def main():
                 except StopIteration:
                     pass
 
-
             cache['imageanalysis'] = results
 
     ####################################################################################################################
@@ -362,7 +362,8 @@ def main():
     if not args.no_tracking:
 
         if 'tracking' in cache:
-            results = None  # free up some ram?
+            # noinspection PyUnboundLocalVariable
+            del results  # free up some ram?
             tracked_results = cache['tracking']
         else:
 
@@ -409,7 +410,6 @@ def main():
                     tracker = tracking.tracker_mapping[inner_k]
                     channels = tracking.channel_accumulator[inner_k]
                     yield pos, inner_k, tracking, tracker, channels
-
 
         if args.table_output is None:
             recipient = sys.stdout
