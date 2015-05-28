@@ -8,13 +8,14 @@ import sys
 import numpy
 import hashlib
 import time
+import logging
 
 from .. import Debug
 
+logger = logging
 
 def silent_progress_bar(iterable):
     return iter(iterable)
-
 
 try:
     import clint.textui
@@ -32,7 +33,7 @@ except ImportError:
             stop_time = time.time()
             times[n] = stop_time - start_time
             eta = " ETA %.2fs" % float(numpy.mean(times[:n + 1]) * (len(iterable) - (n + 1)))
-            print("processed %d/%d [took %.3fs%s]" % (n + 1, len(iterable), times[n], eta))
+            logger.info("processed %d/%d [took %.3fs%s]" % (n + 1, len(iterable), times[n], eta))
 
 
 def iter_time(what):
@@ -40,12 +41,22 @@ def iter_time(what):
     for n in what:
         yield n
     stop_time = time.time()
-    print("whole step took %.3fs" % (stop_time - start_time,))
+    logger.info("whole step took %.3fs" % (stop_time - start_time,))
 
 _fancy_progress_bar = fancy_progress_bar
 
 fancy_progress_bar = lambda x: iter_time(_fancy_progress_bar(x))
 
+
+def dummy_progress_indicator():
+    return iter(int, 1)
+
+
+def ignorant_next(iterable):
+    try:
+        return next(iterable)
+    except StopIteration:
+        return None
 
 class QuickTableDumper(object):
     def __init__(self, recipient=None):
@@ -114,9 +125,9 @@ else:
             win32api.SetConsoleCtrlHandler(handler, 1)
 
         except ImportError:
-            print("Warning: Running on Windows, but module 'win32api' could not be imported to fix signal handler.")
-            print("Ctrl-C might break the program ...")
-            print("Fix: Install the module!")
+            logger.warning("Running on Windows, but module 'win32api' could not be imported to fix signal handler.\n" +
+                           "Ctrl-C might break the program ..." +
+                           "Fix: Install the module!")
 
 
 def debug_init():

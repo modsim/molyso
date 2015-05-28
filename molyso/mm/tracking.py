@@ -7,20 +7,21 @@ from __future__ import division, unicode_literals, print_function
 from .. import tunable
 from .tracking_infrastructure import CellTracker, CellCrossingCheckingGlobalDuoOptimizerQueue
 from ..generic.signal import find_extrema_and_prominence, hamming_smooth
+from ..generic.etc import ignorant_next, dummy_progress_indicator
 
 from .tracking_output import *
 
+def each_k_tracking_tracker_channels_in_results(tracking):
+    for inner_k in sorted(tracking.tracker_mapping.keys()):
+        tracker = tracking.tracker_mapping[inner_k]
+        channels = tracking.channel_accumulator[inner_k]
+        yield inner_k, tracking, tracker, channels
 
-def dummy_progress_indicator():
-    pass
 
-
-def ignorant_next(iterable):
-    try:
-        return next(iterable)
-    except StopIteration:
-        return None
-
+def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
+    for pos, tracking in inner_tracked_results.items():
+        for inner_k, tracking, tracker, channels in each_k_tracking_tracker_channels_in_results(tracking):
+            yield pos, inner_k, tracking, tracker, channels
 
 class TrackedPosition(object):
     def __init__(self):
@@ -65,7 +66,7 @@ class TrackedPosition(object):
         self.cell_centroid_accumulator = {c: {} for c in key_list}
         self.cell_counts = {c: [] for c in key_list}
 
-    def align_channels(self, progress_indicator=dummy_progress_indicator):
+    def align_channels(self, progress_indicator=dummy_progress_indicator()):
         image = None
 
         for _ in range(self.n):
@@ -147,7 +148,7 @@ class TrackedPosition(object):
     def get_tracking_work_size(self):
         return sum([len(ca) - 1 if len(ca) > 0 else 0 for ca in self.channel_accumulator.values()])
 
-    def perform_tracking(self, progress_indicator=dummy_progress_indicator):
+    def perform_tracking(self, progress_indicator=dummy_progress_indicator()):
         for c in self.tracker_mapping.keys():
             tracker = self.tracker_mapping[c]
             channel_list = self.channel_accumulator[c]
