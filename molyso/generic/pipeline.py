@@ -24,7 +24,236 @@ OMETiffStack = OMETiffStack
 
 from collections import namedtuple
 
+
+
+class Mapper:
+    def __call__(self, meta, parameter):
+        return parameter
+
+class Reducer:
+    def __call__(self, meta, parameter):
+        return parameter
+
+class Sink:
+    def __call__(self, meta, parameter):
+        print(parameter)
+
+class For:
+    every_image = 0  # called once per image
+    every_timepoint = 1  # called once per timepoint, THAT IS when all multipoints of that timepoint have been processed
+    every_multipoint = 2  # called once per multipoint
+    every_dataset = 3  # called once per dataset
+
+class Environment:
+    pass
+
+def value_for_every_position(tup, val):
+    # only novel
+    return [x for x in [tup[:n] + (val,) + tup[n+1:] for n in range(len(tup))] if x != tup]
+
+def static_pipeline_gateway(klass, what, args, kwargs, local_cache={}):
+    try:
+        if what == 'init':
+            _object = klass()
+            local_cache['object'] = _object
+            _object.setup_call()
+        elif what == 'dispatch':
+            _object = local_cache['object']
+            print(args)
+            return _object.dispatch(*args, **kwargs)
+    except Exception as e:
+        print(traceback.print_exc())
+        print(e)
+        raise
+
+class DuckTypedApplyResult:
+    def __init__(self, value):
+        self.value = value
+    def ready(self):
+        return True
+
+    def get(self):
+        return self.value
+
+
+class Pipeline:
+    def add_step(self, when, what):
+
+        if when not in self.steps:
+            self.steps[when] = []
+
+        self.steps[when].append(what)
+
+        # just checking for class-yness
+        if type(what) == type(Pipeline):
+            self.all_steps[what] = what()
+            self.environments_for_classes[what] = Environment()
+        else:
+            self.all_steps[what] = what
+
+
+    def setup(self):
+        pass
+
+    def setup_call(self):
+        self.steps = {}
+
+        self.all_steps = {}
+
+        self.environment = Environment()
+
+        self.environments_for_classes = {}
+
+        self.setup()
+
+
+    def single_dispatch(self, what, step, meta, *args, **kwargs):
+        to_run = self.all_steps[step]
+        if step in self.environments_for_classes:
+            to_run.my_env = self.environments_for_classes[step]
+            to_run.env = self.environment
+
+        return to_run(meta, *args, **kwargs)
+
+    def dispatch(self,  what, meta, *args, **kwargs):
+        if what in self.steps:
+            for step in self.steps[what]:
+                args = self.single_dispatch(what, step, meta, *args, **kwargs)
+                if not type(args) == tuple:
+                    args = (args,)
+                kwargs = {}  # or not?
+        if type(args) == tuple and len(args) == 1:
+            args, = args
+        return args
+
+
+
+    def run(self):
+        self.setup_call()
+
+
+        self.pool = multiprocessing.Pool(initializer=static_pipeline_gateway,
+                                         initargs=(self.__class__, 'init', (), {},))
+        multipoints = [1, 2, 3]
+        timepoints = [1, 2, 3]
+
+        results = {}
+        partial_results = {}
+
+        def check(tup, desired):
+            return tup in partial_results and desired == partial_results[tup]
+
+        def collect(tup):
+            def match(t1, t2):
+                if len(t1) != len(t2):
+                    return False
+
+                noneinthere = False
+
+                for n in range(len(t1)):
+                    if not (t1[n] == t2[n]) and t1[n] is not None and t2[n] is not None:
+                        return False
+                    if t2[n] is None and t1[n] is not None:
+                        return False
+
+                    if t1[n] is None:
+                        noneinthere = True
+
+                if noneinthere and t1 == t2:
+                    return False
+                return True
+
+            return {key: value for key, value in results.items() if match(tup, key)}
+
+        def increment_partial(perm):
+            if perm not in partial_results:
+                partial_results[perm] = 1
+            else:
+                partial_results[perm] += 1
+
+        to_fetch = {}
+
+        for multipoint in multipoints:
+            for timepoint in timepoints:
+                image = numpy.zeros((512, 512))
+                meta = Meta(multipoint, timepoint)
+
+                #result = self.dispatch(For.every_image, meta, image)
+                #print((For.every_image, meta, image))
+
+                result = self.pool.apply_async(static_pipeline_gateway,
+                                               args=(self.__class__, 'dispatch', (For.every_image, meta, image), {},))
+
+                results[meta] = result
+                to_fetch[meta] = True
+
+        while len(to_fetch) > 0:
+            for meta in list(to_fetch.keys()):
+                result = results[meta]
+                if result.ready():
+                    to_fetch[meta] = False
+                    print(result)
+                    result = result.get()
+                    results[meta] = result
+
+                    for perm in value_for_every_position(meta, None):
+                        increment_partial(perm)
+
+                    def higher_order_steps(toi, expected, what, name):
+                        if check(toi, expected):
+                            print(toi, name, "is ready")
+                            intermediate_result = collect(toi)
+
+                            #result = self.dispatch(what, toi, intermediate_result)
+                            print(">>>>>>>>>>>", intermediate_result, partial_results)
+                            result = self.pool.apply_async(
+                                static_pipeline_gateway,
+                                args=(self.__class__, 'dispatch', (what, toi, intermediate_result), {},)
+                            )
+
+                            results[toi] = result
+                            to_fetch[toi] = True
+                    if meta.pos is not None:
+                        higher_order_steps(Meta(pos=meta.pos, t=None), len(timepoints), For.every_multipoint, "multipoint")
+                    if meta.t is not None:
+                        higher_order_steps(Meta(pos=None, t=meta.t), len(multipoints), For.every_timepoint, "timepoint")
+                    higher_order_steps(Meta(pos=None, t=None), len(timepoints) * len(multipoints), For.every_dataset, "dataset")
+
+            to_fetch = {k: True for k, v in to_fetch.items() if v}
+
+
+
+        print(self.steps)
+        print("*")
+
+
+###############
+
+
+class TestPipeline(Pipeline):
+
+    class MeanMapper(Mapper):
+        def __call__(self, meta, image):
+            return image.mean()
+
+    class MeanReducer(Reducer):
+        def __call__(self, meta, data):
+            return numpy.array(list(data.values())).mean()
+
+    class PrintSink(Sink):
+        def __call__(self, meta, data):
+            print("Reached the PrintSink. Meta is: %s Data is: %s" % (repr(meta), repr(data)))
+
+    def setup(self):
+        self.add_step(For.every_image, TestPipeline.MeanMapper)
+        self.add_step(For.every_multipoint, TestPipeline.MeanReducer)
+        self.add_step(For.every_multipoint, TestPipeline.PrintSink)
+        self.add_step(For.every_dataset, TestPipeline.PrintSink)
+
+
+
 class ImageProcessingPipelineInterface:
+
     def internal_options(self):
         pass
 
@@ -219,7 +448,7 @@ class ImageProcessingPipeline(ImageProcessingPipelineInterface):
         return self._log
 
     def main(self):
-
+        return TestPipeline().run()
         logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(name)s %(levelname)s %(message)s")
 
         self.argparser = self._create_argparser()
