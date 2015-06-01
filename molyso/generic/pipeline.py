@@ -182,6 +182,9 @@ class Pipeline:
         processing_order = self.processing_order
         item_counts = self.item_counts
 
+        if getattr(self, 'cache', False) is False:
+            self.cache = False
+
         sort_order = [index for index, _ in sorted(enumerate(processing_order), key=lambda p: p[0])]
 
         def prepare_steps(step, replace):
@@ -259,13 +262,18 @@ class Pipeline:
                     continue
                 else:
                     parameter = ({fetch: results[fetch] for fetch in sorted(mapping_copy[op], key=lambda t: [t[i] for i in sort_order])},)
-                if pool:
-                    result = pool.apply_async(
-                        singleton_class_mapper,
-                        args=(self.__class__, 'dispatch', (reverse_todo[op], op, ) + parameter, {},)
-                    )
+
+                token = repr(reverse_todo[op]) + ' ' + repr(op)
+                if self.cache and token in self.cache:
+                    result = self.__class__.DuckTypedApplyResult(self.cache[token])
                 else:
-                    result = self.__class__.DuckTypedApplyResult(self.dispatch(reverse_todo[op], *((op,) + parameter)))
+                    if pool:
+                        result = pool.apply_async(
+                            singleton_class_mapper,
+                            args=(self.__class__, 'dispatch', (reverse_todo[op], op, ) + parameter, {},)
+                        )
+                    else:
+                        result = self.__class__.DuckTypedApplyResult(self.dispatch(reverse_todo[op], *((op,) + parameter)))
 
                 results[op] = result
 
@@ -285,6 +293,10 @@ class Pipeline:
                         self.log.exception("Exception occurred at op: %s", repr(op))
 
                     results[op] = result
+
+                    if self.cache:
+                        token = repr(reverse_todo[op]) + ' ' + repr(op)
+                        self.cache[token] = result
 
                     if op in reverse_mapping:
                         for affected in reverse_mapping[op]:
