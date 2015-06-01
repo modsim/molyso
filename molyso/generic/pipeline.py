@@ -6,7 +6,8 @@ import numpy
 import itertools
 import codecs
 import json
-import multiprocessing
+from multiprocessing import Pool, cpu_count
+from multiprocessing.pool import ApplyResult
 import datetime
 import traceback
 import logging
@@ -44,12 +45,23 @@ class For:
     every_multipoint = 2  # called once per multipoint
     every_dataset = 3  # called once per dataset
 
+class For_every_image: pass
+class For_every_timepoint: pass
+class For_every_multipoint: pass
+class For_every_dataset: pass
+class For_all_multipoints: pass
+class For_all_timepoints: pass
+
+
+
+
+
 class Environment:
     pass
 
 def value_for_every_position(tup, val):
     # only novel
-    return [x for x in [tup[:n] + (val,) + tup[n+1:] for n in range(len(tup))] if x != tup]
+    return [x for x in [tuple(tup[:n]) + (val,) + tuple(tup[n+1:]) for n in range(len(tup))] if x != tuple(tup)]
 
 def static_pipeline_gateway(klass, what, args, kwargs, local_cache={}):
     try:
@@ -59,8 +71,19 @@ def static_pipeline_gateway(klass, what, args, kwargs, local_cache={}):
             _object.setup_call()
         elif what == 'dispatch':
             _object = local_cache['object']
-            print(args)
+            #print(args)
             return _object.dispatch(*args, **kwargs)
+    except Exception as e:
+        print(traceback.print_exc())
+        print(e)
+        raise
+
+def singleton_class_mapper(klass, what, args, kwargs, local_cache={}):
+    try:
+        if klass not in local_cache:
+            local_cache[klass] = klass.__new__(klass)
+        return getattr(local_cache[klass], what)(*args, **kwargs)
+
     except Exception as e:
         print(traceback.print_exc())
         print(e)
@@ -75,8 +98,164 @@ class DuckTypedApplyResult:
     def get(self):
         return self.value
 
+class NotDispatchedYet:
+    pass
+
+class Collected:
+    pass
+
+class Every:
+    pass
+
 
 class Pipeline:
+    def wrap(self, what):
+        if type(what) == type(Pipeline):
+            instance = what()
+            instance.my_env = Environment()
+            instance.env = self.environment
+            def callable(*args, **kwargs):
+                return instance(*args, **kwargs)
+            return callable
+        else:
+            return what
+
+    def add_step(self, when, what):
+        if when not in self.steps:
+            self.steps[when] = self.wrap(what)
+        else:
+            last = self.steps[when]
+            new = self.wrap(what)
+            def callable(*args, **kwargs):
+                result = last(*args, **kwargs)
+                if type(result) != tuple:
+                    result = (result,)
+                return new(*result, **kwargs)
+
+            self.steps[when] = callable
+
+    def dispatch(self, step, *args, **kwargs):
+        return self.steps[step](*args, **kwargs)
+
+    def setup(self):
+        pass
+
+    def setup_call(self):
+        self.steps = {}
+        self.environment = Environment()
+
+    def __full_init__(self):
+        self.__init__()
+        self.setup_call()
+        self.setup()
+
+    def setup(self):
+
+        def dumper(*args, **kwargs):
+            print('got called, args: %s; kwargs: %s' % (repr(args), repr(kwargs)))
+
+        self.add_step(Meta(t=Every, pos=Every), dumper)
+        self.add_step(Meta(t=Every, pos=Every), dumper)
+        self.add_step(Meta(t=Every, pos=Collected), dumper)
+        self.add_step(Meta(t=Collected, pos=Every), dumper)
+
+    def run(self):
+        print("*")
+
+        from itertools import product
+
+
+        self.setup_call()
+        self.setup()
+
+        meta_tuple = Meta
+        processing_order = Meta(t=1, pos=2)
+        item_counts = Meta(t=[1, 2, 3], pos=[1, 2, 3])
+
+        sort_order = [index for index, _ in sorted(enumerate(processing_order), key=lambda p: p[0])]
+        def prepare_steps(step, replace):
+            return list(meta_tuple(*t) for t in sorted(product(*[
+                item_counts[num] if value == replace else [value] for num, value in
+                enumerate(step)
+            ]), key=lambda t: [t[i] for i in sort_order]))
+
+        from collections import OrderedDict
+
+        todo = OrderedDict()
+        reverse_todo = {}
+        results = {}
+
+        mapping = {}
+        inverse_mapping = {}
+
+
+        for step in self.steps.keys():
+            order = prepare_steps(step, Every)
+            reverse_todo.update({k: step for k in order})
+            todo.update({k: NotDispatchedYet for k in order})
+            mapping.update({t: set(prepare_steps(t, Collected)) for t in order})
+
+        mapping_copy = mapping.copy()
+
+        def is_concrete(t):
+            for n in t:
+                if n is Collected or n is Every:
+                    return False
+            return True
+
+        pool = Pool(
+            initializer=singleton_class_mapper,
+            initargs=(self.__class__, '__full_init__', (), {},)
+        )
+
+        #### pseudocode
+        initial_length = len(todo)
+
+        check = set()
+
+        while len(todo) > 0:
+            for op in list(todo.keys()):
+                parameter = None
+                if is_concrete(op):
+                    parameter = (numpy.zeros((512, 512)),)
+
+                elif len(mapping[op]) != 0:
+                    continue
+                else:
+                    print(op)
+                    print(mapping_copy[op])
+                    parameter = list(sorted(mapping_copy[op], key=lambda t: [t[i] for i in sort_order]))
+                    print(parameter)
+
+                results[op] = pool.apply_async(
+                    singleton_class_mapper,
+                    args=(self.__class__, 'dispatch', (reverse_todo[op], op, ) + parameter, {},)
+                )
+
+                check |= set((op,))
+
+                del todo[op]
+
+            for op in list(check):
+                result = results[op]
+                if result.ready():
+                    result = result.get()
+                    results[op] = result
+                    check -= set((op,))
+                    mapping[op] -= set((op,))
+                else:
+                    print("op is not ready", op)
+
+            print(todo, check)
+
+        pool.close()
+        print("*done")
+
+
+##############
+
+
+class XXXXXXXXXXXXXPipeline:
     def add_step(self, when, what):
 
         if when not in self.steps:
@@ -91,6 +270,9 @@ class Pipeline:
         else:
             self.all_steps[what] = what
 
+        self.step_order_is[len(self.step_order_is)] = what
+        self.step_order_si[what] = len(self.step_order_si)
+
 
     def setup(self):
         pass
@@ -104,7 +286,7 @@ class Pipeline:
 
         self.environments_for_classes = {}
 
-        self.setup()
+        self.step_order_si = {}
 
 
     def single_dispatch(self, what, step, meta, *args, **kwargs):
@@ -126,13 +308,112 @@ class Pipeline:
             args, = args
         return args
 
+    def new_dispatch(self, meta, step, *args, **kwargs):
 
+        return self.step_order_is[dispatch_id](meta, *args, **kwargs)
 
     def run(self):
+        print("*")
+
+        from itertools import product
+
+        def dumper(meta, data):
+            print("called. got ", meta, data)
+
         self.setup_call()
 
+        self.add_step(Meta(t=Every, pos=Every), dumper)
+        self.add_step(Meta(t=Every, pos=Every), dumper)
+        self.add_step(Meta(t=Every, pos=Collected), dumper)
+        self.add_step(Meta(t=Collected, pos=Every), dumper)
 
-        self.pool = multiprocessing.Pool(initializer=static_pipeline_gateway,
+        meta_tuple = Meta
+        processing_order = Meta(t=1, pos=2)
+        item_counts = Meta(t=[1, 2, 3], pos=[1, 2, 3])
+
+
+
+        sort_order = [index for index, _ in sorted(enumerate(processing_order), key=lambda p: p[0])]
+        def prepare_steps(step, replace):
+            return list(meta_tuple(*t) for t in sorted(product(*[
+                item_counts[num] if value == replace else [value] for num, value in
+                enumerate(step)
+            ]), key=lambda t: [t[i] for i in sort_order]))
+
+        from collections import OrderedDict
+        todo = OrderedDict()
+        mapping = {}
+
+        inverse_mapping = {}
+
+        results = OrderedDict()
+
+        for step in self.steps.keys():
+
+            order = prepare_steps(step, Every)
+
+            results.update({k: NotDispatchedYet for k in order})
+
+            todo.update(order)
+
+            needed = {t: set(prepare_steps(t, Collected)) for t in order}
+
+            mapping.update(needed)
+
+            inverse_mapping.update({vv: k for k, v in needed.items() for vv in v})
+
+        def is_concrete(t):
+            for n in t:
+                if n is Collected or n is Every:
+                    return False
+            return True
+
+        pool = Pool(
+            initializer=singleton_class_mapper,
+            initargs=(self.__class__, '__init__', (), {},)
+        )
+
+        #### pseudocode
+
+        procesed = 0
+
+#        while processed != len(results):
+#            for job,
+
+
+        running = {}
+
+
+        while len(todo) > 0:
+            for step, op in todo:
+                print(step)
+                if is_concrete(op):
+                    dispatch_id = self.step_order_si[step]
+
+                    running[op] = pool.apply_async(
+                        singleton_class_mapper,
+                        args=(self.__class__, 'new_dispatch', (meta, dispatch_id, image), {},)
+                    )
+                else:
+                    new_todo.append([step, op])
+
+        todo = new_todo
+
+        retrieved_results = 0
+
+        while len(todo) > 0 and retrieved_results != len(results):
+            pass
+
+        print(todo)
+
+        print(inverse_mapping)
+        return
+
+        self.setup_call()
+
+        self.setup()
+
+        self.pool = Pool(initializer=static_pipeline_gateway,
                                          initargs=(self.__class__, 'init', (), {},))
         multipoints = [1, 2, 3]
         timepoints = [1, 2, 3]
@@ -141,27 +422,18 @@ class Pipeline:
         partial_results = {}
 
         def check(tup, desired):
-            return tup in partial_results and desired == partial_results[tup]
+            return (tup in partial_results and desired == partial_results[tup])
 
         def collect(tup):
-            def match(t1, t2):
-                if len(t1) != len(t2):
+            def match(pattern, haystack):
+                if len(pattern) != len(haystack):
                     return False
 
-                noneinthere = False
+                matching = sum(
+                    ((p == h) or (p is Wildcard and h is not Wildcard)) for p, h in zip(pattern, haystack)
+                )
 
-                for n in range(len(t1)):
-                    if not (t1[n] == t2[n]) and t1[n] is not None and t2[n] is not None:
-                        return False
-                    if t2[n] is None and t1[n] is not None:
-                        return False
-
-                    if t1[n] is None:
-                        noneinthere = True
-
-                if noneinthere and t1 == t2:
-                    return False
-                return True
+                return matching == len(pattern)
 
             return {key: value for key, value in results.items() if match(tup, key)}
 
@@ -175,60 +447,86 @@ class Pipeline:
 
         for multipoint in multipoints:
             for timepoint in timepoints:
-                image = numpy.zeros((512, 512))
+                image = multipoint * numpy.array([list(range(10)) for _ in range(10)])  #numpy.zeros((512, 512))
                 meta = Meta(multipoint, timepoint)
 
-                #result = self.dispatch(For.every_image, meta, image)
-                #print((For.every_image, meta, image))
-
                 result = self.pool.apply_async(static_pipeline_gateway,
-                                               args=(self.__class__, 'dispatch', (For.every_image, meta, image), {},))
+                                               args=(self.__class__, 'dispatch', (For_every_image, meta, image), {},))
 
                 results[meta] = result
                 to_fetch[meta] = True
+
+
+
+
+        def higher_order_steps(toi, expected, what, name):
+            if check(toi, expected):
+                intermediate_result = collect(toi)
+
+                for v in intermediate_result.values():
+                    if type(v) == ApplyResult:
+                        return
+                print(toi)
+                print(intermediate_result)
+                print(results)
+                result = self.pool.apply_async(
+                    static_pipeline_gateway,
+                    args=(self.__class__, 'dispatch', (what, toi, intermediate_result), {},)
+                )
+
+                results[toi] = result
+                to_fetch[toi] = True
+
+        def process_individual_incame_result(result, meta):
+            to_fetch[meta] = False
+            result = result.get()
+            results[meta] = result
+
+            for perm in value_for_every_position([None if m is Wildcard else m for m in meta], Wildcard):
+                increment_partial(perm)
+
+            if meta.pos is not None:
+                higher_order_steps(
+                    Meta(pos=meta.pos, t=Wildcard),
+                    len(timepoints),
+                    For_every_multipoint,
+                    "multipoint")
+
+            if meta.t is not None:
+                higher_order_steps(
+                    Meta(pos=Wildcard, t=meta.t),
+                    len(multipoints),
+                    For_every_timepoint,
+                    "timepoint")
+
+            if meta.pos is not None:
+                higher_order_steps(
+                    Meta(pos=Wildcard, t=None),
+                    len(timepoints),
+                    For_all_timepoints,
+                    "all timepoints")
+
+            if meta.t is not None:
+                higher_order_steps(
+                    Meta(pos=None, t=Wildcard),
+                    len(multipoints),
+                    For_all_multipoints,
+                    "all multipoints")
+
+            higher_order_steps(
+                Meta(pos=None, t=None),
+                len(timepoints) * len(multipoints),
+                For_every_dataset,
+                "dataset")
 
         while len(to_fetch) > 0:
             for meta in list(to_fetch.keys()):
                 result = results[meta]
                 if result.ready():
-                    to_fetch[meta] = False
-                    print(result)
-                    result = result.get()
-                    results[meta] = result
-
-                    for perm in value_for_every_position(meta, None):
-                        increment_partial(perm)
-
-                    def higher_order_steps(toi, expected, what, name):
-                        if check(toi, expected):
-                            print(toi, name, "is ready")
-                            intermediate_result = collect(toi)
-
-                            #result = self.dispatch(what, toi, intermediate_result)
-                            print(">>>>>>>>>>>", intermediate_result, partial_results)
-                            result = self.pool.apply_async(
-                                static_pipeline_gateway,
-                                args=(self.__class__, 'dispatch', (what, toi, intermediate_result), {},)
-                            )
-
-                            results[toi] = result
-                            to_fetch[toi] = True
-                    if meta.pos is not None:
-                        higher_order_steps(Meta(pos=meta.pos, t=None), len(timepoints), For.every_multipoint, "multipoint")
-                    if meta.t is not None:
-                        higher_order_steps(Meta(pos=None, t=meta.t), len(multipoints), For.every_timepoint, "timepoint")
-                    higher_order_steps(Meta(pos=None, t=None), len(timepoints) * len(multipoints), For.every_dataset, "dataset")
+                    process_individual_incame_result(result, meta)
 
             to_fetch = {k: True for k, v in to_fetch.items() if v}
-
-
-
-        print(self.steps)
-        print("*")
-
-
 ###############
-
 
 class TestPipeline(Pipeline):
 
@@ -244,11 +542,16 @@ class TestPipeline(Pipeline):
         def __call__(self, meta, data):
             print("Reached the PrintSink. Meta is: %s Data is: %s" % (repr(meta), repr(data)))
 
-    def setup(self):
-        self.add_step(For.every_image, TestPipeline.MeanMapper)
-        self.add_step(For.every_multipoint, TestPipeline.MeanReducer)
-        self.add_step(For.every_multipoint, TestPipeline.PrintSink)
-        self.add_step(For.every_dataset, TestPipeline.PrintSink)
+    def xsetup(self):
+        def test(meta, data):
+            return numpy.array(list(data.values())).mean()
+
+
+        self.add_step(For_every_image, TestPipeline.MeanMapper)
+        self.add_step(For_every_multipoint, TestPipeline.MeanReducer)
+        #self.add_step(For_every_multipoint, test)
+        self.add_step(For_every_multipoint, TestPipeline.PrintSink)
+        self.add_step(For_all_multipoints, TestPipeline.PrintSink)
 
 
 
@@ -463,7 +766,7 @@ class ImageProcessingPipeline(ImageProcessingPipelineInterface):
         self._parse_ranges(self.args, self.ims)
 
         if self.args.mp <= 0:
-            self.args.mp = multiprocessing.cpu_count()
+            self.args.mp = cpu_count()
 
         self.before_main()
 
@@ -497,7 +800,7 @@ class ImageProcessingPipeline(ImageProcessingPipelineInterface):
             ignorant_next(pbar)
 
         else:
-            self.pool = multiprocessing.Pool(processes=self.args.mp, initializer=ImageProcessingPipeline._multiprocess_start, initargs=(self.__class__, self.args,))
+            self.pool = Pool(processes=self.args.mp, initializer=ImageProcessingPipeline._multiprocess_start, initargs=(self.__class__, self.args,))
 
             jobs = {}
 
