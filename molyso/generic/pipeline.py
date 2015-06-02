@@ -273,7 +273,11 @@ class Pipeline:
                             args=(self.__class__, 'dispatch', (reverse_todo[op], op, ) + parameter, {},)
                         )
                     else:
-                        result = self.__class__.DuckTypedApplyResult(self.dispatch(reverse_todo[op], *((op,) + parameter)))
+                        try:
+                            result = self.__class__.DuckTypedApplyResult(self.dispatch(reverse_todo[op], *((op,) + parameter)))
+                        except Exception:
+                            self.log.exception("Exception occurred at op: %s", repr(op))
+                            result = None
 
                 results[op] = result
 
@@ -291,6 +295,7 @@ class Pipeline:
                         result = result.get()
                     except Exception as e:
                         self.log.exception("Exception occurred at op: %s", repr(op))
+                        result = None
 
                     results[op] = result
 
