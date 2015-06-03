@@ -71,8 +71,10 @@ class Pipeline:
         pass
 
     class DuckTypedApplyResult:
-        def __init__(self, value):
-            self.value = value
+        def __init__(self, callable_):
+            self.value = None
+            self.called = False
+            self.callable = callable_
 
         def ready(self):
             return True
@@ -81,6 +83,8 @@ class Pipeline:
             pass
 
         def get(self):
+            if not self.called:
+                self.value = self.callable()
             return self.value
 
     class NotDispatchedYet:
@@ -173,6 +177,16 @@ class Pipeline:
 
         self.complete_setup()
 
+    def get_cache(self, key):
+        if self.cache:
+            return self.cache[key]
+        else:
+            raise RuntimeError('No cache defined')
+
+    def set_cache(self, key, value):
+        if self.cache:
+            self.cache[key] = value
+
     def run(self, progress_bar=None):
         self.complete_setup(root=True)
 
@@ -252,6 +266,8 @@ class Pipeline:
 
         check = set()
 
+        cache_originated = set()
+
         while len(todo) > 0 or len(check) > 0:
             for op in list(todo.keys()):
                 parameter = None
@@ -265,7 +281,15 @@ class Pipeline:
 
                 token = repr(reverse_todo[op]) + ' ' + repr(op)
                 if self.cache and token in self.cache:
-                    result = self.__class__.DuckTypedApplyResult(self.cache[token])
+                    if pool:
+                        result = pool.apply_async(
+                            singleton_class_mapper,
+                            args=(self.__class__, 'get_cache', (token,), {},)
+                        )
+                    else:
+                        result = self.__class__.DuckTypedApplyResult(lambda: self.get_cache(token))
+
+                    cache_originated |= {op}
                 else:
                     if pool:
                         result = pool.apply_async(
@@ -273,11 +297,7 @@ class Pipeline:
                             args=(self.__class__, 'dispatch', (reverse_todo[op], op, ) + parameter, {},)
                         )
                     else:
-                        try:
-                            result = self.__class__.DuckTypedApplyResult(self.dispatch(reverse_todo[op], *((op,) + parameter)))
-                        except Exception:
-                            self.log.exception("Exception occurred at op: %s", repr(op))
-                            result = None
+                        result = self.__class__.DuckTypedApplyResult(lambda: self.dispatch(reverse_todo[op], *((op,) + parameter)))
 
                 results[op] = result
 
@@ -299,9 +319,11 @@ class Pipeline:
 
                     results[op] = result
 
-                    if self.cache:
+                    if self.cache and op not in cache_originated:
+                        # new cache supports 'arbitrary' keys, use a tuple TODO
                         token = repr(reverse_todo[op]) + ' ' + repr(op)
-                        self.cache[token] = result
+                        # so far, solely accessing (write) the cache from one process should mitigate locking issues
+                        self.set_cache(token, result)
 
                     if op in reverse_mapping:
                         for affected in reverse_mapping[op]:
@@ -374,6 +396,25 @@ class PipelineApplicationInterface(Pipeline):
 
     def setup(self):  # repeat from Pipeline
         pass
+
+
+from signal import signal, SIGUSR2
+import traceback
+
+def maintenance_interrupt(signal, frame):
+
+    print("Interrupted at:")
+    print(''.join(traceback.format_stack(frame)))
+    print("Have a look at frame.f_globals and frame.f_locals")
+    try:
+        raise ImportError
+        from IPython import embed
+        embed()
+    except ImportError:
+        from code import interact
+        interact(local=locals())
+    print("... continuing")
+
 
 
 class PipelineApplication(PipelineApplicationInterface, Pipeline):
@@ -495,6 +536,8 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
 
     def main(self):
         logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(name)s %(levelname)s %(message)s")
+
+        signal(SIGUSR2, maintenance_interrupt)
 
         self.argparser = self._create_argparser()
         self.arguments(self.argparser)

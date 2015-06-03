@@ -184,13 +184,39 @@ def bits_to_numpy_type(bits):
     }[int(bits)]
 
 
-class Cache(object):
+class BaseCache(object):
     printer = print
 
-    def build_cache_filename(self, suffix):
-        return "%s.%s.cache" % (self.cache_token, suffix,)
+    @staticmethod
+    def prepare_key(key):
+        if type(key) == type(''):
+            return key
+        else:
+            return repr(key)
+
+    @staticmethod
+    def serialize(data):
+        try:
+            from io import BytesIO
+            bio = BytesIO()
+            pickle.dump(data, bio, protocol=pickle.HIGHEST_PROTOCOL)
+            pickled_data = bio.getbuffer()
+        except ImportError:
+            pickled_data = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+
+        return pickled_data
+
+    @staticmethod
+    def deserialize(data):
+        return pickle.loads(data)
+
+    def printInfo(self, *args, **kwargs):
+        if self.printer:
+            self.printer(*args, **kwargs)
 
     def __init__(self, filename_to_be_hashed, ignore_cache='nothing', cache_token=None):
+        self.printer = self.__class__.printer
+
         self.filename_hash_source = filename_to_be_hashed
 
         if cache_token is None:
@@ -207,83 +233,90 @@ class Cache(object):
         else:
             self.ignore_cache = ignore_cache.split(',')
 
-    def __contains__(self, suffix):
-        if self.ignore_cache is True or suffix in self.ignore_cache:
+    def contains(self, key):
+        return False
+
+    def get(self, key):
+        return ''
+
+    def set(self, key, value):
+        return
+
+    def __contains__(self, key):
+        if self.ignore_cache is True or key in self.ignore_cache:
             return False
         else:
-            return os.path.isfile(self.build_cache_filename(suffix))
 
-    def __getitem__(self, suffix):
-        with open(self.build_cache_filename(suffix), 'rb') as fp:
-            self.__class__.printer("Getting data for '%s'" % (suffix,))
-            return pickle.load(fp)
+            return self.contains(self.prepare_key(key))
 
-    def __setitem__(self, suffix, data):
-        if self.ignore_cache is True or suffix in self.ignore_cache:
+    def __getitem__(self, key):
+        return self.deserialize(self.get(self.prepare_key(key)))
+
+    def __setitem__(self, key, value):
+        if self.ignore_cache is True or key in self.ignore_cache:
             return
         else:
-            with open(self.build_cache_filename(suffix), 'wb+') as fp:
-                # noinspection PyCallByClass
-                self.__class__.printer("Setting data for '%s'" % (suffix,))
-                pickle.dump(data, fp, protocol=pickle.HIGHEST_PROTOCOL)
+            self.printInfo("Setting data for '%s'" % (key,))
+            self.set(self.prepare_key(key), self.serialize(value))
 
 
+
+
+class FileCache(BaseCache):
+    def build_cache_filename(self, suffix):
+        return "%s.%s.cache" % (self.cache_token, suffix,)
+
+    def contains(self, key):
+        return os.path.isfile(self.build_cache_filename(key))
+
+    def get(self, key):
+        with open(self.build_cache_filename(key), 'rb') as fp:
+            return fp.read(os.path.getsize(self.build_cache_filename(key)))
+
+    def set(self, key, value):
+        with open(self.build_cache_filename(key), 'wb+') as fp:
+            fp.write(value)
+
+Cache = FileCache
 
 import sqlite3
 
-class Sqlite3Cache(object):
-    printer = print
+class Sqlite3Cache(BaseCache):
+    def contains(self, key):
+        result = self.conn.execute('SELECT COUNT(*) FROM entries WHERE name = ?', (key,))
+        for row in result:
+            return row[0] == 1
 
-    def __init__(self, filename_to_be_hashed, ignore_cache='nothing', cache_token=None):
+    def get(self, key):
+        result = self.conn.execute('SELECT value FROM entries WHERE name = ?', (key,))
+        for row in result:
+            return row[0]
+
+    def set(self, key, value):
+        self.conn.execute('DELETE FROM entries WHERE name = ?', (key,))
+
+        self.conn.execute(
+            'INSERT INTO entries (name, value) VALUES (?, ?)',
+            (key, sqlite3.Binary(value),)
+        )
+
+        self.conn.commit()
+
+    def __init__(self, *args, **kwargs):
+        super(Sqlite3Cache, self).__init__(*args, **kwargs)
 
         self.conn = None
 
-        self.filename_hash_source = filename_to_be_hashed
-
-        if cache_token is None:
-            self.cache_token = "%s.%s" % (
-                os.path.basename(filename_to_be_hashed).replace('.', '_').replace('?', '_').replace(',', '_'),
-                hashlib.sha1(str(os.path.abspath(filename_to_be_hashed).lower()).encode()).hexdigest()[:8])
-        else:
-            self.cache_token = cache_token
-
-        if ignore_cache == 'everything':
-            self.ignore_cache = True
-        elif ignore_cache == 'nothing':
-            self.ignore_cache = set()
-        else:
-            self.ignore_cache = set(ignore_cache.split(','))
-
         if self.ignore_cache is not True:
             self.conn = sqlite3.connect('%s.sq3.cache' % (self.cache_token, ))
-            self.c = self.conn.cursor()
-            self.c.execute('CREATE TABLE IF NOT EXISTS entries (name STRING, value STRING)')
+            self.conn.isolation_level = 'DEFERRED'
+            self.conn.execute('PRAGMA journal_mode = WAL')
+            self.conn.execute('PRAGMA synchronous = NORMAL')
+            self.conn.execute('CREATE TABLE IF NOT EXISTS entries (name TEXT, value BLOB)')
+            self.conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS entries_name ON entries (name)')
 
-    def __contains__(self, suffix):
-        if self.ignore_cache is True or suffix in self.ignore_cache:
-            return False
-        else:
-            self.c.execute('SELECT COUNT(*) FROM entries WHERE name = ?', (suffix,))
-            return self.c.fetchone()[0] == 1
-
-    def __getitem__(self, suffix):
-        self.c.execute('SELECT value FROM entries WHERE name = ?', (suffix,))
-        self.__class__.printer("Getting data for '%s'" % (suffix,))
-        return pickle.loads(self.c.fetchone()[0])
-
-    def __setitem__(self, suffix, data):
-        if self.ignore_cache is True or suffix in self.ignore_cache:
-            return
-        else:
-            self.c.execute('DELETE FROM entries WHERE name = ?', (suffix,))
-            self.c.execute(
-                'INSERT INTO entries (name, value) VALUES (?, ?)', (
-                suffix,
-                pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
-                ,)
-            )
-            self.conn.commit()
-            self.__class__.printer("Setting data for '%s'" % (suffix,))
+    def __del__(self):
+        self.conn.close()
 
 
 class NotReallyATree(list):
