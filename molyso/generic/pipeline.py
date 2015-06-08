@@ -91,6 +91,10 @@ class Pipeline:
         pass
 
     def wrap(self, what):
+
+        self.debug = False#True
+        debug = self.debug
+
         if type(what) == type(Pipeline):
             instance = what()
             instance.my_env = self.__class__.Environment()
@@ -104,11 +108,21 @@ class Pipeline:
 
             def callable(step, meta, *args, **kwargs):
                 instance.step = step
-                return instance(meta, *args, **kwargs)
+                if debug:
+                    print("Entering " + repr(instance))
+                _result = instance(meta, *args, **kwargs)
+                if debug:
+                    print("Leaving " + repr(instance))
+                return _result
             return callable
         else:
             def callable(step, meta, *args, **kwargs):
-                return what(meta, *args, **kwargs)
+                if debug:
+                    print("Entering " + repr(what))
+                _result = what(meta, *args, **kwargs)
+                if debug:
+                    print("Leaving " + repr(what))
+                return _result
             return callable
 
     def add_step(self, when, what):
@@ -281,23 +295,34 @@ class Pipeline:
 
                 token = repr(reverse_todo[op]) + ' ' + repr(op)
                 if self.cache and token in self.cache:
+                    print(token, token in self.cache)
                     if pool:
                         result = pool.apply_async(
                             singleton_class_mapper,
                             args=(self.__class__, 'get_cache', (token,), {},)
                         )
                     else:
-                        result = self.__class__.DuckTypedApplyResult(lambda: self.get_cache(token))
+                        def _cache_fetch_factory(what):
+                            def _cache_fetch_function():
+                                return self.get_cache(what)
+                            return _cache_fetch_function
+                        result = self.__class__.DuckTypedApplyResult(_cache_fetch_factory(token))
 
                     cache_originated |= {op}
                 else:
+
+                    complete_params = deepcopy((reverse_todo[op], op, ) + parameter)
+
+
+                    if parameter is None:
+                        parameter = tuple()
                     if pool:
                         result = pool.apply_async(
                             singleton_class_mapper,
-                            args=(self.__class__, 'dispatch', (reverse_todo[op], op, ) + parameter, {},)
+                            args=(self.__class__, 'dispatch', complete_params, {},)
                         )
                     else:
-                        result = self.__class__.DuckTypedApplyResult(lambda: self.dispatch(reverse_todo[op], *((op,) + parameter)))
+                        result = self.__class__.DuckTypedApplyResult(lambda: self.dispatch(*complete_params))
 
                 results[op] = result
 
@@ -313,17 +338,20 @@ class Pipeline:
                 if result.ready():
                     try:
                         result = result.get()
+
+                        if self.cache and op not in cache_originated:
+                            # do not cache 'None' as a result
+                            if result is not None:
+                                # new cache supports 'arbitrary' keys, use a tuple TODO
+                                token = repr(reverse_todo[op]) + ' ' + repr(op)
+                                # so far, solely accessing (write) the cache from one process should mitigate locking issues
+                                self.set_cache(token, result)
+
                     except Exception as e:
-                        self.log.exception("Exception occurred at op: %s", repr(op))
+                        self.log.exception("Exception occurred at op: %s", repr(reverse_todo[op]) + ' ' + repr(op))
                         result = None
 
                     results[op] = result
-
-                    if self.cache and op not in cache_originated:
-                        # new cache supports 'arbitrary' keys, use a tuple TODO
-                        token = repr(reverse_todo[op]) + ' ' + repr(op)
-                        # so far, solely accessing (write) the cache from one process should mitigate locking issues
-                        self.set_cache(token, result)
 
                     if op in reverse_mapping:
                         for affected in reverse_mapping[op]:
@@ -481,7 +509,10 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
 
     def pre_setup(self):
         self._setup_modules()
+
         correct_windows_signal_handlers()
+
+        signal(SIGUSR2, maintenance_interrupt)
 
         self.add_pipeline_synced_variable('args')
 
@@ -536,8 +567,6 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
 
     def main(self):
         logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(name)s %(levelname)s %(message)s")
-
-        signal(SIGUSR2, maintenance_interrupt)
 
         self.argparser = self._create_argparser()
         self.arguments(self.argparser)

@@ -208,6 +208,7 @@ class BaseCache(object):
 
     @staticmethod
     def deserialize(data):
+        assert data is not None
         return pickle.loads(data)
 
     def printInfo(self, *args, **kwargs):
@@ -246,7 +247,6 @@ class BaseCache(object):
         if self.ignore_cache is True or key in self.ignore_cache:
             return False
         else:
-
             return self.contains(self.prepare_key(key))
 
     def __getitem__(self, key):
@@ -286,8 +286,10 @@ class Sqlite3Cache(BaseCache):
         result = self.conn.execute('SELECT COUNT(*) FROM entries WHERE name = ?', (key,))
         for row in result:
             return row[0] == 1
+        return False
 
     def get(self, key):
+        print('getting ' + key)
         result = self.conn.execute('SELECT value FROM entries WHERE name = ?', (key,))
         for row in result:
             return row[0]
