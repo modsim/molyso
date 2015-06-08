@@ -28,6 +28,242 @@ from itertools import product
 from collections import OrderedDict
 from copy import deepcopy
 
+#####
+
+from multiprocessing import Process, Pipe
+
+class Future:
+
+    def __init__(self):
+        self.command = None
+        self.args = None
+        self.kwargs = None
+
+        self.value = None
+        self.error = None
+
+        self.process = None
+        self.pool = None
+
+        self.status = None
+
+        self.timeout = 0
+        self.started_at = None
+
+    def wait(self, time=None):
+        pass
+
+    def ready(self):
+        if self.status:
+            return self.status
+
+        if self.process is None:
+            # not scheduled yet
+            return False
+
+        if self.timeout > 0:
+            now = datetime.datetime.now()
+            if (now - self.started_at).total_seconds() > self.timeout:
+                # we reached a hard timeout
+                self.process.terminate()
+                self.pool.report_broken_process(self.process)
+                self.status, (self.value, self.error) = \
+                    True, (None, RuntimeError('Process took longer than specified timeout and was terminated.'))
+                return
+
+
+        if not self.process.is_alive():
+            self.pool.report_broken_process(self.process)
+            self.status, (self.value, self.error) = True, (None, RuntimeError('Process trying to work on this Future died.'))
+            return
+
+        self.status, (self.value, self.error) = self.process.ready()
+
+        if self.status:
+            self.pool.future_became_ready(self)
+
+        return self.status
+
+    def get(self):
+        not_ready = True
+        while not_ready:
+            not_ready = not self.ready()
+
+        if self.error:
+            raise self.error
+        else:
+            return self.value
+
+    def dispatch(self):
+        self.started_at = datetime.datetime.now()
+        self.process.dispatch()
+
+
+import datetime
+
+class FutureProcess(Process):
+
+    STARTUP = 0
+    RUN = 1
+    STOP = 2
+
+    def __init__(self):
+        super(FutureProcess, self).__init__()
+        self.future = None
+        self.pipe_parent_end, self.pipe_child_end = Pipe()
+
+    def run(self):
+        while True:
+            command_type, command, args, kwargs = self.pipe_child_end.recv()
+
+            if command_type == FutureProcess.STOP:
+                break
+
+            if command_type == FutureProcess.STARTUP and command is None:
+                continue
+
+            result = None
+            exc = None
+
+            try:
+                result = command(*args, **kwargs)
+            except Exception as e:
+                exc = e
+
+            if command_type == FutureProcess.STARTUP:
+                continue
+
+            self.pipe_child_end.send((result, exc,))
+
+    def send_command(self, *args):
+        self.pipe_parent_end.send(args)
+
+    def dispatch(self):
+        self.send_command(FutureProcess.RUN, self.future.command, self.future.args, self.future.kwargs)
+
+    def ready(self):
+        if self.pipe_parent_end.poll():
+            return True, self.pipe_parent_end.recv()
+        else:
+            return False, (None, None,)
+
+
+
+class SimpleProcessPool:
+
+    def new_process(self):
+        p = FutureProcess()
+        p.start()
+        p.send_command(*self.startup_message)
+        return p
+
+    def __init__(self, processes=0, initializer=None, initargs=[], initkwargs={}, future_timeout=0):
+
+        self.startup_message = (FutureProcess.STARTUP, initializer, initargs, initkwargs)
+
+        if processes == 0:
+            processes = cpu_count()
+
+        self.future_timeout = future_timeout
+        self.count = processes
+
+        self.waiting_processes = {self.new_process() for _ in range(processes)}
+        self.active_processes = set()
+
+        self.active_futures = set()
+        self.waiting_futures = set()
+
+        self.closing = False
+
+    def close(self):
+        self.closing = True
+
+        self.schedule()
+
+    def report_broken_process(self, p):
+        f = p.future
+        if p in self.active_processes:
+            self.active_processes.remove(p)
+
+        if p in self.waiting_processes:
+            print("found a process where it does not belong", p)
+            self.waiting_processes.remove(p)
+
+        if f in self.active_futures:
+            self.active_futures.remove(f)
+
+
+        if f in self.waiting_futures:
+            print("found a future where it does not belong", f)
+            self.waiting_futures.remove(f)
+
+        # and restart a new one
+        self.waiting_processes.add(self.new_process())
+
+        self.schedule()
+
+    def apply(self, command, *args, **kwargs):
+        f = Future()
+        f.command = command
+        f.args = args
+        f.kwargs = kwargs
+
+        f.timeout = self.future_timeout
+
+        f.pool = self
+
+        self.waiting_futures.add(f)
+
+        self.schedule()
+
+        return f
+
+
+    # ugly signature
+    def apply_async(self, fun, args=(), kwargs={}):
+        return self.apply(fun, *args, **kwargs)
+
+
+    def future_became_ready(self, f):
+        if f in self.active_futures:
+            self.active_futures.remove(f)
+        if f.process in self.active_processes:
+            self.active_processes.remove(f.process)
+        self.waiting_processes.add(f.process)
+
+        self.schedule()
+
+    def schedule(self):
+        for f in self.active_futures.copy():
+            f.ready()
+
+        while len(self.waiting_processes) > 0:
+            if len(self.waiting_futures) == 0:
+                break
+
+            f = self.waiting_futures.pop()
+
+            p = self.waiting_processes.pop()
+
+            f.process = p
+            p.future = f
+
+            self.active_processes.add(p)
+            self.active_futures.add(f)
+
+            f.dispatch()
+
+        if self.closing:
+            while len(self.waiting_processes) > 0:
+                p = self.waiting_processes.pop()
+                p.send_command(FutureProcess.STOP, None, [], {})
+                self.active_processes.add(p)
+
+
+
+
+#####
+
 
 def singleton_class_mapper(klass, what, args, kwargs, local_cache={}):
     try:
@@ -256,10 +492,13 @@ class Pipeline:
 
             synced_vars = {k: getattr(self, k) for k in self.synced_variables}
 
-            pool = Pool(
+#            pool = Pool(
+            pool = SimpleProcessPool(
                 processes=self.multiprocessing,
                 initializer=singleton_class_mapper,
-                initargs=(self.__class__, '__full_init__', (synced_vars,), {},)
+                initargs=(self.__class__, '__full_init__', (synced_vars,), {},),
+                #
+                future_timeout=5.0*60, # five minute timeout, only works with the self written pool
             )
         else:
             pool = None
@@ -293,9 +532,9 @@ class Pipeline:
                 else:
                     parameter = ({fetch: results[fetch] for fetch in sorted(mapping_copy[op], key=lambda t: [t[i] for i in sort_order])},)
 
-                token = repr(reverse_todo[op]) + ' ' + repr(op)
+                token = (reverse_todo[op], op,)
                 if self.cache and token in self.cache:
-                    print(token, token in self.cache)
+                    #print(token, token in self.cache)
                     if pool:
                         result = pool.apply_async(
                             singleton_class_mapper,
@@ -342,8 +581,7 @@ class Pipeline:
                         if self.cache and op not in cache_originated:
                             # do not cache 'None' as a result
                             if result is not None:
-                                # new cache supports 'arbitrary' keys, use a tuple TODO
-                                token = repr(reverse_todo[op]) + ' ' + repr(op)
+                                token = (reverse_todo[op], op,)
                                 # so far, solely accessing (write) the cache from one process should mitigate locking issues
                                 self.set_cache(token, result)
 

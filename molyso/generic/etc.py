@@ -289,7 +289,6 @@ class Sqlite3Cache(BaseCache):
         return False
 
     def get(self, key):
-        print('getting ' + key)
         result = self.conn.execute('SELECT value FROM entries WHERE name = ?', (key,))
         for row in result:
             return row[0]
