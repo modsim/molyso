@@ -498,7 +498,7 @@ class Pipeline:
                 initializer=singleton_class_mapper,
                 initargs=(self.__class__, '__full_init__', (synced_vars,), {},),
                 #
-                future_timeout=5.0*60, # five minute timeout, only works with the self written pool
+                future_timeout=30.0*60,  # five minute timeout, only works with the self written pool
             )
         else:
             pool = None

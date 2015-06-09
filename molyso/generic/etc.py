@@ -293,6 +293,10 @@ class Sqlite3Cache(BaseCache):
         for row in result:
             return row[0]
 
+    def keys(self):
+        result = self.conn.execute('SELECT name FROM entries')
+        return [row[0] for row in result]
+
     def set(self, key, value):
         self.conn.execute('DELETE FROM entries WHERE name = ?', (key,))
 
