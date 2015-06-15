@@ -74,7 +74,7 @@ class Future:
 
         if not self.process.is_alive():
             self.pool.report_broken_process(self.process)
-            self.status, (self.value, self.error) = True, (None, RuntimeError('Process trying to work on this Future died.'))
+            self.status, (self.value, self.error) = True, (None, RuntimeError('Process trying to work on this future died.'))
             return
 
         self.status, (self.value, self.error) = self.process.ready()
