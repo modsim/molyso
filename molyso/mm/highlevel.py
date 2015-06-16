@@ -365,7 +365,7 @@ def main():
 
         if 'tracking' in cache:
             # noinspection PyUnboundLocalVariable
-            del results  # free up some ram?
+            results = None # free up some ram?
             tracked_results = cache['tracking']
         else:
 
