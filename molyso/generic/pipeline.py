@@ -71,7 +71,6 @@ class Future:
                     True, (None, RuntimeError('Process took longer than specified timeout and was terminated.'))
                 return
 
-
         if not self.process.is_alive():
             self.pool.report_broken_process(self.process)
             self.status, (self.value, self.error) = True, (None, RuntimeError('Process trying to work on this future died.'))
@@ -192,7 +191,6 @@ class SimpleProcessPool:
         if f in self.active_futures:
             self.active_futures.remove(f)
 
-
         if f in self.waiting_futures:
             print("found a future where it does not belong", f)
             self.waiting_futures.remove(f)
@@ -218,11 +216,9 @@ class SimpleProcessPool:
 
         return f
 
-
     # ugly signature
     def apply_async(self, fun, args=(), kwargs={}):
         return self.apply(fun, *args, **kwargs)
-
 
     def future_became_ready(self, f):
         if f in self.active_futures:
@@ -549,12 +545,11 @@ class Pipeline:
 
                     cache_originated |= {op}
                 else:
+                    if parameter is None:
+                        parameter = tuple()
 
                     complete_params = deepcopy((reverse_todo[op], op, ) + parameter)
 
-
-                    if parameter is None:
-                        parameter = tuple()
                     if pool:
                         result = pool.apply_async(
                             singleton_class_mapper,
