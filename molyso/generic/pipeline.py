@@ -548,7 +548,8 @@ class Pipeline:
                     if parameter is None:
                         parameter = tuple()
 
-                    complete_params = deepcopy((reverse_todo[op], op, ) + parameter)
+                    #complete_params = deepcopy((reverse_todo[op], op, ) + parameter)
+                    complete_params = (reverse_todo[op], op, ) + parameter
 
                     if pool:
                         result = pool.apply_async(

@@ -33,6 +33,8 @@ class DebugPlot(object):
         The DebugPlot class serves as an switchable abstraction layer to add plotting debug output facilities.
     """
 
+    active = True
+
     throw_on_anything = True
 
     pp = None
@@ -41,6 +43,8 @@ class DebugPlot(object):
     exp_plot_debugging = False  # True
 
     diverted_outputs = {}
+
+    exit_handlers = []
 
     @classmethod
     def pdfopener(cls, filename):
@@ -61,12 +65,23 @@ class DebugPlot(object):
             newoutput = PdfPages(filename)  # if it throws now, we won't care
 
         def close_at_exit():
-            newoutput.close()
+            try:
+                newoutput.close()
+            except AttributeError:
+                pass
+
+        cls.exit_handlers.append(close_at_exit)
 
         import atexit
 
+
         atexit.register(close_at_exit)
         return newoutput
+
+    @classmethod
+    def call_exit_handlers(cls):
+        for handler in cls.exit_handlers:
+            handler()
 
     @classmethod
     def new_pdf_output(cls, filename, collected):
@@ -85,7 +100,9 @@ class DebugPlot(object):
         self.filter_okay = Debug.filter(*args)
         self.filter_str = Debug.filter_to_str(args)
 
-        self.active = self.filter_okay and (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf'))
+        self.active = self.__class__.active and \
+                      self.filter_okay and\
+                      (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf'))
 
         if self.active:
             import pylab
