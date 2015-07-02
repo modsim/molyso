@@ -464,7 +464,8 @@ class Pipeline:
         for step in self.steps.keys():
             order = prepare_steps(step, Every)
             reverse_todo.update({k: step for k in order})
-            todo.update({k: self.__class__.NotDispatchedYet for k in order})
+            for k in order:
+                todo[k] = self.__class__.NotDispatchedYet
             deps = {t: set(prepare_steps(t, Collected)) for t in order}
             mapping.update(deps)
             for key, value in deps.items():
@@ -513,7 +514,7 @@ class Pipeline:
             def progressOne():
                 pass
 
-        check = set()
+        check = OrderedDict()
 
         cache_originated = set()
 
@@ -557,15 +558,19 @@ class Pipeline:
                             args=(self.__class__, 'dispatch', complete_params, {},)
                         )
                     else:
-                        result = self.__class__.DuckTypedApplyResult(lambda: self.dispatch(*complete_params))
+                        def _dispatch_factory(what):
+                            def _dispatch_function():
+                                return self.dispatch(*what)
+                            return _dispatch_function
+                        result = self.__class__.DuckTypedApplyResult(_dispatch_factory(complete_params))
 
                 results[op] = result
 
-                check |= {op}
+                check[op] = True
 
                 del todo[op]
 
-            for op in list(check):
+            for op in list(check.keys()):
                 result = results[op]
                 if self.wait:
                     result.wait(self.wait)
@@ -591,7 +596,7 @@ class Pipeline:
                         for affected in reverse_mapping[op]:
                             mapping[affected] -= {op}
 
-                    check -= {op}
+                    del check[op]
                     progressOne()
 
         progressOne()
