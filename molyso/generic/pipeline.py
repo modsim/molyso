@@ -99,6 +99,7 @@ class Future:
 
 
 import datetime
+import traceback
 
 class FutureProcess(Process):
 
@@ -127,7 +128,8 @@ class FutureProcess(Process):
             try:
                 result = command(*args, **kwargs)
             except Exception as e:
-                exc = e
+                message = traceback.print_exc()
+                exc = RuntimeError("Exception during multiprocessing, original exception:\n" + message)
 
             if command_type == FutureProcess.STARTUP:
                 continue
