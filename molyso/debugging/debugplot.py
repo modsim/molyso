@@ -4,8 +4,21 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
+import sys
+import atexit
+from os.path import isfile
+
+from tempfile import TemporaryFile
+
 from .. import Debug
 
+def next_free_filename(prefix, suffix):
+    n = 0
+    while isfile(prefix + '%04d' % (n,) + suffix):
+        n += 1
+        if n > 9999:
+            raise IOError('No free filename found.')
+    return prefix + '%04d' % (n,) + suffix
 
 def poly_drawing_helper(p, coords, **kwargs):
     gca = p.gca()
@@ -33,7 +46,15 @@ class DebugPlot(object):
         The DebugPlot class serves as an switchable abstraction layer to add plotting debug output facilities.
     """
 
+    file_prefix = 'debug'
+
     active = True
+
+    individual_and_merge = False
+    individual_files = False
+    individual_file_prefix = file_prefix
+
+    file_suffix = '.pdf'
 
     throw_on_anything = True
 
@@ -44,7 +65,11 @@ class DebugPlot(object):
 
     diverted_outputs = {}
 
+    files_to_merge = []
+
     exit_handlers = []
+
+    exit_handler_registered = False
 
     @classmethod
     def pdfopener(cls, filename):
@@ -53,15 +78,9 @@ class DebugPlot(object):
         try:
             newoutput = PdfPages(filename)
         except IOError:
-            import os
-
             basename, pdf = os.path.splitext(filename)
-            n = 1
-            while os.path.isfile("%s-%d%s" % (basename, n, pdf)):
-                n += 1
-                if n > 999:
-                    raise Exception("Something is going horribly wrong.")
-            filename = "%s-%d%s" % (basename, n, pdf)
+
+            filename = next_free_filename(basename, pdf)
             newoutput = PdfPages(filename)  # if it throws now, we won't care
 
         def close_at_exit():
@@ -72,16 +91,17 @@ class DebugPlot(object):
 
         cls.exit_handlers.append(close_at_exit)
 
-        import atexit
-
-
-        atexit.register(close_at_exit)
         return newoutput
 
     @classmethod
     def call_exit_handlers(cls):
+        # perform cleanup, either explicitly,
+        # or by atexit at the end  (__ini__ registers this function)
         for handler in cls.exit_handlers:
             handler()
+
+        cls.exit_handlers = []
+        cls.exit_handler_registered = False
 
     @classmethod
     def new_pdf_output(cls, filename, collected):
@@ -104,22 +124,31 @@ class DebugPlot(object):
                       self.filter_okay and\
                       (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf'))
 
+        if not DebugPlot.exit_handler_registered:
+            atexit.register(DebugPlot.call_exit_handlers)
+
         if self.active:
-            import pylab
+            from matplotlib import pylab
 
             self.pylab = pylab
 
+        if DebugPlot.individual_and_merge:
+            try:
+                import PyPDF2
+                DebugPlot.individual_files = True
+            except ImportError:
+                DebugPlot.individual_and_merge = False
+
         if Debug.is_enabled('plot_pdf'):
-            if DebugPlot.pp is None:
-                DebugPlot.pp = self.__class__.pdfopener('debug.pdf')
+            if not DebugPlot.individual_files:
+                if DebugPlot.pp is None:
+                    DebugPlot.pp = self.__class__.pdfopener('debug.pdf')
 
     def __getattr__(self, item):
         if self.active:
             if hasattr(self.pylab, item):
                 if self.__class__.exp_plot_debugging:
                     def proxy(*args, **kwargs):
-                        import sys
-
                         print("pylab.%s(%s%s%s)" % (
                             item, ','.join([repr(a) for a in args]), ',' if len(kwargs) > 0 else '',
                             ','.join(["%s=%s" % (a, repr(b)) for a, b in kwargs.items()])), file=sys.stderr)
@@ -162,11 +191,42 @@ class DebugPlot(object):
         if exc_type == DebugPlotInterruptException:
             return True
         if self.active:
-            if DebugPlot.pp:
-                self.savefig(DebugPlot.pp, format='pdf')
+            if not DebugPlot.individual_files:
+                if DebugPlot.pp:
+                    self.savefig(DebugPlot.pp, format='pdf')
+            else:
+                if DebugPlot.individual_and_merge:
+                    self.savefig(self.get_file_for_merge(), format='pdf')
+                else:
+                    self.savefig(next_free_filename(DebugPlot.individual_file_prefix, DebugPlot.file_suffix), format='pdf')
+
             for pp, okay in DebugPlot.diverted_outputs.items():
                 if self.filter_str in okay:
                     self.savefig(pp, format='pdf')
             self.clf()
             self.close('all')
             self.figure()
+
+    def get_file_for_merge(self):
+        if len(DebugPlot.files_to_merge) == 0:
+            def _merge_exit_handler():
+                import PyPDF2
+
+                with open(next_free_filename(DebugPlot.file_prefix, DebugPlot.file_suffix), 'wb+') as pdf_file:
+
+                    pdf = PyPDF2.PdfFileMerger()
+
+                    for individual_file in DebugPlot.files_to_merge:
+                        individual_file.seek(0)
+                        individual_pdf = PyPDF2.PdfFileReader(individual_file)
+
+                        pdf.append(individual_pdf)
+
+                    pdf.write(pdf_file)
+
+                DebugPlot.files_to_merge = []
+            DebugPlot.exit_handlers.append(_merge_exit_handler)
+
+        f = TemporaryFile()
+        DebugPlot.files_to_merge.append(f)
+        return f
