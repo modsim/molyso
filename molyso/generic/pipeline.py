@@ -297,9 +297,11 @@ class Collected:
 class Every:
     pass
 
+from inspect import getargspec, isclass
 
 class Pipeline:
-
+    debug = False
+    strip = True
 
     class Environment:
         pass
@@ -324,13 +326,29 @@ class Pipeline:
     class NotDispatchedYet:
         pass
 
-    def wrap(self, what):
+    class NeatDict(dict):
+        def __getattr__(self, item):
+            return self.get(item)
 
-        self.debug = False#True
+        def __setattr__(self, key, value):
+            self[key] = value
+
+        def __delattr__(self, item):
+            del self[item]
+
+
+    def wrap(self, what, keep=None, delete=None):
+        if isclass(what):
+            argspec = getargspec(what.__call__)
+        else:
+            argspec = getargspec(what)
+
         debug = self.debug
 
-        if type(what) == type(Pipeline):
-            instance = what()
+        if isclass(what):
+            #instance = what()
+            # we create an instance without calling the constructor, so we can setup the environment first
+            instance = what.__new__(what)
             instance.my_env = self.__class__.Environment()
             instance.env = self.environment
 
@@ -340,37 +358,138 @@ class Pipeline:
             for k in self.step_connected_variables:
                 instance.__dict__[k] = getattr(self, k)
 
-            def callable(step, meta, *args, **kwargs):
-                instance.step = step
-                if debug:
-                    print("Entering " + repr(instance))
-                _result = instance(meta, *args, **kwargs)
-                if debug:
-                    print("Leaving " + repr(instance))
-                return _result
-            return callable
-        else:
-            def callable(step, meta, *args, **kwargs):
-                if debug:
-                    print("Entering " + repr(what))
-                _result = what(meta, *args, **kwargs)
-                if debug:
-                    print("Leaving " + repr(what))
-                return _result
-            return callable
+            # now we call the constructor, and it has everything neatly set up already!
+            instance.__init__()
 
-    def add_step(self, when, what):
+            real_call = instance
+        else:
+            real_call = what
+
+        NeatDict = self.__class__.NeatDict
+
+        name = self.simplify_callable_name(what)
+
+        if delete is None:
+            _delete = set()
+        else:
+            _delete = set(delete)
+
+        if keep is None:
+            _keep = set()
+        else:
+            _keep = set(keep)
+
+        KEY_COLLECTED = 'collected'
+        KEY_RESULT = 'result'
+        KEY_META = 'meta'
+
+        set_of_keep_values = set([KEY_META, KEY_COLLECTED])
+
+        def callable(step, meta, result):
+            real_call.step = step
+            if debug:
+                print("Entering " + repr(instance))
+
+            result = NeatDict(result)
+
+            result.meta = meta
+            result.result = True
+
+            if argspec.args[0] == 'self':
+                args = argspec.args[1:]
+            else:
+                args = argspec.args
+
+            defaults = argspec.defaults if argspec.defaults else tuple()
+            non_default_parameters = len(args) - len(defaults)
+
+            if KEY_COLLECTED in result:
+                wrapped = OrderedDict()
+                for k, v in result[KEY_COLLECTED].items():
+                    wrapped[k] = NeatDict(v)
+                result[KEY_COLLECTED] = wrapped
+
+            parameters = []
+            for n, arg in enumerate(args):
+                if arg == KEY_RESULT:
+                    parameters.append(result)
+                elif arg in result:
+                    parameters.append(result[arg])
+                else:
+                    if n >= non_default_parameters:
+                        parameters.append(defaults[n - non_default_parameters])
+                    else:
+                        # problem: pipeline step asks for a parameter we do not have
+                        raise ValueError('[At %s]: Argument %r not in %r'  % (name, arg, result,))
+
+            _call_return = real_call(*parameters)
+
+            if type(_call_return) == dict and KEY_RESULT in _call_return:
+                # if we get a dict back, we merge it with the ongoing result object
+                result.update(_call_return)
+            elif type(_call_return) == NeatDict:
+                # if we get a neatdict back, we assume its the proper result object
+                # and the pipeline step knew what it did ...
+                # we continue with it as-is
+                result = _call_return
+            else:
+                if type(_call_return) != tuple:
+                    _call_return = (_call_return,)
+
+                for n, item in enumerate(reversed(_call_return)):
+                    k = args[-(n+1)]
+                    if k == KEY_RESULT:
+                        if type(item) == dict or type(item) == NeatDict:
+                            result.update(item)
+                    else:
+                        result[k] = item
+
+            if KEY_COLLECTED in result:
+                unwrapped = OrderedDict()
+                for k, v in result[KEY_COLLECTED].items():
+                    unwrapped[k] = dict(v)
+                result[KEY_COLLECTED] = unwrapped
+
+            result = dict(result)
+
+            all_to_delete = _delete.intersection(set(result.keys()))
+            if len(_keep) > 0:
+                all_to_delete |= set(result.keys()).difference(_keep | set_of_keep_values)
+
+            for d in all_to_delete:
+                del result[d]
+
+            if KEY_RESULT in result:
+                del result[KEY_RESULT]
+
+            if debug:
+                print("Leaving " + repr(instance))
+            return result
+
+        callable.__name__ = name
+        callable.__qualname__ = callable.__name__
+
+        return callable
+
+    def simplify_callable_name(self, what):
+        return ("Class_" if isclass(what) else "Function_") + ('__LAMBDA__' if what.__name__ == '<lambda>' else what.__name__)
+
+    def add_step(self, when, what, keep=None, delete=None):
+        what_wrapped = self.wrap(what, keep=keep, delete=delete)
         if when not in self.steps:
-            self.steps[when] = self.wrap(what)
+            self.steps[when] = what_wrapped
         else:
             last = self.steps[when]
-            new = self.wrap(what)
+            new = what_wrapped
 
             def callable(step, meta, *args, **kwargs):
                 result = last(step, meta, *args, **kwargs)
                 if type(result) != tuple:
                     result = (result,)
                 return new(step, meta, *result, **kwargs)
+
+            callable.__name__ = self.simplify_callable_name(what) + "_with_dependencies"
+            callable.__qualname__ = callable.__name__
 
             self.steps[when] = callable
 
@@ -497,7 +616,7 @@ class Pipeline:
                 initializer=singleton_class_mapper,
                 initargs=(self.__class__, '__full_init__', (synced_vars,), {},),
                 #
-                future_timeout=30.0*60,  # five minute timeout, only works with the self written pool
+                future_timeout=30.0*60,  # five minute timeout, only works with the self-written pool
             )
         else:
             pool = None
@@ -524,12 +643,15 @@ class Pipeline:
             for op in list(todo.keys()):
                 parameter = None
                 if is_concrete(op):
-                    parameter = ([],)
+                    parameter = ({},)
 
                 elif len(mapping[op]) != 0:
                     continue
                 else:
-                    parameter = ({fetch: results[fetch] for fetch in sorted(mapping_copy[op], key=lambda t: [t[i] for i in sort_order])},)
+                    collected = OrderedDict()
+                    for fetch in sorted(mapping_copy[op], key=lambda t: [t[i] for i in sort_order]):
+                        collected[fetch] = results[fetch]
+                    parameter = ({'collected': collected},)
 
                 token = (reverse_todo[op], op,)
                 if self.cache and token in self.cache:
@@ -549,10 +671,9 @@ class Pipeline:
                     cache_originated |= {op}
                 else:
                     if parameter is None:
-                        parameter = tuple()
+                        parameter = tuple({})
 
-                    #complete_params = deepcopy((reverse_todo[op], op, ) + parameter)
-                    complete_params = (reverse_todo[op], op, ) + parameter
+                    complete_params = (reverse_todo[op], op, ) + parameter  # deepcopy?
 
                     if pool:
                         result = pool.apply_async(
@@ -726,6 +847,7 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
         argparser.add_argument('input', metavar='input', type=str, help="input file")
         argparser.add_argument('-m', '--module', dest='modules', type=str, default=None, action='append')
         argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
+        argparser.add_argument('--prompt', '--prompt', dest='wait_on_start', default=False, action='store_true')
         argparser.add_argument('-tp', '--timepoints', dest='timepoints', default=[0, float('inf')], type=parse_range)
         argparser.add_argument('-mp', '--multipoints', dest='multipoints', default=[0, float('inf')], type=parse_range)
 
@@ -812,6 +934,9 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
         self.argparser = self._create_argparser()
         self.arguments(self.argparser)
         self.args = self.argparser.parse_args()
+
+        if self.args.wait_on_start:
+            _ = input("Press enter to continue.")
 
         self.log.info(self.options['banner'])
         self.log.info("Started %s.", self.options['name'])
