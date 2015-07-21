@@ -258,11 +258,6 @@ class SimpleProcessPool:
                 self.active_processes.add(p)
 
 
-
-
-#####
-
-
 def singleton_class_mapper(klass, what, args, kwargs, local_cache={}):
     try:
         if klass not in local_cache:
@@ -335,7 +330,6 @@ class Pipeline:
 
         def __delattr__(self, item):
             del self[item]
-
 
     def wrap(self, what, keep=None, delete=None):
         if isclass(what):
@@ -897,7 +891,6 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
 
         #self.before_processing()
 
-
     def _setup_modules(self):
         modules = self.args.modules
         if modules:
@@ -1015,8 +1008,6 @@ class ImageProcessingPipeline(ImageProcessingPipelineInterface):
                     yield pos, tp
         else:
             raise RuntimeError("Wrong order passed")
-
-
 
     def _create_argparser(self):
         argparser = argparse.ArgumentParser(description=self.options['description'])
