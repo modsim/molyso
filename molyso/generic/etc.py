@@ -134,27 +134,6 @@ def debug_init():
     Debug.enable('text', 'plot', 'plot_pdf')
     numpy.set_printoptions(threshold=numpy.nan)
 
-
-def parse_range(s, allow_open_interval=True):
-    ranges = []
-    tail = []
-    for frag in s.replace(';', ',').split(','):
-        if '-' in frag:
-            f, t = frag.split('-')
-            if t == '':
-                if allow_open_interval:
-                    tail = [int(f), float('Inf')]
-                else:
-                    raise ValueError("parse_range called with allow_open_interval=False"
-                                     " but open interval string was passed.")
-            else:
-                ranges += range(int(f), int(t) + 1)
-        else:
-            ranges += [int(frag)]
-    ranges += tail
-    return ranges
-
-
 def replace_inf_with_maximum(array, maximum):
     if array[-1] == float('Inf'):
         f = array[-2]
@@ -164,6 +143,51 @@ def replace_inf_with_maximum(array, maximum):
     array = [e for e in array if 0 <= e <= maximum]
 
     return array
+
+
+def parse_range(s, maximum=0):
+
+    maximum -= 1
+    splits = s.replace(' ', '').replace(';', ',').split(',')
+
+    ranges = []
+    remove = []
+
+    not_values = False
+
+    for frag in splits:
+        if frag[0] == '~':
+            not_values = not not_values
+            frag = frag[1:]
+
+        if '-' in frag:
+            f, t = frag.split('-')
+
+            interval = 1
+
+            if '%' in t:
+                t, _interval = t.split('%')
+                interval = int(_interval)
+
+            if t == '':
+                t = maximum
+
+            f, t = int(f), int(t)
+
+            t = min(t, maximum)
+
+            parsed_fragment = range(f, t + 1, interval)
+        else:
+            parsed_fragment = [int(frag)]
+
+        if not_values:
+            remove += parsed_fragment
+        else:
+            ranges += parsed_fragment
+
+    return list(sorted(set(ranges) - set(remove)))
+
+
 
 
 def prettify_numpy_array(arr, space_or_prefix):

@@ -21,7 +21,7 @@ import traceback
 from .. import Debug, TunableManager
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
-    silent_progress_bar, fancy_progress_bar, replace_inf_with_maximum, prettify_numpy_array, bits_to_numpy_type
+    silent_progress_bar, fancy_progress_bar, prettify_numpy_array, bits_to_numpy_type
 
 from ..generic.etc import Sqlite3Cache as Cache
 
@@ -70,8 +70,8 @@ def create_argparser():
     argparser.add_argument('-p', '--process', dest='process', default=False, action='store_true')
     argparser.add_argument('-gt', '--ground-truth', dest='ground_truth', type=str, default=None)
     argparser.add_argument('-ct', '--cache-token', dest='cache_token', type=str, default=None)
-    argparser.add_argument('-tp', '--timepoints', dest='timepoints', default=[0, float('inf')], type=parse_range)
-    argparser.add_argument('-mp', '--multipoints', dest='multipoints', default=[0, float('inf')], type=parse_range)
+    argparser.add_argument('-tp', '--timepoints', dest='timepoints', default='0-', type=str)
+    argparser.add_argument('-mp', '--multipoints', dest='multipoints', default='0-', type=str)
     argparser.add_argument('-o', '--table-output', dest='table_output', type=str, default=None)
     argparser.add_argument('-ot', '--output-tracking', dest='tracking_output', type=str, default=None)
     argparser.add_argument('-nb', '--no-banner', dest='nb', default=False, action='store_true')
@@ -300,8 +300,11 @@ def main():
         else:
             ims = MultiImageStack.open(args.input)
 
-            positions_to_process = replace_inf_with_maximum(args.multipoints, ims.get_meta('multipoints'))
-            timepoints_to_process = replace_inf_with_maximum(args.timepoints, ims.get_meta('timepoints'))
+            args.multipoints = parse_range(args.multipoints, maximum=ims.get_meta('multipoints'))
+            args.timepoints = parse_range(args.timepoints, maximum=ims.get_meta('timepoints'))
+
+            positions_to_process = args.multipoints
+            timepoints_to_process = args.timepoints
 
             print_info("Beginning Processing:")
             print_info(prettify_numpy_array(positions_to_process,  "Positions : "))

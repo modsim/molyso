@@ -842,8 +842,8 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
         argparser.add_argument('-m', '--module', dest='modules', type=str, default=None, action='append')
         argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
         argparser.add_argument('--prompt', '--prompt', dest='wait_on_start', default=False, action='store_true')
-        argparser.add_argument('-tp', '--timepoints', dest='timepoints', default=[0, float('inf')], type=parse_range)
-        argparser.add_argument('-mp', '--multipoints', dest='multipoints', default=[0, float('inf')], type=parse_range)
+        argparser.add_argument('-tp', '--timepoints', dest='timepoints', default='0-', type=str)
+        argparser.add_argument('-mp', '--multipoints', dest='multipoints', default='0-', type=str)
 
         if self.options['tunables']:
             argparser.add_argument('-t', '--tunables', dest='tunables', type=str, default=None)
@@ -854,8 +854,8 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
         return argparser
 
     def _parse_ranges(self, args, ims):
-        self.positions = replace_inf_with_maximum(args.multipoints, ims.get_meta('multipoints'))
-        self.timepoints = replace_inf_with_maximum(args.timepoints, ims.get_meta('timepoints'))
+        self.positions = parse_range(args.multipoints, maximum=ims.get_meta('multipoints'))
+        self.timepoints = parse_range(args.timepoints, maximum=ims.get_meta('timepoints'))
 
     def _print_ranges(self):
         self.log.info(
@@ -1023,8 +1023,8 @@ class ImageProcessingPipeline(ImageProcessingPipelineInterface):
         argparser.add_argument('input', metavar='input', type=str, help="input file")
         argparser.add_argument('-m', '--module', dest='modules', type=str, default=None, action='append')
         argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
-        argparser.add_argument('-tp', '--timepoints', dest='timepoints', default=[0, float('inf')], type=parse_range)
-        argparser.add_argument('-mp', '--multipoints', dest='multipoints', default=[0, float('inf')], type=parse_range)
+        argparser.add_argument('-tp', '--timepoints', dest='timepoints', default='0-', type=str)
+        argparser.add_argument('-mp', '--multipoints', dest='multipoints', default='0-', type=str)
 
         if self.options['tunables']:
             argparser.add_argument('-t', '--tunables', dest='tunables', type=str, default=None)
@@ -1035,8 +1035,8 @@ class ImageProcessingPipeline(ImageProcessingPipelineInterface):
         return argparser
 
     def _parse_ranges(self, args, ims):
-        self.positions = replace_inf_with_maximum(args.multipoints, ims.get_meta('multipoints'))
-        self.timepoints = replace_inf_with_maximum(args.timepoints, ims.get_meta('timepoints'))
+        self.positions = parse_range(args.multipoints, maximum=ims.get_meta('multipoints'))
+        self.timepoints = parse_range(args.timepoints, maximum=ims.get_meta('timepoints'))
 
     def _print_ranges(self):
         self.log.info(
