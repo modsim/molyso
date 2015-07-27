@@ -27,9 +27,9 @@ from .highlevel_interactive_viewer import interactive_main
 from .highlevel_interactive_ground_truth import interactive_ground_truth_main
 
 
-from ..generic.pipeline import ImageProcessingPipeline
+from ..generic.pipeline import XImageProcessingPipeline
 
-class MolysoPipeline(ImageProcessingPipeline):
+class MolysoPipeline(XImageProcessingPipeline):
     def internal_options(self):
         return {
             'name':

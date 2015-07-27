@@ -53,6 +53,16 @@ class Future:
     def wait(self, time=None):
         pass
 
+    def fail(self):
+        self.status, (self.value, self.error) = True, (None, None)
+
+        if self.process:
+            self.process.terminate()
+            self.pool.report_broken_process(self.process)
+
+        self.pool.future_became_ready(self)
+
+
     def ready(self):
         if self.status:
             return self.status
@@ -101,6 +111,13 @@ class Future:
 import datetime
 import traceback
 
+class WrappedException(RuntimeError):
+    exception = None
+    message = None
+    def __init__(self, exception, message=''):
+        self.exception = exception
+        self.message = message
+
 class FutureProcess(Process):
 
     STARTUP = 0
@@ -128,8 +145,7 @@ class FutureProcess(Process):
             try:
                 result = command(*args, **kwargs)
             except Exception as e:
-                message = traceback.print_exc()
-                exc = RuntimeError("Exception during multiprocessing, original exception:\n" + message)
+                exc = WrappedException(e, traceback.format_exc())
 
             if command_type == FutureProcess.STARTUP:
                 continue
@@ -187,14 +203,14 @@ class SimpleProcessPool:
             self.active_processes.remove(p)
 
         if p in self.waiting_processes:
-            print("found a process where it does not belong", p)
+            #print("found a process where it does not belong", p)
             self.waiting_processes.remove(p)
 
         if f in self.active_futures:
             self.active_futures.remove(f)
 
         if f in self.waiting_futures:
-            print("found a future where it does not belong", f)
+            #print("found a future where it does not belong", f)
             self.waiting_futures.remove(f)
 
         # and restart a new one
@@ -292,6 +308,12 @@ class Collected:
 class Every:
     pass
 
+class Skip(Exception):
+    meta = None
+
+    def __init__(self, meta):
+        self.meta = meta
+
 from inspect import getargspec, isclass
 
 class Pipeline:
@@ -313,9 +335,18 @@ class Pipeline:
         def wait(self, timeout):
             pass
 
+        def fail(self):
+            self.value = None
+            self.called = True
+
         def get(self):
             if not self.called:
-                self.value = self.callable()
+                self.value = None
+                try:
+                    self.value = self.callable()
+                except Exception as e:
+                    raise WrappedException(e, traceback.format_exc())
+
             return self.value
 
     class NotDispatchedYet:
@@ -400,7 +431,11 @@ class Pipeline:
             if KEY_COLLECTED in result:
                 wrapped = OrderedDict()
                 for k, v in result[KEY_COLLECTED].items():
-                    wrapped[k] = NeatDict(v)
+                    if v is None:
+                        #wrapped[k] = None
+                        pass
+                    else:
+                        wrapped[k] = NeatDict(v)
                 result[KEY_COLLECTED] = wrapped
 
             parameters = []
@@ -471,24 +506,30 @@ class Pipeline:
     def add_step(self, when, what, keep=None, delete=None):
         what_wrapped = self.wrap(what, keep=keep, delete=delete)
         if when not in self.steps:
-            self.steps[when] = what_wrapped
+            self.steps[when] = [what_wrapped]
         else:
-            last = self.steps[when]
-            new = what_wrapped
+            self.steps[when].append(what_wrapped)
+            # last = self.steps[when]
+            # new = what_wrapped
+            #
+            # def callable(step, meta, *args, **kwargs):
+            #     result = last(step, meta, *args, **kwargs)
+            #     if type(result) != tuple:
+            #         result = (result,)
+            #     return new(step, meta, *result, **kwargs)
+            #
+            # callable.__name__ = self.simplify_callable_name(what) + "_with_dependencies"
+            # callable.__qualname__ = callable.__name__
 
-            def callable(step, meta, *args, **kwargs):
-                result = last(step, meta, *args, **kwargs)
-                if type(result) != tuple:
-                    result = (result,)
-                return new(step, meta, *result, **kwargs)
-
-            callable.__name__ = self.simplify_callable_name(what) + "_with_dependencies"
-            callable.__qualname__ = callable.__name__
-
-            self.steps[when] = callable
+            #self.steps[when] = callable
 
     def dispatch(self, step, *args, **kwargs):
-        return self.steps[step](step, *args, **kwargs)
+        meta = args[0]
+        result = args[1:]
+        for individual_step in self.steps[step]:
+            result = (individual_step(step, meta, *result),)
+
+        return result[0]
 
     def setup(self):
         pass
@@ -509,6 +550,9 @@ class Pipeline:
 
     def add_pipeline_synced_variable(self, name):
         self.synced_variables |= {name}
+
+    def skip_callback(self, meta, affected):
+        print(meta, "threw Skip() exception, following ops are affected:", affected)
 
     def pre_setup(self):
         pass
@@ -633,53 +677,57 @@ class Pipeline:
 
         cache_originated = set()
 
+        invalidated = set()
+
         while len(todo) > 0 or len(check) > 0:
             for op in list(todo.keys()):
-                parameter = None
-                if is_concrete(op):
-                    parameter = ({},)
+                if op not in invalidated:
+                    parameter = None
+                    if is_concrete(op):
+                        # we are talking about a definite point, that is one that is not dependent on others
+                        parameter = ({},)
 
-                elif len(mapping[op]) != 0:
-                    continue
-                else:
-                    collected = OrderedDict()
-                    for fetch in sorted(mapping_copy[op], key=lambda t: [t[i] for i in sort_order]):
-                        collected[fetch] = results[fetch]
-                    parameter = ({'collected': collected},)
-
-                token = (reverse_todo[op], op,)
-                if self.cache and token in self.cache:
-                    #print(token, token in self.cache)
-                    if pool:
-                        result = pool.apply_async(
-                            singleton_class_mapper,
-                            args=(self.__class__, 'get_cache', (token,), {},)
-                        )
+                    elif len(mapping[op]) != 0:
+                        continue
                     else:
-                        def _cache_fetch_factory(what):
-                            def _cache_fetch_function():
-                                return self.get_cache(what)
-                            return _cache_fetch_function
-                        result = self.__class__.DuckTypedApplyResult(_cache_fetch_factory(token))
+                        collected = OrderedDict()
+                        for fetch in sorted(mapping_copy[op], key=lambda t: [t[i] for i in sort_order]):
+                            collected[fetch] = results[fetch]
+                        parameter = ({'collected': collected},)
 
-                    cache_originated |= {op}
-                else:
-                    if parameter is None:
-                        parameter = tuple({})
+                    token = (reverse_todo[op], op,)
+                    if self.cache and token in self.cache:
+                        #print(token, token in self.cache)
+                        if pool:
+                            result = pool.apply_async(
+                                singleton_class_mapper,
+                                args=(self.__class__, 'get_cache', (token,), {},)
+                            )
+                        else:
+                            def _cache_fetch_factory(what):
+                                def _cache_fetch_function():
+                                    return self.get_cache(what)
+                                return _cache_fetch_function
+                            result = self.__class__.DuckTypedApplyResult(_cache_fetch_factory(token))
 
-                    complete_params = (reverse_todo[op], op, ) + parameter  # deepcopy?
-
-                    if pool:
-                        result = pool.apply_async(
-                            singleton_class_mapper,
-                            args=(self.__class__, 'dispatch', complete_params, {},)
-                        )
+                        cache_originated |= {op}
                     else:
-                        def _dispatch_factory(what):
-                            def _dispatch_function():
-                                return self.dispatch(*what)
-                            return _dispatch_function
-                        result = self.__class__.DuckTypedApplyResult(_dispatch_factory(complete_params))
+                        if parameter is None:
+                            parameter = tuple({})
+
+                        complete_params = (reverse_todo[op], op, ) + parameter  # deepcopy?
+
+                        if pool:
+                            result = pool.apply_async(
+                                singleton_class_mapper,
+                                args=(self.__class__, 'dispatch', complete_params, {},)
+                            )
+                        else:
+                            def _dispatch_factory(what):
+                                def _dispatch_function():
+                                    return self.dispatch(*what)
+                                return _dispatch_function
+                            result = self.__class__.DuckTypedApplyResult(_dispatch_factory(complete_params))
 
                 results[op] = result
 
@@ -689,24 +737,55 @@ class Pipeline:
 
             for op in list(check.keys()):
                 result = results[op]
-                if self.wait:
-                    result.wait(self.wait)
 
-                if result.ready():
-                    try:
-                        result = result.get()
+                modified = False
 
-                        if self.cache and op not in cache_originated:
-                            # do not cache 'None' as a result
-                            if result is not None:
-                                token = (reverse_todo[op], op,)
-                                # so far, solely accessing (write) the cache from one process should mitigate locking issues
-                                self.set_cache(token, result)
+                if op in invalidated:
+                    if getattr(result, 'fail', False) and callable(result.fail):
+                        result.fail()
+                        modified = True
+                else:
 
-                    except Exception as e:
-                        self.log.exception("Exception occurred at op: %s", repr(reverse_todo[op]) + ' ' + repr(op))
-                        result = None
+                    if self.wait:
+                        result.wait(self.wait)
 
+                    if result.ready():
+                        try:
+                            result = result.get()
+
+                            if self.cache and op not in cache_originated:
+                                # do not cache 'None' as a result
+                                if result is not None:
+                                    token = (reverse_todo[op], op,)
+                                    # so far, solely accessing (write) the cache from one process should mitigate locking issues
+                                    self.set_cache(token, result)
+
+                        except WrappedException as ee:
+                            e = ee.exception
+                            if type(e) == Skip:
+                                old_invalid = invalidated.copy()
+
+                                def _add_to_invalid(what):
+                                    if what not in invalidated:
+                                        invalidated.add(what)
+                                        if what in mapping_copy:
+                                            for item in mapping_copy[what]:
+                                                _add_to_invalid(item)
+
+                                _add_to_invalid(e.meta)
+
+                                new_invalid = invalidated - old_invalid
+
+                                self.skip_callback(op, new_invalid)
+
+                            else:
+                                self.log.exception("Exception occurred at op=%s: %s", repr(reverse_todo[op]) + ' ' + repr(op), ee.message)
+
+                            result = None
+
+                        modified = True
+
+                if modified:
                     results[op] = result
 
                     if op in reverse_mapping:
@@ -809,8 +888,6 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
                 "processor",
             'description':
                 "processor",
-            'order':
-                'PT',
             'banner':
                 "",
             'tunables': False
@@ -951,291 +1028,6 @@ class PipelineApplication(PipelineApplicationInterface, Pipeline):
             return fancy_progress_bar(range(num))
 
         self.run(progress_bar=progress_bar)
-
-        if self.options['tunables']:
-            if self.args.write_tunables:
-                if os.path.isfile(self.args.write_tunables):
-                    self.log.warning("Tunable output will not overwrite existing files! NOT tunables output.")
-                else:
-                    fname = os.path.abspath(self.args.write_tunables)
-                    self.log.info("Writing tunables to \"%s\"", fname)
-                    with codecs.open(fname, 'wb+', 'utf-8') as fp:
-                        json.dump(TunableManager.get_defaults(), fp, indent=4, sort_keys=True)
-
-        self.after_main()
-
-        self.log.info("Finished %s.", self.options['name'])
-
-
-
-class ImageProcessingPipeline(ImageProcessingPipelineInterface):
-
-    instance = None
-
-    @staticmethod
-    def _internal_option_defaults():
-        return {
-            'name':
-                "processor",
-            'description':
-                "processor",
-            'order':
-                'PT',
-            'banner':
-                "",
-            'tunables': False
-        }
-
-    @property
-    def options(self):
-        if not getattr(self, '_options', False):
-            self._options = self._internal_option_defaults().copy()
-            if self.subclass_implements_function(self.internal_options):
-                self._options.update(self.internal_options())
-        return self._options
-
-    def subclass_implements_function(self, what):
-        return what.__name__ in self.__class__.__dict__
-
-    def _iterate_in_order(self):
-        if self.options['order'] == 'PT':
-            for pos in self.positions:
-                for tp in self.timepoints:
-                    yield pos, tp
-        elif self.options['order'] == 'TP':
-            for tp in self.timepoints:
-                for pos in self.positions:
-                    yield pos, tp
-        else:
-            raise RuntimeError("Wrong order passed")
-
-    def _create_argparser(self):
-        argparser = argparse.ArgumentParser(description=self.options['description'])
-
-        def _error(message=''):
-            self.log.info(self.options['banner'])
-            argparser.print_help()
-            self.log.error("command line argument error: %s", message)
-            sys.exit(1)
-
-        argparser.error = _error
-
-        argparser.add_argument('input', metavar='input', type=str, help="input file")
-        argparser.add_argument('-m', '--module', dest='modules', type=str, default=None, action='append')
-        argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
-        argparser.add_argument('-tp', '--timepoints', dest='timepoints', default='0-', type=str)
-        argparser.add_argument('-mp', '--multipoints', dest='multipoints', default='0-', type=str)
-
-        if self.options['tunables']:
-            argparser.add_argument('-t', '--tunables', dest='tunables', type=str, default=None)
-            argparser.add_argument('-pt', '--print-tunables', dest='print_tunables', default=False, action='store_true')
-            argparser.add_argument('-rt', '--read-tunables', dest='read_tunables', type=str, default=None)
-            argparser.add_argument('-wt', '--write-tunables', dest='write_tunables', type=str, default=None)
-
-        return argparser
-
-    def _parse_ranges(self, args, ims):
-        self.positions = parse_range(args.multipoints, maximum=ims.get_meta('multipoints'))
-        self.timepoints = parse_range(args.timepoints, maximum=ims.get_meta('timepoints'))
-
-    def _print_ranges(self):
-        self.log.info(
-            "Beginning Processing:\n%s\n%s",
-            prettify_numpy_array(self.positions,  "Positions : "),
-            prettify_numpy_array(self.timepoints, "Timepoints: ")
-        )
-
-    @classmethod
-    def _multiprocess_start(cls, what, args):
-        cls.instance = what()
-        cls.instance.args = args
-        cls.instance.internal_before_processing()
-
-    @classmethod
-    def _multiprocess_map_image(cls, *args, **kwargs):
-        return cls.instance.internal_map_image(*args, **kwargs)
-
-    def internal_map_image(self, meta):
-        image_data = self.ims.get_image(t=meta.t, pos=meta.pos, channel=self.ims.__class__.Phase_Contrast, raw=True)
-
-        return self.map_image(meta, image_data)
-
-    @classmethod
-    def _multiprocess_output_multipoint(cls, *args, **kwargs):
-        return cls.instance.internal_output_multipoint(*args, **kwargs)
-
-    def internal_output_multipoint(self, meta, results):
-        return self.output_multipoint(meta, results)
-
-    def internal_before_processing(self):
-        self._setup_modules()
-        correct_windows_signal_handlers()
-
-        if self.options['tunables']:
-            # load tunables
-            if self.args.read_tunables:
-                with open(self.args.read_tunables, 'r') as tunable_file:
-                    tunables = json.load(tunable_file)
-                    self.log.info("Loaded tunable file \"%s\" with data: %s", self.args.read_tunables, repr(tunables))
-                    TunableManager.load_tunables(tunables)
-
-            if self.args.tunables:
-                tunables = json.loads(self.args.tunables)
-                self.log.info("Loaded command line tunables: %(data)s" % {'data': repr(tunables)})
-                TunableManager.load_tunables(tunables)
-
-            if self.args.print_tunables:
-                TunableManager.set_printing(True)
-
-        self.before_processing()
-
-    @classmethod
-    def _multiprocess_process_timepoints(cls, meta, results):
-        return cls.instance.reduce_timepoints(meta, results)
-
-    def _setup_modules(self):
-        modules = self.args.modules
-        if modules:
-            import importlib
-            for module in modules:
-                try:
-                    importlib.import_module("%s_%s" % (self.options['name'], module))
-                except ImportError:
-                    try:
-                        importlib.import_module(module)
-                    except ImportError:
-                        self.log.warning("Could not load either module %s_%s or %s!",
-                                      self.options['name'], module, module)
-
-    @property
-    def ims(self):
-        if getattr(self, '_ims', None) is None:
-            self._ims = MultiImageStack.open(self.args.input)
-
-        return self._ims
-
-    @property
-    def log(self):
-        if getattr(self, '_log', None) is None:
-            self._log = logging.getLogger(self.options['name'])
-
-        return self._log
-
-    def main(self):
-        return TestPipeline().main()
-        logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(name)s %(levelname)s %(message)s")
-
-        self.argparser = self._create_argparser()
-        self.arguments(self.argparser)
-        self.args = self.argparser.parse_args()
-
-        self.log.info(self.options['banner'])
-        self.log.info("Started %s.", self.options['name'])
-
-        self._setup_modules()
-
-        self._parse_ranges(self.args, self.ims)
-
-        if self.args.mp <= 0:
-            self.args.mp = cpu_count()
-
-        self.before_main()
-
-        self._print_ranges()
-
-        results = {}
-        structured_results = {pos: {t: None for t in self.timepoints} for pos in self.positions}
-        missing = {pos: len(self.timepoints) for pos in self.positions}
-
-        multipoint_results = {pos: None for pos in self.positions}
-
-        pbar = fancy_progress_bar(range(len(self.positions) * len(self.timepoints)))
-
-        if self.args.mp < 2:
-
-            self.internal_before_processing()
-
-            for pos, tp in self._iterate_in_order():
-                try:
-                    result = self.internal_map_image(pos, tp)
-                except Exception:
-                    self.log.exception("Exception occurred at pos: %d, time %d", pos, tp)
-                results[(pos, tp)] = result
-                structured_results[pos][tp] = result
-                missing[pos][tp] -= 1
-                if missing[pos][tp] == 0:
-                    multipoint_results[pos] = self.reduce_timepoints(Meta(pos, None), structured_results[pos])
-
-                next(pbar)
-
-            ignorant_next(pbar)
-
-        else:
-            self.pool = Pool(processes=self.args.mp, initializer=ImageProcessingPipeline._multiprocess_start, initargs=(self.__class__, self.args,))
-
-            jobs = {}
-
-            mp_jobs = {}
-
-            output_mp_jobs = {}
-
-            for pos, tp in self._iterate_in_order():
-                jobs[(pos, tp)] = self.pool.apply_async(ImageProcessingPipeline._multiprocess_map_image, args=(Meta(pos, tp),))
-
-            while len(jobs) > 0:
-                for (pos, tp), c in list(jobs.items()):
-                    if c.ready():
-                        try:
-                            result = c.get()
-                        except Exception:
-                            self.log.exception("Exception occurred at pos: %d, time %d", pos, tp)
-                        results[(pos, tp)] = result
-                        del jobs[(pos, tp)]
-                        structured_results[pos][tp] = result
-                        missing[pos] -= 1
-                        if missing[pos] == 0:
-                            mp_jobs[pos] = self.pool.apply_async(ImageProcessingPipeline._multiprocess_process_timepoints, args=(Meta(pos, None), structured_results[pos]))
-
-                        next(pbar)
-
-            ignorant_next(pbar)
-
-            pbar = fancy_progress_bar(range(len(self.positions)))
-
-            while len(mp_jobs) > 0:
-                for pos, c in list(mp_jobs.items()):
-                    if c.ready():
-                        try:
-                            result = c.get()
-                        except Exception:
-                            self.log.exception("Exception occurred at pos: %d", pos)
-                        multipoint_results[pos] = result
-                        del mp_jobs[pos]
-                        output_mp_jobs[pos] = self.pool.apply_async(ImageProcessingPipeline._multiprocess_output_multipoint, args=(Meta(pos, None), result))
-                        next(pbar)
-
-            ignorant_next(pbar)
-
-            pbar = fancy_progress_bar(range(len(self.positions)))
-
-            while len(output_mp_jobs) > 0:
-                for pos, c in list(output_mp_jobs.items()):
-                    if c.ready():
-                        try:
-                            result = c.get()
-                        except Exception:
-                            self.log.exception("Exception occurred at pos: %d", pos)
-                        del output_mp_jobs[pos]
-
-                        next(pbar)
-            ignorant_next(pbar)
-            self.pool.close()
-
-        self.reduce_images(structured_results)
-        self.reduce_multipoints(multipoint_results)
-
-        self.after_processing()
-        self.output(multipoint_results)
 
         if self.options['tunables']:
             if self.args.write_tunables:
