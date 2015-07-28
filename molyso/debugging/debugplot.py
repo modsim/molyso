@@ -10,7 +10,7 @@ from os.path import isfile
 
 from tempfile import TemporaryFile
 
-from .. import Debug
+from . import Debug
 
 def next_free_filename(prefix, suffix):
     n = 0

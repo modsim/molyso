@@ -208,8 +208,11 @@ def bits_to_numpy_type(bits):
     }[int(bits)]
 
 
+def nop(*args, **kwargs):
+    pass
+
 class BaseCache(object):
-    printer = print
+    printer = nop  # print
 
     @staticmethod
     def prepare_key(key):

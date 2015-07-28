@@ -28,6 +28,86 @@ from itertools import product
 from collections import OrderedDict
 from copy import deepcopy
 
+
+
+#####
+
+
+
+from .etc import BaseCache
+
+import tables
+from tables.nodes import filenode
+
+class H5Cache(BaseCache):
+    h5file = None
+
+    CACHE_NODE = 'cache'
+
+    @staticmethod
+    def prepare_key(key):
+        import re
+
+        if type(key) == type(''):
+            key = key
+        else:
+            key = repr(key)
+
+        key = re.sub(r'\W', '_', key)
+        return key
+
+
+    def __init__(self, *args, **kwargs):
+        super(H5Cache, self).__init__(*args, **kwargs)
+
+        self.h5file = None
+
+        if self.ignore_cache is not True:
+            self.h5file = tables.open_file('%s.h5.cache' % (self.cache_token, ), 'a')
+            try:
+                self.h5file.create_group('/', self.CACHE_NODE)
+            except tables.exceptions.NodeError:
+                pass
+
+    def __del__(self):
+        if self.h5file:
+            self.h5file.close()
+
+    def generate_base_node_name(self, key):
+        return '%s' % (key,)
+
+    def generate_node_prefix(self):
+        return '/' + self.CACHE_NODE
+
+    def generate_node_name(self, key):
+        return '%s/%s' % (self.generate_node_prefix(), self.generate_base_node_name(key),)
+
+    def contains(self, key):
+        try:
+            self.h5file.is_visible_node(self.generate_node_name(key))
+            return True
+        except tables.NoSuchNodeError:
+            return False
+
+    def get(self, key):
+        node = self.h5file.get_node(self.generate_node_name(key))
+        fnode = filenode.open_node(node, 'r')
+        result = fnode.read()
+        fnode.close()
+        return result
+
+    def keys(self):
+        pass
+
+    def set(self, key, value):
+        if self.contains(key):
+            self.h5file.remove_node(self.generate_node_name(key))
+        fnode = filenode.new_node(self.h5file, where=self.generate_node_prefix(), name=self.generate_base_node_name(key))
+        fnode.write(value)
+        fnode.close()
+
+
+
 #####
 
 from multiprocessing import Process, Pipe
@@ -413,7 +493,7 @@ class Pipeline:
         def callable(step, meta, result):
             real_call.step = step
             if debug:
-                print("Entering " + repr(instance))
+                print("Entering " + repr(real_call))
 
             result = NeatDict(result)
 
@@ -492,7 +572,7 @@ class Pipeline:
                 del result[KEY_RESULT]
 
             if debug:
-                print("Leaving " + repr(instance))
+                print("Leaving " + repr(real_call))
             return result
 
         callable.__name__ = name
@@ -531,6 +611,21 @@ class Pipeline:
 
         return result[0]
 
+    def embedded_pipeline(self, steps, meta, feed={}, raw=False):
+        NeatDict = self.__class__.NeatDict
+
+        result = (feed,)
+
+        for s in steps:
+            result = (self.wrap(s)(meta, meta, *result),)
+
+        result = result[0]
+
+        if not raw:
+            result = NeatDict(result)
+
+        return result
+
     def setup(self):
         pass
 
@@ -541,6 +636,8 @@ class Pipeline:
         if getattr(self, 'step_connected_variables', None) is None:
             self.step_connected_variables = set()
         self.synced_variables = {'meta_tuple', 'processing_order', 'item_counts', 'step_connected_variables'}
+
+        self.add_step_connected_variable('embedded_pipeline')
 
     def add_step_connected_variable(self, name):
         self.step_connected_variables |= {name}
