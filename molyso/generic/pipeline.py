@@ -142,7 +142,6 @@ class Future:
 
         self.pool.future_became_ready(self)
 
-
     def ready(self):
         if self.status:
             return self.status
@@ -400,7 +399,17 @@ class Pipeline:
     debug = False
     strip = True
 
-    class Environment:
+    class NeatDict(dict):
+        def __getattr__(self, item):
+            return self.get(item)
+
+        def __setattr__(self, key, value):
+            self[key] = value
+
+        def __delattr__(self, item):
+            del self[item]
+
+    class Environment(NeatDict):
         pass
 
     class DuckTypedApplyResult:
@@ -432,15 +441,7 @@ class Pipeline:
     class NotDispatchedYet:
         pass
 
-    class NeatDict(dict):
-        def __getattr__(self, item):
-            return self.get(item)
 
-        def __setattr__(self, key, value):
-            self[key] = value
-
-        def __delattr__(self, item):
-            del self[item]
 
     def wrap(self, what, keep=None, delete=None):
         if isclass(what):
@@ -450,18 +451,16 @@ class Pipeline:
 
         debug = self.debug
 
+        external_di = self.shared_variables.copy()
+        external_di.update({k: getattr(self, k) for k in self.step_connected_variables})
+
         if isclass(what):
             #instance = what()
             # we create an instance without calling the constructor, so we can setup the environment first
             instance = what.__new__(what)
-            instance.my_env = self.__class__.Environment()
-            instance.env = self.environment
+            instance.local_env = self.__class__.Environment()
 
-            for k, v in self.shared_variables.items():
-                instance.__dict__[k] = v
-
-            for k in self.step_connected_variables:
-                instance.__dict__[k] = getattr(self, k)
+            instance.__dict__.update(external_di)
 
             # now we call the constructor, and it has everything neatly set up already!
             instance.__init__()
@@ -518,6 +517,9 @@ class Pipeline:
                         wrapped[k] = NeatDict(v)
                 result[KEY_COLLECTED] = wrapped
 
+
+            from_di = set()
+
             parameters = []
             for n, arg in enumerate(args):
                 if arg == KEY_RESULT:
@@ -528,8 +530,12 @@ class Pipeline:
                     if n >= non_default_parameters:
                         parameters.append(defaults[n - non_default_parameters])
                     else:
-                        # problem: pipeline step asks for a parameter we do not have
-                        raise ValueError('[At %s]: Argument %r not in %r'  % (name, arg, result,))
+                        if arg in external_di:
+                            from_di.add(arg)
+                            parameters.append(external_di[arg])
+                        else:
+                            # problem: pipeline step asks for a parameter we do not have
+                            raise ValueError('[At %s]: Argument %r not in %r'  % (name, arg, result,))
 
             _call_return = real_call(*parameters)
 
@@ -551,7 +557,11 @@ class Pipeline:
                         if type(item) == dict or type(item) == NeatDict:
                             result.update(item)
                     else:
-                        result[k] = item
+                        if k in from_di:
+                            # do nothign if the parameter came from di
+                            pass
+                        else:
+                            result[k] = item
 
             if KEY_COLLECTED in result:
                 unwrapped = OrderedDict()
@@ -631,13 +641,14 @@ class Pipeline:
 
     def setup_call(self):
         self.steps = {}
-        self.environment = self.__class__.Environment()
+        self.env = self.__class__.Environment()
         self.shared_variables = {}
         if getattr(self, 'step_connected_variables', None) is None:
             self.step_connected_variables = set()
         self.synced_variables = {'meta_tuple', 'processing_order', 'item_counts', 'step_connected_variables'}
 
         self.add_step_connected_variable('embedded_pipeline')
+        self.add_step_connected_variable('env')
 
     def add_step_connected_variable(self, name):
         self.step_connected_variables |= {name}
