@@ -110,6 +110,10 @@ class H5Cache(BaseCache):
 
 #####
 
+from signal import SIGINT
+from time import sleep
+from os import kill
+
 from multiprocessing import Process, Pipe
 
 class Future:
@@ -147,8 +151,8 @@ class Future:
         if self.process:
             self.process.terminate()
             self.pool.report_broken_process(self.process)
-
-        self.pool.future_became_ready(self)
+        else:
+            self.pool.future_became_ready(self)
 
     def ready(self):
         if self.status:
@@ -162,7 +166,15 @@ class Future:
             now = datetime.datetime.now()
             if (now - self.started_at).total_seconds() > self.timeout:
                 # we reached a hard timeout
+
+                try:
+                    kill(self.process.pid, SIGINT)
+                    sleep(0.25)
+                except Exception as e:
+                    print(repr(e))
+
                 self.process.terminate()
+
                 self.pool.report_broken_process(self.process)
                 self.status, (self.value, self.error) = \
                     True, (None, RuntimeError('Process took longer than specified timeout and was terminated.'))
@@ -261,6 +273,10 @@ class SimpleProcessPool:
         p.send_command(*self.startup_message)
         return p
 
+    def fill_pool(self):
+        for _ in range(self.count - (len(self.waiting_processes) + len(self.active_processes))):
+            self.waiting_processes.add(self.new_process())
+
     def __init__(self, processes=0, initializer=None, initargs=[], initkwargs={}, future_timeout=0):
 
         self.startup_message = (FutureProcess.STARTUP, initializer, initargs, initkwargs)
@@ -271,8 +287,10 @@ class SimpleProcessPool:
         self.future_timeout = future_timeout
         self.count = processes
 
-        self.waiting_processes = {self.new_process() for _ in range(processes)}
+        self.waiting_processes = set()
         self.active_processes = set()
+
+        self.fill_pool()
 
         self.active_futures = set()
         self.waiting_futures = []  # priority queue
@@ -306,8 +324,7 @@ class SimpleProcessPool:
         #    #print("found a future where it does not belong", f)
         #    self.waiting_futures.remove(f)
 
-        # and restart a new one
-        self.waiting_processes.add(self.new_process())
+        self.fill_pool()
 
         self.schedule()
 
@@ -346,9 +363,12 @@ class SimpleProcessPool:
     def future_became_ready(self, f):
         if f in self.active_futures:
             self.active_futures.remove(f)
+
         if f.process in self.active_processes:
             self.active_processes.remove(f.process)
-        self.waiting_processes.add(f.process)
+
+        if f.process:
+            self.waiting_processes.add(f.process)
 
         self.schedule()
 
