@@ -274,17 +274,29 @@ class BaseCache(object):
         if self.ignore_cache is True or key in self.ignore_cache:
             return False
         else:
-            return self.contains(self.prepare_key(key))
+            try:
+                return self.contains(self.prepare_key(key))
+            except Exception as e:
+                print("While " + repr(self.__contains__) + " an Exception occured (but continuing): " + repr(e))
+                return False
 
     def __getitem__(self, key):
-        return self.deserialize(self.get(self.prepare_key(key)))
+        try:
+            return self.deserialize(self.get(self.prepare_key(key)))
+        except Exception as e:
+            print("While " + repr(self.__getitem__) + " an Exception occured (but continuing): " + repr(e))
+            # this is technically wrong ...
+            return None
 
     def __setitem__(self, key, value):
         if self.ignore_cache is True or key in self.ignore_cache:
             return
         else:
-            self.printInfo("Setting data for '%s'" % (key,))
-            self.set(self.prepare_key(key), self.serialize(value))
+            try:
+                self.printInfo("Setting data for '%s'" % (key,))
+                self.set(self.prepare_key(key), self.serialize(value))
+            except Exception as e:
+                print("While " + repr(self.__setitem__) + " an Exception occured (but continuing): " + repr(e))
 
 
 
