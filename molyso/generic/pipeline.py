@@ -113,22 +113,30 @@ class H5Cache(BaseCache):
 from multiprocessing import Process, Pipe
 
 class Future:
+    command = None
+    args = None
+    kwargs = None
+
+    value = None
+    error = None
+
+    process = None
+    pool = None
+
+    priority = 0
+
+    status = None
+
+    timeout = 0
+    started_at = None
 
     def __init__(self):
-        self.command = None
-        self.args = None
-        self.kwargs = None
+        pass
 
-        self.value = None
-        self.error = None
+    def __lt__(self, other):
+        # dummy
+        return self.priority < other.priority
 
-        self.process = None
-        self.pool = None
-
-        self.status = None
-
-        self.timeout = 0
-        self.started_at = None
 
     def wait(self, time=None):
         pass
@@ -243,7 +251,7 @@ class FutureProcess(Process):
         else:
             return False, (None, None,)
 
-
+import heapq
 
 class SimpleProcessPool:
 
@@ -267,7 +275,7 @@ class SimpleProcessPool:
         self.active_processes = set()
 
         self.active_futures = set()
-        self.waiting_futures = set()
+        self.waiting_futures = []  # priority queue
 
         self.closing = False
 
@@ -288,9 +296,15 @@ class SimpleProcessPool:
         if f in self.active_futures:
             self.active_futures.remove(f)
 
+
         if f in self.waiting_futures:
-            #print("found a future where it does not belong", f)
+            # remove one entry, rebuild
             self.waiting_futures.remove(f)
+            heapq.heapify(self.waiting_futures)
+
+        #if f in self.waiting_futures:
+        #    #print("found a future where it does not belong", f)
+        #    self.waiting_futures.remove(f)
 
         # and restart a new one
         self.waiting_processes.add(self.new_process())
@@ -298,20 +312,32 @@ class SimpleProcessPool:
         self.schedule()
 
     def apply(self, command, *args, **kwargs):
+        return self.advanced_apply(command=command, args=args, kwargs=kwargs)
+
+    def advanced_apply(self, command=None, priority=0, args=None, kwargs=None):
+        if args is None:
+            args = tuple()
+        if kwargs is None:
+            kwargs = {}
+
         f = Future()
         f.command = command
         f.args = args
         f.kwargs = kwargs
 
+        f.priority = priority
+
         f.timeout = self.future_timeout
 
         f.pool = self
 
-        self.waiting_futures.add(f)
+        #self.waiting_futures.add(f)
+        heapq.heappush(self.waiting_futures, f)
 
         self.schedule()
 
         return f
+
 
     # ugly signature
     def apply_async(self, fun, args=(), kwargs={}):
@@ -334,7 +360,8 @@ class SimpleProcessPool:
             if len(self.waiting_futures) == 0:
                 break
 
-            f = self.waiting_futures.pop()
+            #f = self.waiting_futures.pop()
+            f = heapq.heappop(self.waiting_futures)
 
             p = self.waiting_processes.pop()
 
@@ -787,14 +814,19 @@ class Pipeline:
 
         invalidated = set()
 
+        concrete_counter, non_concrete_counter = 0, 0
+
         while len(todo) > 0 or len(check) > 0:
             for op in list(todo.keys()):
                 if op not in invalidated:
                     parameter = None
-                    if is_concrete(op):
+                    concrete = is_concrete(op)
+                    priority = 0
+                    if concrete:
                         # we are talking about a definite point, that is one that is not dependent on others
                         parameter = ({},)
-
+                        concrete_counter += 1
+                        priority = 1 * concrete_counter
                     elif len(mapping[op]) != 0:
                         continue
                     else:
@@ -802,15 +834,24 @@ class Pipeline:
                         for fetch in sorted(mapping_copy[op], key=lambda t: [t[i] for i in sort_order]):
                             collected[fetch] = results[fetch]
                         parameter = ({'collected': collected},)
+                        non_concrete_counter += 1
+                        priority = -1 * non_concrete_counter
 
                     token = (reverse_todo[op], op,)
                     if self.cache and token in self.cache:
                         #print(token, token in self.cache)
                         if pool:
-                            result = pool.apply_async(
-                                singleton_class_mapper,
-                                args=(self.__class__, 'get_cache', (token,), {},)
-                            )
+                            if getattr(pool, 'advanced_apply', False):
+                                result = pool.advanced_apply(
+                                    command=singleton_class_mapper,
+                                    args=(self.__class__, 'get_cache', (token,), {},),
+                                    priority=priority
+                                )
+                            else:
+                                result = pool.apply_async(
+                                    singleton_class_mapper,
+                                    args=(self.__class__, 'get_cache', (token,), {},)
+                                )
                         else:
                             def _cache_fetch_factory(what):
                                 def _cache_fetch_function():
@@ -826,10 +867,17 @@ class Pipeline:
                         complete_params = (reverse_todo[op], op, ) + parameter  # deepcopy?
 
                         if pool:
-                            result = pool.apply_async(
-                                singleton_class_mapper,
-                                args=(self.__class__, 'dispatch', complete_params, {},)
-                            )
+                            if getattr(pool, 'advanced_apply', False):
+                                result = pool.advanced_apply(
+                                    singleton_class_mapper,
+                                    args=(self.__class__, 'dispatch', complete_params, {},),
+                                    priority=priority
+                                )
+                            else:
+                                result = pool.apply_async(
+                                    singleton_class_mapper,
+                                    args=(self.__class__, 'dispatch', complete_params, {},)
+                                )
                         else:
                             def _dispatch_factory(what):
                                 def _dispatch_function():
