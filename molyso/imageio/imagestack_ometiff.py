@@ -24,7 +24,11 @@ class OMETiffStack(MultiImageStack):
     }
 
     def __init__(self, parameters):
-        self.generate_parameters_from_defaults({'treat_z_as_mp': False}, parameters)
+        self.generate_parameters_from_defaults({
+            'treat_z_as_mp': False,
+            'subsample_t': 1,
+            'subsample_xy': 1
+        }, parameters)
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -129,16 +133,21 @@ class OMETiffStack(MultiImageStack):
         return images
 
     def _get_image(self, **kwargs):
+        subsampling_temporal = int(self.parameters['subsample_t'])
+        subsampling_spatial = int(self.parameters['subsample_xy'])
+
         channel = 0
         if 'channel' in kwargs:
             channel = kwargs['channel']
         if channel in self.__class__.SimpleMapping:
             channel = self.__class__.SimpleMapping[channel]
 
-        tps = self.images[kwargs['pos']]
-        tp = [tp for tp in tps if tp['TheT'] == kwargs['t'] and tp['TheC'] == channel][0]
+        t = kwargs['t'] * subsampling_temporal
 
-        return self.tiff.pages[tp['IFD']].asarray()
+        tps = self.images[kwargs['pos']]
+        tp = [tp for tp in tps if tp['TheT'] == t and tp['TheC'] == channel][0]
+
+        return self.tiff.pages[tp['IFD']].asarray()[::subsampling_spatial, ::subsampling_spatial]
 
     def _get_meta(self, *args, **kwargs):
         what = args[0]
@@ -146,15 +155,20 @@ class OMETiffStack(MultiImageStack):
         t = kwargs['t'] if 't' in kwargs else 0
         pos = kwargs['pos'] if 'pos' in kwargs else 0
 
+        subsampling_temporal = int(self.parameters['subsample_t'])
+        subsampling_spatial = int(self.parameters['subsample_xy'])
+
+        t *= subsampling_temporal
+
         image = [tp for tp in self.images[pos] if tp['TheT'] == t][0]
 
         return {
-            'calibration': lambda: image['PhysicalSizeX'],
+            'calibration': lambda: image['PhysicalSizeX'] * subsampling_spatial,
             'channels': lambda: image['SizeC'],
             'fluorescenceChannels': lambda: list(range(1, image['SizeC'])),
             'position': lambda: (image['PositionX'], image['PositionY'], image['PositionZ'],),
             'time': lambda: image['DeltaT'],
-            'timepoints': lambda: image['SizeT'],
+            'timepoints': lambda: image['SizeT'] // subsampling_temporal,
             'multipoints': lambda: len(self.images)
         }[what]()
 
@@ -173,7 +187,9 @@ class PlainTiffStack(MultiImageStack):
     def __init__(self, parameters):
         self.generate_parameters_from_defaults({
             'interval': 1,
-            'calibration': 1
+            'calibration': 1,
+            'subsample_t': 1,
+            'subsample_xy': 1
         }, parameters)
 
         with warnings.catch_warnings():
@@ -183,7 +199,9 @@ class PlainTiffStack(MultiImageStack):
         self.fp = self.tiff.pages[0]
 
     def _get_image(self, **kwargs):
-        return self.tiff.pages[kwargs['t']].asarray()
+        subsampling_temporal = int(self.parameters['subsample_t'])
+        subsampling_spatial = int(self.parameters['subsample_xy'])
+        return self.tiff.pages[kwargs['t'] * subsampling_temporal].asarray()[::subsampling_spatial, ::subsampling_spatial]
 
     def _get_meta(self, *args, **kwargs):
         what = args[0]
@@ -191,17 +209,20 @@ class PlainTiffStack(MultiImageStack):
         if 't' in kwargs:
             t = kwargs['t']
 
+        subsampling_temporal = int(self.parameters['subsample_t'])
+        subsampling_spatial = int(self.parameters['subsample_xy'])
+
         # pos = 0
         # if 'pos' in kwargs:
         #     pos = kwargs['pos']
 
         return {
-            'calibration': lambda: float(self.parameters['calibration']),
+            'calibration': lambda: float(self.parameters['calibration']) * subsampling_spatial,
             'channels': lambda: 1,
             'fluorescenceChannels': lambda: [],
             'position': lambda: (0.0, 0.0, 0.0,),
-            'time': lambda: float(self.parameters['interval']) * t,
-            'timepoints': lambda: len(self.tiff.pages),
+            'time': lambda: float(self.parameters['interval']) * t * subsampling_temporal,
+            'timepoints': lambda: len(self.tiff.pages) // subsampling_temporal,
             'multipoints': lambda: 1
         }[what]()
 
