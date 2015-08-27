@@ -61,11 +61,19 @@ class BaseImage(object):
 
     def pixel_to_mu(self, pix):
         """
-        convertes a distance in pixels to micrometers using the calibration data of the image
+        converts a distance in pixels to micrometers using the calibration data of the image
         :param pix: pixel distance to convert
         :return: distance in micrometers as floating point number
         """
         return float(self.calibration_px_to_mu * pix)
+
+    def mu_to_pixel(self, mu):
+        """
+        converts a distance in micrometers to pixels using the calibration data of the image
+        :param mu: micrometer distance to convert
+        :return: distance in pixels as floating point number
+        """
+        return float(mu / self.calibration_px_to_mu)
 
     def cp(self, x, y):
         """
