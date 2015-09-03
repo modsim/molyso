@@ -11,6 +11,7 @@ from .generic.tunable import tunable, TunableManager
 __version__ = '0.1'
 
 __citation__ = \
-    """Image Analysis of Mother Machine Microfluidic Experiments:
-    A Software for Unsupervised High-Throughput Processing.
-    Sachs et al. 2015."""
+    """Image-based Single Cell Profiling:
+    High-Throughput Processing of Mother Machine Experiments
+
+    Sachs et al. (In preparation)"""

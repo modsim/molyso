@@ -37,6 +37,12 @@ from .highlevel_interactive_ground_truth import interactive_ground_truth_main
 
 OMETiffStack = OMETiffStack
 
+class Hooks:
+    main = []
+
+    def __init__(self):
+        pass
+
 
 def banner():
     return r"""
@@ -46,7 +52,7 @@ def banner():
       |O| |O| |O|    MOther    machine         ModSim / Microscale Group
       \_/ \_/ \_/    anaLYsis SOftware         Research  Center  Juelich
     --------------------------------------------------------------------
-    If you use this software in a publication, please cite our paper:
+    If you use this software in a publication, cite our paper:
 
     %(citation)s
 
@@ -267,6 +273,9 @@ def main():
     if sys.maxsize <= 2 ** 32:
         print_warning("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
                       "and it will significantly reduce functionality!")
+
+    for hook in Hooks.main:
+        hook(args)
 
     if not args.process:
         return interactive_main(args)
