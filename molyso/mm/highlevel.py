@@ -17,6 +17,7 @@ import json
 import multiprocessing
 import datetime
 import traceback
+import logging
 
 from .. import Debug, TunableManager
 
@@ -234,12 +235,17 @@ def main():
     if args.ground_truth:
         args.process = True
 
+    logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(name)s %(levelname)s %(message)s")
+    #log = logging.getLogger('molyso')
+
     def print_info(*inner_args):
         if not args.quiet:
             print(*inner_args)
+            #log.info(str(*inner_args))
 
     def print_warning(*inner_args):
         print(*inner_args, file=sys.stderr)
+        #log.warn(str(*inner_args))
 
     if args.quiet:  # silence the progress bar filter
         progress_bar = silent_progress_bar
