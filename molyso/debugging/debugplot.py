@@ -46,9 +46,18 @@ class DebugPlot(object):
         The DebugPlot class serves as an switchable abstraction layer to add plotting debug output facilities.
     """
 
+    default_config = {
+        'figure.figsize': (12, 8),
+        'figure.dpi': 150,
+        'image.cmap': 'gray'
+    }
+
     file_prefix = 'debug'
 
     active = True
+    force_active = False
+
+    post_figure = 'close'
 
     individual_and_merge = False
     individual_files = False
@@ -120,9 +129,9 @@ class DebugPlot(object):
         self.filter_okay = Debug.filter(*args)
         self.filter_str = Debug.filter_to_str(args)
 
-        self.active = self.__class__.active and \
+        self.active = self.force_active or (self.active and \
                       self.filter_okay and\
-                      (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf'))
+                      (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf')))
 
         if not DebugPlot.exit_handler_registered:
             atexit.register(DebugPlot.call_exit_handlers)
@@ -175,12 +184,8 @@ class DebugPlot(object):
     def __enter__(self):
         if self.active:
             # noinspection PyPep8Naming,PyAttributeOutsideInit
-            self.rcParams = self.pylab.rcParams
-            self.clf()
-            self.close('all')
-            self.rcParams['figure.figsize'] = (12, 8)
-            self.rcParams['figure.dpi'] = 150
-            self.rcParams['image.cmap'] = 'gray'
+            for k, v in self.default_config.items():
+                self.pylab.rcParams[k] = v
             self.figure()
             self.text(0.01, 0.01, "%s\n%s\n%s" % (self.info, Debug.get_context(), self.filter_str),
                       transform=self.gca().transAxes)
@@ -203,9 +208,11 @@ class DebugPlot(object):
             for pp, okay in DebugPlot.diverted_outputs.items():
                 if self.filter_str in okay:
                     self.savefig(pp, format='pdf')
-            self.clf()
-            self.close('all')
-            self.figure()
+
+            if self.post_figure == 'show':
+                self.show()
+            else:
+                self.close()
 
     def get_file_for_merge(self):
         if len(DebugPlot.files_to_merge) == 0:

@@ -360,7 +360,8 @@ class Sqlite3Cache(BaseCache):
             self.conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS entries_name ON entries (name)')
 
     def __del__(self):
-        self.conn.close()
+        if self.conn:
+            self.conn.close()
 
 
 class NotReallyATree(list):
