@@ -269,7 +269,7 @@ def alternate_vertical_channel_region_detection(image):
 
         return ft.max(), f[numpy.argmax(ft)]
 
-    split_factor = tunable('channels.vertical.alternate.split_factor', 50)
+    split_factor = tunable('channels.vertical.alternate.split_factor', 60)
 
     collector = numpy.zeros(image.shape[0])
 
