@@ -26,12 +26,16 @@ def find_rotation(image, steps=10, smoothing_signal_length=15):
 
     step = 0
 
+    all_profiles = []
+
     for n, the_step, image_slice in each_image_slice(image, steps, direction='vertical'):
         step = the_step
         profile = vertical_mean(image_slice)
 
         profile = hamming_smooth(profile, smoothing_signal_length)
         profile = numpy.diff(profile)
+
+        all_profiles.append(profile)
 
         if n == 0:
             last_signal = profile
