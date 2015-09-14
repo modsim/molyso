@@ -325,8 +325,6 @@ def main():
             print_info(prettify_numpy_array(positions_to_process,  "Positions : "))
             print_info(prettify_numpy_array(timepoints_to_process, "Timepoints: "))
 
-            ims = None
-
             results = {pos: {} for pos in positions_to_process}
 
             total = len(timepoints_to_process) * len(positions_to_process)
