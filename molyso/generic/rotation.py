@@ -13,10 +13,18 @@ from .signal import find_phase, vertical_mean, remove_outliers, each_image_slice
 
 def find_rotation(image, steps=10, smoothing_signal_length=15):
     """
-    tries to detect the rotation
-    :param image:
-    :param steps:
-    :return:
+    Tries to detect the rotation by pairwise cross-correlation of vertical mean profiles of the image.
+    The image is split into ``steps`` slices. Smoothing of intermediate signals is performed with a
+    `smoothing_signal_length`-wide Hamming window.
+
+    :param image: input image
+    :param steps: step count
+    :param smoothing_signal_length: int
+    :type image: numpy.ndarray
+    :type steps: int
+    :type smoothing_signal_length: int
+    :return: angle: float
+    :rtype: float
     """
 
     shifts = numpy.zeros(steps)
@@ -58,10 +66,24 @@ try:
 
     def rotate_image(image, angle):
         """
+        Rotates image for angle degrees. Shape remains the same.
 
-        :param image:
-        :param angle:
-        :return:
+        :param image: input image
+        :param angle: angle to rotate
+        :type image: numpy.ndarray
+        :type angle: float
+        :rtype: numpy.ndarray
+        :return: rotated image
+
+        >>> rotate_image(numpy.array([[1, 0, 0, 0],
+        ...                           [0, 1, 0, 0],
+        ...                           [0, 0, 1, 0],
+        ...                           [0, 0, 0, 1]], dtype=numpy.uint8), 45.0)
+        array([[0, 0, 0, 0],
+               [0, 0, 0, 0],
+               [1, 1, 1, 1],
+               [0, 0, 0, 0]], dtype=uint8)
+
         """
 
         return cv2.warpAffine(image,
@@ -73,21 +95,23 @@ except ImportError:
     from scipy.ndimage.interpolation import rotate
 
     def rotate_image(image, angle):
-        """
-
-        :param image:
-        :param angle:
-        :return:
-        """
         return rotate(image, angle=angle, reshape=False)
 
 
 def calculate_crop_for_angle(image, angle):
     """
+    Calculates the pixels in vertical and horizontal direction which become invalid, i.e.,
+    not completely filled with image.
 
-    :param image:
-    :param angle:
-    :return:
+    :param image: input image
+    :param angle: rotation angle
+    :type image: numpy.ndarray
+    :type angle: float
+    :return: (vertical_crop, horizontal_crop)
+    :rtype: tuple(int, int)
+
+    >>> calculate_crop_for_angle(numpy.zeros((32, 32,)), 45.0)
+    (15, 15)
     """
     wd = (image.shape[0] * 0.5) * math.tan(angle / (180.0 / math.pi))
     hd = (image.shape[1] * 0.5) * math.tan(angle / (180.0 / math.pi))
@@ -97,10 +121,18 @@ def calculate_crop_for_angle(image, angle):
 
 def apply_rotate_and_cleanup(image, angle):
     """
+    Rotates image for angle degrees, and crops the result to only return defined contents.
 
-    :param image:
-    :param angle:
-    :return:
+    :param image: input image
+    :param angle: angle to rotate
+    :type image: numpy.ndarray
+    :type angle: float
+    :return: the rotated and cropped image, the angle, the horizontal crop, the vertical crop
+    :rtype: tuple(numpy.ndarray, float, int, int)
+
+    >>> apply_rotate_and_cleanup(numpy.zeros((32, 32,)), 45.0)
+    (array([[ 0.,  0.],
+           [ 0.,  0.]]), 45.0, 15, 15)
     """
     new_image = rotate_image(image, angle)
     h, w = calculate_crop_for_angle(image, angle)
