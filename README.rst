@@ -10,7 +10,7 @@ Note that this software contains the following portions from other authors, unde
 
 molyso/imageio/tifffile.py:
     tifffile.py by Christoph Gohlke, licensed BSD (see file head).
-        Copyright (c) 2008-2014, Christoph Gohlke, 2008-2014, The Regents of the University of California
+        Copyright (c) 2008-2015, Christoph Gohlke, 2008-2014, The Regents of the University of California
 molyso/generic/fft.py:
     look-up table of efficient FFT sizes. taken from OpenCV (modules/core/src/dxt.cpp), licensed BSD variant (see file head).
         Copyright (C) 2000, Intel Corporation
