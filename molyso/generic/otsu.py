@@ -38,8 +38,8 @@ import numpy as np
 
 
 def histogram(image, nbins=256):
-    """Return histogram of image.
-
+    """
+    Return histogram of image.
 
     Unlike `numpy.histogram`, this function returns the centers of bins and
     does not rebin integer arrays. For integer arrays, each integer value has
@@ -49,28 +49,12 @@ def histogram(image, nbins=256):
     function should be used separately on each channel to obtain a histogram
     for each color channel.
 
-    Parameters
-    ----------
-    image : array
-        Input image.
-    nbins : int
-        Number of bins used to calculate histogram. This value is ignored for
-        integer arrays.
-
-    Returns
-    -------
-    hist : array
-        The values of the histogram.
-    bin_centers : array
-        The values at the center of the bins.
-
-    Examples
-    --------
-    >>> from skimage import data
-    >>> hist = histogram(data.camera())
-    >>> import matplotlib.pyplot as plt
-    >>> plt.plot(hist[1], hist[0])  # doctest: +ELLIPSIS
-    [...]
+    :parameter image: Input image.
+    :parameter nbins: Number of bins used to calculate histogram. This value is ignored for integer arrays.
+    :type image: numpy.ndarray
+    :type nbins: int, optional
+    :return: The values of the histogram, the values at the center of the bins.
+    :rtype: tuple(numpy.ndarray, numpy.ndarray)
     """
     sh = image.shape
     if len(sh) == 3 and sh[-1] < 4:
@@ -96,15 +80,17 @@ def histogram(image, nbins=256):
 
 
 def threshold_otsu(image, nbins=256):
-    """Return threshold value based on Otsu's method.
+    """
+    Return threshold value based on Otsu's method.
+
         .. [1] Wikipedia, http://en.wikipedia.org/wiki/Otsu's_Method
 
     :param image: Input image
     :param nbins: Number of bins used to calculate histogram. This value is ignored for integer arrays.
     :type image: numpy.ndarray
     :type nbins: int, optional
-    :rtype float
     :return: Upper threshold value. All pixels intensities that less or equal of this value assumed as foreground.
+    :rtype: float
     """
     hist, bin_centers = histogram(image, nbins)
     hist = hist.astype(float)

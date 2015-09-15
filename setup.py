@@ -11,10 +11,10 @@ setup(
     name='molyso',
     version=molyso.__version__,
     description='MOther machine anaLYsis SOftware',
-    long_description='MOther machine anaLYsis SOftware - PyPI site text',
-    author='Christian C. Sachs',
-    author_email='sachs.christian@gmail.com',
-    url='http://example.com',
+    long_description='MOther machine anaLYsis SOftware - see https://github.com/modsim/molyso for details.',
+    author=molyso.__author__,
+    author_email='c.sachs@fz-juelich.de',
+    url='https://github.com/modsim/molyso',
     packages=[
         'molyso',
         'molyso.debugging',
@@ -23,9 +23,8 @@ setup(
         'molyso.mm',
     ],
     scripts=['molyso.py'],
-    requires=['numpy', 'scipy'],
+    requires=['numpy', 'scipy', 'matplotlib'],
     extras_require={
-        'visualization': ['matplotlib'],
         'fast_rotation': ['cv2'],
         'nice_progressbar': ['clint']
     },
@@ -36,13 +35,12 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: POSIX',
         'Operating System :: POSIX :: Linux',
-        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: MacOS :: MacOS X',   # lately no tests
         'Operating System :: Microsoft :: Windows',
-        # 'Programming Language :: Python :: 2.7',  # has been developed/tested on
-        'Programming Language :: Python :: 3',    # should work with all of
-        'Programming Language :: Python :: 3.3',  # has been developed/tested on
+        'Programming Language :: Python :: 2.7',  # tests, not often
+        'Programming Language :: Python :: 3',    #
+        'Programming Language :: Python :: 3.4',  # main focus
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Topic :: Scientific/Engineering :: Image Recognition',
     ]
 )
-

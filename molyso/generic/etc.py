@@ -22,8 +22,8 @@ def silent_progress_bar(iterable):
 
     :param iterable: the iterable to turn into an iterable
     :type iterable: iterable
-    :rtype iterable
     :return: iterable
+    :rtype: iterable
 
     >>> next(silent_progress_bar([1, 2, 3]))
     1
