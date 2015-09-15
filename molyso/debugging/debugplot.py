@@ -8,9 +8,12 @@ import sys
 import atexit
 from os.path import isfile
 
+import os
+
 from tempfile import TemporaryFile
 
 from . import Debug
+
 
 def next_free_filename(prefix, suffix):
     n = 0
@@ -19,6 +22,7 @@ def next_free_filename(prefix, suffix):
         if n > 9999:
             raise IOError('No free filename found.')
     return prefix + '%04d' % (n,) + suffix
+
 
 def poly_drawing_helper(p, coords, **kwargs):
     gca = p.gca()
@@ -129,9 +133,9 @@ class DebugPlot(object):
         self.filter_okay = Debug.filter(*args)
         self.filter_str = Debug.filter_to_str(args)
 
-        self.active = self.force_active or (self.active and \
-                      self.filter_okay and\
-                      (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf')))
+        self.active = self.force_active or (self.active and
+                                            self.filter_okay and
+                                            (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf')))
 
         if not DebugPlot.exit_handler_registered:
             atexit.register(DebugPlot.call_exit_handlers)
@@ -201,9 +205,13 @@ class DebugPlot(object):
                     self.savefig(DebugPlot.pp, format='pdf')
             else:
                 if DebugPlot.individual_and_merge:
-                    self.savefig(self.get_file_for_merge(), format='pdf')
+                    self.savefig(
+                        self.get_file_for_merge(),
+                        format='pdf')
                 else:
-                    self.savefig(next_free_filename(DebugPlot.individual_file_prefix, DebugPlot.file_suffix), format='pdf')
+                    self.savefig(
+                        next_free_filename(DebugPlot.individual_file_prefix, DebugPlot.file_suffix),
+                        format='pdf')
 
             for pp, okay in DebugPlot.diverted_outputs.items():
                 if self.filter_str in okay:
@@ -214,16 +222,17 @@ class DebugPlot(object):
             else:
                 self.close()
 
-    def get_file_for_merge(self):
-        if len(DebugPlot.files_to_merge) == 0:
+    @classmethod
+    def get_file_for_merge(cls):
+        if len(cls.files_to_merge) == 0:
             def _merge_exit_handler():
                 import PyPDF2
 
-                with open(next_free_filename(DebugPlot.file_prefix, DebugPlot.file_suffix), 'wb+') as pdf_file:
+                with open(next_free_filename(cls.file_prefix, cls.file_suffix), 'wb+') as pdf_file:
 
                     pdf = PyPDF2.PdfFileMerger()
 
-                    for individual_file in DebugPlot.files_to_merge:
+                    for individual_file in cls.files_to_merge:
                         individual_file.seek(0)
                         individual_pdf = PyPDF2.PdfFileReader(individual_file)
 
@@ -231,9 +240,9 @@ class DebugPlot(object):
 
                     pdf.write(pdf_file)
 
-                DebugPlot.files_to_merge = []
-            DebugPlot.exit_handlers.append(_merge_exit_handler)
+                cls.files_to_merge = []
+            cls.exit_handlers.append(_merge_exit_handler)
 
         f = TemporaryFile()
-        DebugPlot.files_to_merge.append(f)
+        cls.files_to_merge.append(f)
         return f

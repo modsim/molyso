@@ -349,4 +349,8 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         self.image = None
         self.original_image = None
 
+        # quick hack, basically it should call a clean function in the parent class
+        if hasattr(self, '_fft_pair_cached'):
+            self._fft_pair_cached = False
+
 

@@ -15,6 +15,7 @@ from .. import Debug
 
 logger = logging
 
+
 def silent_progress_bar(iterable):
     """
     Dummy function, just returns an iterator.
@@ -24,7 +25,7 @@ def silent_progress_bar(iterable):
     :rtype iterable
     :return: iterable
 
-    >>> next(silent_progress_bar([1,2,3]))
+    >>> next(silent_progress_bar([1, 2, 3]))
     1
     """
     return iter(iterable)
@@ -72,7 +73,8 @@ def iter_time(iterable):
 
 _fancy_progress_bar = fancy_progress_bar
 
-fancy_progress_bar = lambda x: iter_time(_fancy_progress_bar(x))
+def fancy_progress_bar(iterable):
+    return iter_time(_fancy_progress_bar(iterable))
 
 
 def dummy_progress_indicator():
@@ -85,6 +87,7 @@ def ignorant_next(iterable):
     except StopIteration:
         return None
 
+
 class QuickTableDumper(object):
     def __init__(self, recipient=None):
         if recipient is None:
@@ -93,23 +96,20 @@ class QuickTableDumper(object):
         self.recipient = recipient
         self.headers = []
 
-        self.delim = '\t'
-        self.lineend = '\n'
+        self.delimeter = '\t'
+        self.line_end = '\n'
         self.precision = 8
 
     def write(self, s):
         self.recipient.write(s)
 
-    def __iadd__(self, other):
-        self.write(other)
-
     def add(self, row):
         if len(self.headers) == 0:
-            self.headers = list(row.keys())
+            self.headers = list(sorted(row.keys()))
 
-            self.write(self.delim.join(self.headers) + self.lineend)
+            self.write(self.delimeter.join(self.headers) + self.line_end)
 
-        self.write(self.delim.join([self.stringer(row[k]) for k in self.headers]) + self.lineend)
+        self.write(self.delimeter.join([self.stringer(row[k]) for k in self.headers]) + self.line_end)
 
     def stringer(self, obj):
         if type(obj) == float or type(obj) == numpy.float64:
@@ -130,9 +130,9 @@ except ImportError:
     import pickle
 
 try:
-    import thread
+    import _thread
 except ImportError:
-    import _thread as thread
+    import thread as _thread
 
 if os.name != 'nt':
     def correct_windows_signal_handlers():
@@ -145,7 +145,7 @@ else:
             # noinspection PyUnresolvedReferences
             import win32api
 
-            def handler(_, hook=thread.interrupt_main):
+            def handler(_, hook=_thread.interrupt_main):
                 hook()
                 return 1
 
@@ -160,7 +160,6 @@ else:
 def debug_init():
     Debug.enable('text', 'plot', 'plot_pdf')
     numpy.set_printoptions(threshold=numpy.nan)
-
 
 
 def parse_range(s, maximum=0):
@@ -208,7 +207,7 @@ def parse_range(s, maximum=0):
 def prettify_numpy_array(arr, space_or_prefix):
     six_spaces = ' ' * 6
     prepared = repr(numpy.array(arr)).replace(')', '').replace('array(', six_spaces)
-    if type(space_or_prefix) == int:
+    if isinstance(space_or_prefix, int):
         return prepared.replace(six_spaces, ' ' * space_or_prefix)
     else:
         return space_or_prefix + prepared.replace(six_spaces, ' ' * len(space_or_prefix)).lstrip()
@@ -223,15 +222,18 @@ def bits_to_numpy_type(bits):
     }[int(bits)]
 
 
+# noinspection PyUnusedLocal
 def nop(*args, **kwargs):
     pass
+
+from io import BytesIO
 
 class BaseCache(object):
     printer = nop  # print
 
     @staticmethod
     def prepare_key(key):
-        if type(key) == type(''):
+        if isinstance(key, type('')):
             return key
         else:
             return repr(key)
@@ -239,10 +241,12 @@ class BaseCache(object):
     @staticmethod
     def serialize(data):
         try:
-            from io import BytesIO
             bio = BytesIO()
             pickle.dump(data, bio, protocol=pickle.HIGHEST_PROTOCOL)
-            pickled_data = bio.getbuffer()
+            try:
+                pickled_data = bio.getbuffer()
+            except AttributeError:
+                pickled_data = bio.getvalue()
         except ImportError:
             pickled_data = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -251,9 +255,10 @@ class BaseCache(object):
     @staticmethod
     def deserialize(data):
         assert data is not None
-        return pickle.loads(data)
+        bio = BytesIO(data)
+        return pickle.load(bio)
 
-    def printInfo(self, *args, **kwargs):
+    def print_info(self, *args, **kwargs):
         if self.printer:
             self.printer(*args, **kwargs)
 
@@ -292,14 +297,14 @@ class BaseCache(object):
             try:
                 return self.contains(self.prepare_key(key))
             except Exception as e:
-                print("While " + repr(self.__contains__) + " an Exception occured (but continuing): " + repr(e))
+                print("While " + repr(self.__contains__) + " an Exception occurred (but continuing): " + repr(e))
                 return False
 
     def __getitem__(self, key):
         try:
             return self.deserialize(self.get(self.prepare_key(key)))
         except Exception as e:
-            print("While " + repr(self.__getitem__) + " an Exception occured (but continuing): " + repr(e))
+            print("While " + repr(self.__getitem__) + " an Exception occurred (but continuing): " + repr(e))
             # this is technically wrong ...
             return None
 
@@ -308,12 +313,10 @@ class BaseCache(object):
             return
         else:
             try:
-                self.printInfo("Setting data for '%s'" % (key,))
+                self.print_info("Setting data for '%s'" % (key,))
                 self.set(self.prepare_key(key), self.serialize(value))
             except Exception as e:
-                print("While " + repr(self.__setitem__) + " an Exception occured (but continuing): " + repr(e))
-
-
+                print("While " + repr(self.__setitem__) + " an Exception occurred (but continuing): " + repr(e))
 
 
 class FileCache(BaseCache):
@@ -332,6 +335,7 @@ class FileCache(BaseCache):
             fp.write(value)
 
 Cache = FileCache
+
 
 class Sqlite3Cache(BaseCache):
     def contains(self, key):

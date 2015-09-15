@@ -7,15 +7,6 @@ from __future__ import division, unicode_literals, print_function
 import numpy as np
 
 
-class AttributeAsKeyDict(dict):
-    def __getattr__(self, item):
-        if item in self:
-            return self[item]
-        else:
-            return super(AttributeAsKeyDict, self).__getattribute__(item)
-
-    def __setattr__(self, key, value):
-        self[key] = value
 
 
 class MultiImageStack(object):
@@ -53,6 +44,9 @@ class MultiImageStack(object):
         if 'raw' in kwargs and kwargs['raw']:
             return image
         return image
+
+    def notify_fork(self):
+        pass
 
     def _get_image(self, *args, **kwargs):
         raise NotImplementedError("Virtual function")

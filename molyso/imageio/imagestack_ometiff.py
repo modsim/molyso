@@ -32,7 +32,7 @@ class OMETiffStack(MultiImageStack):
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self.tiff = TiffFile(self.parameters['filename'])
+            self.tiff = TiffFile(self.parameters['filename'], fastij=False)  # OME.TIFF shouldnt be ij, but safe is safe
 
         self.fp = self.tiff.pages[0]
         if not self.fp.is_ome:
@@ -42,6 +42,10 @@ class OMETiffStack(MultiImageStack):
         self.xml_str = self.fp.tags['image_description'].value
 
         self.images = self._parse_ome_xml(self.xml_str)
+
+    def notify_fork(self):
+        self.tiff._fh.close()
+        self.tiff._fh.open()
 
     @staticmethod
     def pixel_attrib_sanity_check(pa):
@@ -74,7 +78,7 @@ class OMETiffStack(MultiImageStack):
 
         images = {}
 
-        if bool(self.parameters['treat_z_as_mp']):  # handling for malencoded files
+        if bool(self.parameters['treat_z_as_mp']):  # handling for mal-encoded files
             image_nodes = [n for n in root.getchildren() if n.tag == ElementTree.QName(ns, 'Image')]
             # there will be only one image node
             imn = image_nodes[0]
@@ -194,14 +198,28 @@ class PlainTiffStack(MultiImageStack):
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self.tiff = TiffFile(self.parameters['filename'])
+            self.tiff = TiffFile(self.parameters['filename'], fastij=False)  # fastij breaks the current _get_image !
 
         self.fp = self.tiff.pages[0]
+
+    # fix to a very nasty bug:
+    # if multiprocessing on linux uses fork, the file descriptor
+    # of the TiffFile object becomes shared between the child processes
+    # the result? all move it around concurrently,
+    # totally gobbling the input data to garbage!
+    # thus, the class here closes and reopens the file descriptor
+    # in the child process (which saves parsing time compared to
+    # completely reinstantiating the while ImageStack)
+    def notify_fork(self):
+        self.tiff._fh.close()
+        self.tiff._fh.open()
 
     def _get_image(self, **kwargs):
         subsampling_temporal = int(self.parameters['subsample_t'])
         subsampling_spatial = int(self.parameters['subsample_xy'])
-        return self.tiff.pages[kwargs['t'] * subsampling_temporal].asarray()[::subsampling_spatial, ::subsampling_spatial]
+        return self.tiff.pages[kwargs['t'] * subsampling_temporal].asarray()[
+               ::subsampling_spatial, ::subsampling_spatial
+                ]
 
     def _get_meta(self, *args, **kwargs):
         what = args[0]

@@ -4,12 +4,12 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
-from .. import tunable
 from .tracking_infrastructure import CellTracker, CellCrossingCheckingGlobalDuoOptimizerQueue
 from ..generic.signal import find_extrema_and_prominence, hamming_smooth
 from ..generic.etc import ignorant_next, dummy_progress_indicator
 
 from .tracking_output import *
+
 
 def each_k_tracking_tracker_channels_in_results(tracking):
     for inner_k in sorted(tracking.tracker_mapping.keys()):
@@ -22,6 +22,7 @@ def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
     for pos, outer_tracking in inner_tracked_results.items():
         for inner_k, inner_tracking, tracker, channels in each_k_tracking_tracker_channels_in_results(outer_tracking):
             yield pos, inner_k, inner_tracking, tracker, channels
+
 
 class TrackedPosition(object):
     def __init__(self):

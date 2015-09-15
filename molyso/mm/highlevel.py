@@ -38,6 +38,7 @@ from .highlevel_interactive_ground_truth import interactive_ground_truth_main
 
 OMETiffStack = OMETiffStack
 
+
 class Hooks:
     main = []
 
@@ -216,6 +217,8 @@ def processing_setup(args):
 
     if ims is None:
         ims = MultiImageStack.open(args.input)
+    else:
+        ims.notify_fork()
 
     correct_windows_signal_handlers()
 
@@ -235,27 +238,20 @@ def main():
     if args.ground_truth:
         args.process = True
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(name)s %(levelname)s %(message)s")
-    #log = logging.getLogger('molyso')
-
-    def print_info(*inner_args):
-        if not args.quiet:
-            print(*inner_args)
-            #log.info(str(*inner_args))
-
-    def print_warning(*inner_args):
-        print(*inner_args, file=sys.stderr)
-        #log.warn(str(*inner_args))
+    logging.basicConfig(level=logging.INFO, format="%(asctime)-15s.%(msecs)03d %(name)s %(levelname)s %(message)s",
+                        datefmt='%Y-%m-%d %H:%M:%S')
+    log = logging.getLogger('molyso')
 
     if args.quiet:  # silence the progress bar filter
         progress_bar = silent_progress_bar
+        log.setLevel(logging.WARN)
     else:
         progress_bar = fancy_progress_bar
 
     if not args.nb:
-        print_info(banner())
+        log.info(banner())
 
-    print_info("molyso started at %s" % (str(datetime.datetime.now())))
+    log.info("Started analysis.")
 
     if args.modules:
         setup_modules(args.modules)
@@ -264,21 +260,21 @@ def main():
     if args.read_tunables:
         with open(args.read_tunables, 'r') as tunable_file:
             tunables = json.load(tunable_file)
-            print_info("Loaded tunable file \"%(filename)s\" with data: %(data)s" %
-                       {'filename': args.read_tunables, 'data': repr(tunables)})
+            log.info("Loaded tunable file \"%(filename)s\" with data: %(data)s" %
+                     {'filename': args.read_tunables, 'data': repr(tunables)})
             TunableManager.load_tunables(tunables)
 
     if args.tunables:
         tunables = json.loads(args.tunables)
-        print_info("Loaded command line tunables: %(data)s" % {'data': repr(tunables)})
+        log.info("Loaded command line tunables: %(data)s" % {'data': repr(tunables)})
         TunableManager.load_tunables(tunables)
 
     if args.print_tunables:
         TunableManager.set_printing(True)
 
     if sys.maxsize <= 2 ** 32:
-        print_warning("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
-                      "and it will significantly reduce functionality!")
+        log.warning("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
+                    "and it will significantly reduce functionality!")
 
     for hook in Hooks.main:
         hook(args)
@@ -293,19 +289,19 @@ def main():
             matplotlib.use('PDF')
     except ImportError:
         if args.debug:
-            print_warning("matplotlib could not be imported. Debugging was disabled.")
+            log.warning("matplotlib could not be imported. Debugging was disabled.")
             args.debug = False
 
     if args.debug:
         debug_init()
         if args.mp != 0:
-            print_warning("Debugging enabled, concurrent processing disabled!")
+            log.warning("Debugging enabled, concurrent processing disabled!")
             args.mp = 0
 
     if args.ground_truth:
         args.debug = False
 
-    Cache.printer = print_info
+    Cache.printer = log.info
     cache = Cache(args.input, ignore_cache=args.ignorecache, cache_token=args.cache_token)
 
     if 'tracking' not in cache:
@@ -321,9 +317,10 @@ def main():
             positions_to_process = args.multipoints
             timepoints_to_process = args.timepoints
 
-            print_info("Beginning Processing:")
-            print_info(prettify_numpy_array(positions_to_process,  "Positions : "))
-            print_info(prettify_numpy_array(timepoints_to_process, "Timepoints: "))
+            log.info("Beginning Processing:")
+            dummy = " " * len("XXXX-XX-XX XX:XX:XX.XXX molyso INFO ")
+            log.info(prettify_numpy_array(positions_to_process,  dummy + "Positions : ").strip())
+            log.info(prettify_numpy_array(timepoints_to_process, dummy + "Timepoints: ").strip())
 
             results = {pos: {} for pos in positions_to_process}
 
@@ -332,7 +329,7 @@ def main():
             if args.mp < 0:
                 args.mp = multiprocessing.cpu_count()
 
-            print_info("Performing image analysis ...")
+            log.info("Performing image analysis ...")
 
             to_process = list(itertools.product(timepoints_to_process, positions_to_process))
 
@@ -342,29 +339,34 @@ def main():
                 for t, pos in progress_bar(to_process):
                     results[pos][t] = processing_frame(args, t, pos)
             else:
-                print_info("... parallel with %(process_count)d processes" % {'process_count': args.mp})
+
+                #ims = None
+
+                log.info("... parallel with %(process_count)d processes" % {'process_count': args.mp})
 
                 pool = multiprocessing.Pool(args.mp, processing_setup, [args])
 
-                workerstates = []
+                worker_states = []
 
                 for t, pos in to_process:
-                    workerstates.append((t, pos, pool.apply_async(processing_frame, (args, t, pos))))
+                    worker_states.append((t, pos, pool.apply_async(processing_frame, (args, t, pos))))
 
                 pool.close()
 
                 progressbar_states = progress_bar(range(total))
 
-                while len(workerstates) > 0:
-                    for i, (t, pos, state) in reversed(list(enumerate(workerstates))):
+                while len(worker_states) > 0:
+                    for i, (t, pos, state) in reversed(list(enumerate(worker_states))):
                         if state.ready():
                             try:
                                 results[pos][t] = state.get()
                             except Exception as e:
-                                print("ERROR: Exception occured at pos: %(pos)d, time %(time)d: %(e)s\n%(traceback)s" %
-                                      {'pos': pos, 'time': t, 'e': str(e), 'traceback': traceback.format_exc()})
+                                log.exception(
+                                    "ERROR: Exception occurred at pos: %(pos)d, time %(time)d: %(e)s\n%(traceback)s" %
+                                    {'pos': pos, 'time': t, 'e': str(e), 'traceback': traceback.format_exc()}
+                                )
 
-                            del workerstates[i]
+                            del worker_states[i]
                             next(progressbar_states)
 
                 try:
@@ -381,16 +383,16 @@ def main():
 
         if 'tracking' in cache:
             # noinspection PyUnboundLocalVariable
-            results = None # free up some ram?
+            results = None
+            del results  # free up some ram?
             tracked_results = cache['tracking']
         else:
 
             tracked_results = {}
 
-            print_info()
+            log.info("Set-up for tracking ...")
 
-            print_info("Set-up for tracking ...")
-
+            # noinspection PyUnboundLocalVariable
             pi = progress_bar(range(sum([len(l) - 1 if len(l) > 0 else 0 for l in results.values()]) - 1))
 
             for pos, times in results.items():
@@ -401,9 +403,7 @@ def main():
                 tracked_position.guess_channel_orientation()
                 tracked_results[pos] = tracked_position
 
-            print_info()
-
-            print_info("Performing tracking ...")
+            log.info("Performing tracking ...")
 
             pi = progress_bar(range(sum([tp.get_tracking_work_size() for tp in tracked_results.values()]) - 1))
 
@@ -423,19 +423,19 @@ def main():
         # ( Output of textual results: )################################################################################
 
         def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
-            for pos, tracking in inner_tracked_results.items():
-                for inner_k in sorted(tracking.tracker_mapping.keys()):
-                    tracker = tracking.tracker_mapping[inner_k]
-                    channels = tracking.channel_accumulator[inner_k]
-                    yield pos, inner_k, tracking, tracker, channels
+            for inner_pos in sorted(inner_tracked_results.keys()):
+                inner_tracking = inner_tracked_results[inner_pos]
+                for inner_k in sorted(inner_tracking.tracker_mapping.keys()):
+                    inner_tracker = inner_tracking.tracker_mapping[inner_k]
+                    inner_channels = inner_tracking.channel_accumulator[inner_k]
+                    yield inner_pos, inner_k, inner_tracking, inner_tracker, inner_channels
 
         if args.table_output is None:
             recipient = sys.stdout
         else:
             recipient = codecs.open(args.table_output, 'wb+', 'utf-8')
 
-        print_info()
-        print_info("Outputting tabular data ...")
+        log.info("Outputting tabular data ...")
 
         flat_results = list(each_pos_k_tracking_tracker_channels_in_results(tracked_results))
 
@@ -459,11 +459,11 @@ def main():
                 import matplotlib
                 import matplotlib.pylab
             except ImportError:
-                print_warning("Tracking output enabled but matplotlib not found! Cannot proceed.")
-                print_warning("Please install matplotlib ...")
+                log.warning("Tracking output enabled but matplotlib not found! Cannot proceed.")
+                log.warning("Please install matplotlib ...")
                 raise
 
-            print_info("Outputting graphical tracking data ...")
+            log.info("Outputting graphical tracking data ...")
 
             figdir = os.path.abspath(args.tracking_output)
 
@@ -482,15 +482,14 @@ def main():
     # ( Post-Tracking: Just write some tunables, if desired )###########################################################
 
     if args.write_tunables:
-        print_info()
         if os.path.isfile(args.write_tunables):
-            print_warning("Tunable output will not overwrite existing files!")
-            print_warning("NOT outputing tunables.")
+            log.warning("Tunable output will not overwrite existing files!")
+            log.warning("NOT outputing tunables.")
         else:
-            fname = os.path.abspath(args.write_tunables)
-            print_info("Writing tunables to \"%(fname)s\"" % {'fname': fname})
-            with codecs.open(fname, 'wb+', 'utf-8') as fp:
+            tunable_output_name = os.path.abspath(args.write_tunables)
+            log.info("Writing tunables to \"%(tunable_output_name)s\"" % {'tunable_output_name': tunable_output_name})
+            with codecs.open(tunable_output_name, 'wb+', 'utf-8') as fp:
                 json.dump(TunableManager.get_defaults(), fp, indent=4, sort_keys=True)
 
-    print_info("molyso finished at %s" % (str(datetime.datetime.now())))
+    log.info("Analysis finished.")
 

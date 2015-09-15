@@ -101,7 +101,7 @@ def threshold_otsu(image, nbins=256):
 
     :param image: Input image
     :param nbins: Number of bins used to calculate histogram. This value is ignored for integer arrays.
-    :type image: array
+    :type image: numpy.ndarray
     :type nbins: int, optional
     :rtype float
     :return: Upper threshold value. All pixels intensities that less or equal of this value assumed as foreground.

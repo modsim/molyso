@@ -33,6 +33,7 @@ def interactive_ground_truth_main(args, tracked_results):
 
     ground_truth_data = args.ground_truth
 
+    # noinspection PyUnresolvedReferences
     try:
         with open(ground_truth_data, 'rb') as fp:
             all_envs = pickle.load(fp)

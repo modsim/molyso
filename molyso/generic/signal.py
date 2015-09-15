@@ -7,7 +7,6 @@ from __future__ import division, unicode_literals, print_function
 from collections import namedtuple
 import warnings
 
-import numpy
 import scipy.signal
 import scipy.interpolate
 
@@ -40,14 +39,14 @@ def find_phase(signal_1=None, signal_2=None,
     corr = ifft(fft_1 * -fft_2.conjugate())
 
     corr = numpy.absolute(corr)
-    themax = numpy.argmax(corr)
-    # if themax > 2 and themax < (len(corr) - 2):
-    #    sur = corr[themax-1:themax+2]
-    #    themax += -0.5*sur[0] + 0.5*sur[2]
+    the_max = numpy.argmax(corr)
+    # if the_max > 2 and the_max < (len(corr) - 2):
+    #    sur = corr[the_max-1:the_max+2]
+    #    the_max += -0.5*sur[0] + 0.5*sur[2]
 
-    themax = -themax if themax < len(fft_1) / 2 else len(fft_1) - themax
+    the_max = -the_max if the_max < len(fft_1) / 2 else len(fft_1) - the_max
 
-    result = (themax,)
+    result = (the_max,)
     if return_1:
         result += (fft_1,)
     if return_2:

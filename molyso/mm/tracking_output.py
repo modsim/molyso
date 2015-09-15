@@ -59,11 +59,6 @@ def catch_index_error(what, otherwise):
         return otherwise
 
 
-def embedded_assert(expression):
-    assert expression
-    return True
-
-
 def plot_timeline(p, channels, cells,
                   figure_presetup=None, figure_finished=None,
                   show_images=True, show_overlay=True,
@@ -232,19 +227,35 @@ def plot_timeline(p, channels, cells,
         p.close('all')
 
 
+_unique_id_cache = {}
+_unique_id_value = 1
+
+
+def get_object_unique_id(obj):
+    global _unique_id_cache, _unique_id_value
+
+    if obj is None:
+        return 0
+
+    if id(obj) not in _unique_id_cache:
+        _unique_id_cache[id(obj)] = _unique_id_value
+        _unique_id_value += 1
+
+    return _unique_id_cache[id(obj)]
+
+
 def analyze_tracking(cells, receptor):
     for cell in cells:
         for sn, sa in enumerate(cell.seen_as):
-
             tmp = {
                 'cell_age': s_to_h(sa.channel.image.timepoint - cell.seen_as[0].channel.image.timepoint),
                 'elongation_rate': catch_index_error(lambda: cell.raw_elongation_rates[sn], float('NaN')),
                 'length': sa.channel.image.pixel_to_mu(sa.length),
-                'uid_track': id(cell.ultimate_parent),
-                'uid_thiscell': id(sa),
-                'uid_cell': id(cell),
+                'uid_track': get_object_unique_id(cell.ultimate_parent),
+                'uid_thiscell': get_object_unique_id(sa),
+                'uid_cell': get_object_unique_id(cell),
                 # None has an id !
-                'uid_parent': id(cell.parent) if cell.parent and embedded_assert(id(cell.parent) != 0) else 0,
+                'uid_parent': get_object_unique_id(cell.parent),
                 'timepoint': sa.channel.image.timepoint,
                 'timepoint_num': sa.channel.image.timepoint_num,
                 'cellyposition': sa.centroid_1d,

@@ -75,6 +75,11 @@ def shift_image(image, shift, background='input'):
     else:
         raise ValueError("Unsupported background method passed. Use background or blank.")
 
-    new_image[destination_vertical_lower:destination_vertical_upper, destination_horizontal_lower:destination_horizontal_upper] = \
-        image[source_vertical_lower:source_vertical_upper, source_horizontal_lower:source_horizontal_upper]
+    new_image[
+        destination_vertical_lower:destination_vertical_upper,
+        destination_horizontal_lower:destination_horizontal_upper
+    ] = image[
+        source_vertical_lower:source_vertical_upper,
+        source_horizontal_lower:source_horizontal_upper
+    ]
     return new_image

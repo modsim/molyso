@@ -11,6 +11,7 @@ import numpy
 from .signal import find_phase, vertical_mean, remove_outliers, each_image_slice, hamming_smooth
 from ..test import test_image
 
+
 def find_rotation(image, steps=10, smoothing_signal_length=15):
     """
     Tries to detect the rotation by pairwise cross-correlation of vertical mean profiles of the image.
@@ -142,4 +143,3 @@ def apply_rotate_and_cleanup(image, angle):
     lw, rw = (w, -w) if w else (None, None)
     new_image = new_image[lh:rh, lw:rw]
     return new_image, angle, h, w
-

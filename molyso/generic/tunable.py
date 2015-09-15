@@ -13,7 +13,7 @@ class TunableManager(object):
     Static object handling tunables (that is, parameters used during various processing step, which the user might
     want to change)
 
-    Tunables have default values, which must be set as a paremter with the function for asking a tunable.
+    Tunables have default values, which must be set as a parameter with the function for asking a tunable.
     That way, default configuration is inlined, and does not need to be centrally managed.
     In order to collect all defaults, a typical run of the program has to be performed, and the collected default
     values to be dumped afterwards.
@@ -47,8 +47,6 @@ class TunableManager(object):
         """
         Gets the defaults, which were collected during the calls asking for various tunables.
 
-        :param what: tunable to look up
-        :type what: str
         :return: either the overridden tunable or the default value
         :rtype: dependent on default
         """
