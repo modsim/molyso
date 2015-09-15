@@ -183,6 +183,7 @@ def processing_frame(args, t, pos):
 
     image.autorotate()
     image.autoregister(first)
+    print("%f\t%f\t%f"% (image.timepoint_num, numpy.mean(image.shift), first.original_image.mean()))
 
     image.find_channels()
     image.find_cells_in_channels()
