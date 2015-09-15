@@ -19,9 +19,9 @@ def each_k_tracking_tracker_channels_in_results(tracking):
 
 
 def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
-    for pos, tracking in inner_tracked_results.items():
-        for inner_k, tracking, tracker, channels in each_k_tracking_tracker_channels_in_results(tracking):
-            yield pos, inner_k, tracking, tracker, channels
+    for pos, outer_tracking in inner_tracked_results.items():
+        for inner_k, inner_tracking, tracker, channels in each_k_tracking_tracker_channels_in_results(outer_tracking):
+            yield pos, inner_k, inner_tracking, tracker, channels
 
 class TrackedPosition(object):
     def __init__(self):

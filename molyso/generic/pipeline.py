@@ -536,7 +536,7 @@ class Pipeline:
 
         set_of_keep_values = set([KEY_META, KEY_COLLECTED])
 
-        def callable(step, meta, result):
+        def _callable(step, meta, result):
             real_call.step = step
             if debug:
                 print("Entering " + repr(real_call))
@@ -632,10 +632,10 @@ class Pipeline:
                 print("Leaving " + repr(real_call))
             return result
 
-        callable.__name__ = name
-        callable.__qualname__ = callable.__name__
+        _callable.__name__ = name
+        _callable.__qualname__ = _callable.__name__
 
-        return callable
+        return _callable
 
     def simplify_callable_name(self, what):
         return ("Class_" if isclass(what) else "Function_") + ('__LAMBDA__' if what.__name__ == '<lambda>' else what.__name__)

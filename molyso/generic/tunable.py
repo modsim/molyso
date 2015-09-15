@@ -89,7 +89,7 @@ def tunable(what, default):
     syntactic sugar helper function, to quickly get a tunable
 
     :param what: tunable to look up
-    :type what: str
+    :type what: str or unicode
     :param default: default value
     :return: either the overridden tunable or the default value
     :rtype: dependent on default
