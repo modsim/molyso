@@ -9,21 +9,40 @@ import numpy
 import hashlib
 import time
 import logging
+import sqlite3
 
 from .. import Debug
 
 logger = logging
 
 def silent_progress_bar(iterable):
+    """
+    Dummy function, just returns an iterator.
+
+    :param iterable: the iterable to turn into an iterable
+    :type iterable: iterable
+    :rtype iterable
+    :return: iterable
+
+    >>> next(silent_progress_bar([1,2,3]))
+    1
+    """
     return iter(iterable)
 
 try:
     import clint.textui
 
     def fancy_progress_bar(iterable):
-        return clint.textui.progress.bar(iterable, width=50)
+        """
+        Returns in iterator which will show progress as well.
+        Will either use the clint module when available, or a simpler implementation.
 
-        # raise ImportError
+        :param iterable: the iterable to progress-ify
+        :type iterable: iterable
+        :rtype iterable
+        :return progress-ified iterable
+        """
+        return clint.textui.progress.bar(iterable, width=50)
 except ImportError:
     def fancy_progress_bar(iterable):
         times = numpy.zeros(len(iterable), dtype=float)
@@ -36,9 +55,17 @@ except ImportError:
             logger.info("processed %d/%d [took %.3fs%s]" % (n + 1, len(iterable), times[n], eta))
 
 
-def iter_time(what):
+def iter_time(iterable):
+    """
+    Will print the total time elapsed during iteration of ``iterable`` afterwards.
+
+    :param iterable: iterable
+    :type iterable
+    :rtype iterable
+    :return: iterable
+    """
     start_time = time.time()
-    for n in what:
+    for n in iterable:
         yield n
     stop_time = time.time()
     logger.info("whole step took %.3fs" % (stop_time - start_time,))
@@ -134,19 +161,9 @@ def debug_init():
     Debug.enable('text', 'plot', 'plot_pdf')
     numpy.set_printoptions(threshold=numpy.nan)
 
-def replace_inf_with_maximum(array, maximum):
-    if array[-1] == float('Inf'):
-        f = array[-2]
-        del array[len(array) - 2:len(array)]
-        array += range(f, maximum)
-
-    array = [e for e in array if 0 <= e <= maximum]
-
-    return array
 
 
 def parse_range(s, maximum=0):
-
     maximum -= 1
     splits = s.replace(' ', '').replace(';', ',').split(',')
 
@@ -186,8 +203,6 @@ def parse_range(s, maximum=0):
             ranges += parsed_fragment
 
     return list(sorted(set(ranges) - set(remove)))
-
-
 
 
 def prettify_numpy_array(arr, space_or_prefix):
@@ -318,8 +333,6 @@ class FileCache(BaseCache):
 
 Cache = FileCache
 
-import sqlite3
-
 class Sqlite3Cache(BaseCache):
     def contains(self, key):
         result = self.conn.execute('SELECT COUNT(*) FROM entries WHERE name = ?', (key,))
@@ -365,13 +378,40 @@ class Sqlite3Cache(BaseCache):
 
 
 class NotReallyATree(list):
+    """
+    The class is a some-what duck-type compatible (it has a ``query`` method) dumb replacement
+     for (c)KDTrees. It can be used to find the nearest matching point to a query point.
+     (And does that by exhaustive search...)
+    """
     def __init__(self, iterable):
+        """
+        :param iterable: input data
+        :type iterable: iterable
+        :return: the queryable object
+        :rtype: NotReallyAtree
+        """
         super(NotReallyATree, self).__init__(self)
         for i in iterable:
             self.append(i)
         self.na = numpy.array(iterable)
 
     def query(self, q):  # w_numpy
+        """
+        Finds the point which is nearest to ``q``.
+        Uses the Euclidean distance.
+
+        :param q: query point
+        :return: distance, index
+        :rtype: float, int
+
+        >>> t = NotReallyATree([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
+        >>> t.query([1.25, 1.25])
+        (0.35355339059327379, 0)
+        >>> t = NotReallyATree([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
+        >>> t.query([2.3535533905932737622, 2.3535533905932737622])
+        (0.50000000000000022, 1)
+        """
         distances = numpy.sqrt(numpy.sum(numpy.power(self.na - q, 2.0), 1))
         pos = numpy.argmin(distances, 0)
         return distances[pos], pos
+

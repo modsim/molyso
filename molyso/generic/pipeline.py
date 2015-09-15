@@ -15,7 +15,7 @@ import logging
 from .. import Debug, TunableManager
 
 from .etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
-    silent_progress_bar, fancy_progress_bar, replace_inf_with_maximum, prettify_numpy_array, bits_to_numpy_type, Cache, \
+    silent_progress_bar, fancy_progress_bar, prettify_numpy_array, bits_to_numpy_type, Cache, \
     ignorant_next
 
 from ..imageio.imagestack import MultiImageStack

@@ -3,7 +3,6 @@
 otsu.py contains an implementation of Otsu's thresholding method, taken verbatim from scikit-image.
 """
 # Taken from scikit-image, to remove dependency on scikit-image (for merely using one function)
-
 # This file
 # Copyright (C) 2011, the scikit-image team
 # All rights reserved.
@@ -65,6 +64,12 @@ def histogram(image, nbins=256):
     bin_centers : array
         The values at the center of the bins.
 
+    Examples
+    --------
+    >>> from skimage import data
+    >>> hist = histogram(data.camera())
+    >>> import matplotlib.pyplot as plt
+    >>> plt.plot(hist[1], hist[0])  # doctest: +ELLIPSIS
     [...]
     """
     sh = image.shape
@@ -92,25 +97,14 @@ def histogram(image, nbins=256):
 
 def threshold_otsu(image, nbins=256):
     """Return threshold value based on Otsu's method.
+        .. [1] Wikipedia, http://en.wikipedia.org/wiki/Otsu's_Method
 
-    Parameters
-    ----------
-    image : array
-        Input image.
-    nbins : int, optional
-        Number of bins used to calculate histogram. This value is ignored for
-        integer arrays.
-
-    Returns
-    -------
-    threshold : float
-        Upper threshold value. All pixels intensities that less or equal of
-        this value assumed as foreground.
-
-    References
-    ----------
-    .. [1] Wikipedia, http://en.wikipedia.org/wiki/Otsu's_Method
-
+    :param image: Input image
+    :param nbins: Number of bins used to calculate histogram. This value is ignored for integer arrays.
+    :type image: array
+    :type nbins: int, optional
+    :rtype float
+    :return: Upper threshold value. All pixels intensities that less or equal of this value assumed as foreground.
     """
     hist, bin_centers = histogram(image, nbins)
     hist = hist.astype(float)

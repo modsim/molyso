@@ -9,7 +9,7 @@ import math
 import numpy
 
 from .signal import find_phase, vertical_mean, remove_outliers, each_image_slice, hamming_smooth
-
+from ..test import test_image
 
 def find_rotation(image, steps=10, smoothing_signal_length=15):
     """
@@ -25,6 +25,9 @@ def find_rotation(image, steps=10, smoothing_signal_length=15):
     :type smoothing_signal_length: int
     :return: angle: float
     :rtype: float
+
+    >>> find_rotation(test_image())
+    -1.5074357587749678
     """
 
     shifts = numpy.zeros(steps)
@@ -83,7 +86,6 @@ try:
                [0, 0, 0, 0],
                [1, 1, 1, 1],
                [0, 0, 0, 0]], dtype=uint8)
-
         """
 
         return cv2.warpAffine(image,
