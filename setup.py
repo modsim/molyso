@@ -4,7 +4,7 @@ documentation
 """
 
 import molyso
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 setup(
@@ -15,7 +15,7 @@ setup(
     author=molyso.__author__,
     author_email='c.sachs@fz-juelich.de',
     url='https://github.com/modsim/molyso',
-    packages=[
+    packages=[  # find_packages
         'molyso',
         'molyso.debugging',
         'molyso.generic',
@@ -32,6 +32,7 @@ setup(
     package_data={
         'molyso': ['test/example-frame.tif'],
     },
+    license='BSD',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',

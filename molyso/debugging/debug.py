@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-documentation for debug
+The Debug class acts as a static class managing various debugging aspects, e.g. keeping context around or
+managing debug filtering capabilities.
 """
 from __future__ import division, unicode_literals, print_function
 
-
 class Debug(object):
+    """
+    The Debug class.
+    """
     enabled = {}
     context = ''
 
