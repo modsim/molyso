@@ -9,6 +9,7 @@ import warnings
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
 from .image import Image
+from ..debugging.debugplot import inject_poly_drawing_helper
 
 
 OMETiffStack = OMETiffStack
@@ -51,12 +52,7 @@ def interactive_main(args):
         i = Image()
         i.setup_image(image)
 
-        def pdh(coords, **kwargs):
-            from ..debugging.debugplot import poly_drawing_helper as _pdh
-
-            return _pdh(plt, coords, **kwargs)
-
-        plt.poly_drawing_helper = pdh
+        inject_poly_drawing_helper(plt)
 
         plt.rcParams['image.cmap'] = 'gray'
 

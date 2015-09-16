@@ -4,7 +4,7 @@ documentation
 """
 
 import molyso
-from distutils.core import setup
+from setuptools import setup
 
 
 setup(
@@ -19,6 +19,7 @@ setup(
         'molyso',
         'molyso.debugging',
         'molyso.generic',
+        'molyso.test',
         'molyso.imageio',
         'molyso.mm',
     ],
@@ -27,6 +28,9 @@ setup(
     extras_require={
         'fast_rotation': ['cv2'],
         'nice_progressbar': ['clint']
+    },
+    package_data={
+        'molyso': ['test/example-frame.tif'],
     },
     classifiers=[
         'Development Status :: 4 - Beta',

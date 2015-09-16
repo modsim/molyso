@@ -4,13 +4,13 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
+import os
 import sys
 import atexit
+
 from os.path import isfile
-
-import os
-
 from tempfile import TemporaryFile
+from functools import partial
 
 from . import Debug
 
@@ -40,6 +40,8 @@ def poly_drawing_helper(p, coords, **kwargs):
 
     gca.add_patch(PathPatch(Path(coords, actions), **kwargs))
 
+def inject_poly_drawing_helper(p):
+    p.poly_drawing_helper = partial(poly_drawing_helper, p)
 
 class DebugPlotInterruptException(Exception):
     pass
