@@ -11,9 +11,10 @@ import time
 import logging
 import sqlite3
 
+from io import BytesIO
 from ..debugging import DebugPlot
 
-logger = logging
+logger = logging.getLogger(__name__)
 
 
 def silent_progress_bar(iterable):
@@ -82,6 +83,12 @@ def dummy_progress_indicator():
 
 
 def ignorant_next(iterable):
+    """
+    Will try to iterate to the next value, or return None if none is available.
+
+    :param iterable:
+    :return:
+    """
     try:
         return next(iterable)
     except StopIteration:
@@ -89,6 +96,12 @@ def ignorant_next(iterable):
 
 
 class QuickTableDumper(object):
+
+    delimiter = '\t'
+    line_end = '\n'
+
+    precision = 8
+
     def __init__(self, recipient=None):
         if recipient is None:
             recipient = sys.stdout
@@ -96,27 +109,19 @@ class QuickTableDumper(object):
         self.recipient = recipient
         self.headers = []
 
-        self.delimeter = '\t'
-        self.line_end = '\n'
-        self.precision = 8
-
-    def write(self, s):
-        self.recipient.write(s)
+    def write_list(self, the_list):
+        self.recipient.write(self.delimiter.join(map(self.stringify, the_list)) + self.line_end)
 
     def add(self, row):
         if len(self.headers) == 0:
             self.headers = list(sorted(row.keys()))
+            self.write_list(self.headers)
 
-            self.write(self.delimeter.join(self.headers) + self.line_end)
+        self.write_list(row[k] for k in self.headers)
 
-        self.write(self.delimeter.join([self.stringer(row[k]) for k in self.headers]) + self.line_end)
-
-    def stringer(self, obj):
-        if type(obj) == float or type(obj) == numpy.float64:
-            if self.precision:
-                return str(round(obj, self.precision))
-            else:
-                return str(obj)
+    def stringify(self, obj):
+        if type(obj) in (float, numpy.float32, numpy.float64) and self.precision:
+            return str(round(obj, self.precision))
         else:
             return str(obj)
 
@@ -222,14 +227,10 @@ def bits_to_numpy_type(bits):
     }[int(bits)]
 
 
-# noinspection PyUnusedLocal
-def nop(*args, **kwargs):
-    pass
-
-from io import BytesIO
-
 class BaseCache(object):
-    printer = nop  # print
+    """
+    A caching class
+    """
 
     @staticmethod
     def prepare_key(key):
@@ -258,12 +259,8 @@ class BaseCache(object):
         bio = BytesIO(data)
         return pickle.load(bio)
 
-    def print_info(self, *args, **kwargs):
-        if self.printer:
-            self.printer(*args, **kwargs)
-
     def __init__(self, filename_to_be_hashed, ignore_cache='nothing', cache_token=None):
-        self.printer = self.__class__.printer
+        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
         self.filename_hash_source = filename_to_be_hashed
 
@@ -295,16 +292,24 @@ class BaseCache(object):
             return False
         else:
             try:
+                self.logger.debug("Checking whether '%s' exists", key)
                 return self.contains(self.prepare_key(key))
             except Exception as e:
-                print("While " + repr(self.__contains__) + " an Exception occurred (but continuing): " + repr(e))
+                self.logger.exception(
+                    "While %s an Exception occurred (but continuing): %",
+                    repr(self.__contains__), repr(e)
+                )
                 return False
 
     def __getitem__(self, key):
         try:
+            self.logger.debug("Getting data for '%s'", key)
             return self.deserialize(self.get(self.prepare_key(key)))
         except Exception as e:
-            print("While " + repr(self.__getitem__) + " an Exception occurred (but continuing): " + repr(e))
+            self.logger.exception(
+                "While %s an Exception occurred (but continuing): %s. Note that this will yield undefined behavior.",
+                repr(self.__getitem__), repr(e)
+            )
             # this is technically wrong ...
             return None
 
@@ -313,13 +318,19 @@ class BaseCache(object):
             return
         else:
             try:
-                self.print_info("Setting data for '%s'" % (key,))
+                self.logger.debug("Setting data for '%s'", key)
                 self.set(self.prepare_key(key), self.serialize(value))
             except Exception as e:
-                print("While " + repr(self.__setitem__) + " an Exception occurred (but continuing): " + repr(e))
+                self.logger.exception(
+                    "While %s an Exception occurred (but continuing): %s",
+                    repr(self.__setitem__), repr(e)
+                )
 
 
 class FileCache(BaseCache):
+    """
+    A caching class which stores the data in flat files.
+    """
     def build_cache_filename(self, suffix):
         return "%s.%s.cache" % (self.cache_token, suffix,)
 
@@ -338,6 +349,9 @@ Cache = FileCache
 
 
 class Sqlite3Cache(BaseCache):
+    """
+    A caching class which stores the data in a sqlite3 database.
+    """
     def contains(self, key):
         result = self.conn.execute('SELECT COUNT(*) FROM entries WHERE name = ?', (key,))
         for row in result:
@@ -383,9 +397,9 @@ class Sqlite3Cache(BaseCache):
 
 class NotReallyATree(list):
     """
-    The class is a some-what duck-type compatible (it has a ``query`` method) dumb replacement
-     for (c)KDTrees. It can be used to find the nearest matching point to a query point.
-     (And does that by exhaustive search...)
+        The class is a some-what duck-type compatible (it has a ``query`` method) dumb replacement
+        for (c)KDTrees. It can be used to find the nearest matching point to a query point.
+        (And does that by exhaustive search...)
     """
     def __init__(self, iterable):
         """

@@ -19,16 +19,25 @@ def find_phase(signal_1=None, signal_2=None,
                return_1=False, return_2=False):
     """
     Finds the phase (time shift) between two signals.
-    Either signalX or fftX should be set; you can get the FFTs returned
+    Either signalX or fftX should be set; the FFTs can be returned
     in order to cache them locally...
 
     :param signal_1: first input signal
+    :type signal_1: numpy.ndarray or None
     :param signal_2: second input signal
+    :type signal_2: numpy.ndarray or None
     :param fft_1: first input fft
+    :type fft_1: numpy.ndarray or None
     :param fft_2: second input fft
+    :type fft_2: numpy.ndarray or None
     :param return_1: whether fft1 should be returned
+    :type return_1: bool
     :param return_2: whether fft2 should be returned
-    :return:
+    :type return_2: bool
+    :return: (shift, (fft1 if return_1), (fft2 if return_2))
+    :rtype: tuple
+    >>> find_phase(numpy.array([0, 1, 0, 0, 0]), numpy.array([0, 0, 0, 1, 0]))
+    (2,)
     """
 
     if signal_1 is not None and fft_1 is None:
@@ -54,12 +63,49 @@ def find_phase(signal_1=None, signal_2=None,
     return result
 
 
-ExtremeAndProminence = namedtuple('ExtremeAndProminence', ['maxima', 'minima', 'signal', 'order', 'max_spline',
-                                                           'min_spline', 'xpts', 'max_spline_points',
-                                                           'min_spline_points', 'prominence'])
+class ExtremeAndProminence(namedtuple('ExtremeAndProminence', ['maxima', 'minima', 'signal', 'order', 'max_spline',
+                                                               'min_spline', 'xpts', 'max_spline_points',
+                                                               'min_spline_points', 'prominence'])):
+    """
+    Result of `find_extrema_and_prominence` call.
+
+    :var maxima:
+    :var minima:
+    :var signal:
+    :var order:
+    :var max_spline:
+    :var min_spline:
+    :var xpts:
+    :var max_spline_points:
+    :var min_spline_points:
+    :var prominence:
+    """
 
 
 def find_extrema_and_prominence(signal, order=5):
+    """
+    Generates various extra information / signals.
+
+    :param signal: input signal
+    :type signal: numpy.ndarray
+    :param order: relative minima/maxima order, see other functions
+    :type order: int
+    :return: an ExtremeAndProminence object with various information members
+    :rtype: ExtremeAndProminence
+
+    >>> result = find_extrema_and_prominence(numpy.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
+    >>> result = result._replace(max_spline=None, min_spline=None)  # just for doctests
+    >>> result
+    ExtremeAndProminence(maxima=array([2, 8]), minima=array([ 5, 10]), signal=array([  1,   2,   3,   2,   1,   0,   1,   2,  15,   2, -15,   2,   1]), order=2, max_spline=None, min_spline=None, xpts=array([  0.,   1.,   2.,   3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.,
+            11.,  12.]), max_spline_points=array([  3.    ,   2.4875,   3.    ,   4.3125,   6.2   ,   8.4375,
+            10.8   ,  13.0625,  15.    ,  16.3875,  17.    ,  16.6125,  15.    ]), min_spline_points=array([ -9.73055091e-16,   3.38571429e+00,   4.71428571e+00,
+             4.35000000e+00,   2.65714286e+00,   5.21804822e-15,
+            -3.25714286e+00,  -6.75000000e+00,  -1.01142857e+01,
+            -1.29857143e+01,  -1.50000000e+01,  -1.57928571e+01,
+            -1.50000000e+01]), prominence=array([  3.        ,  -0.89821429,  -1.71428571,  -0.0375    ,
+             3.54285714,   8.4375    ,  14.05714286,  19.8125    ,
+            25.11428571,  29.37321429,  32.        ,  32.40535714,  30.        ]))
+    """
     # we are FORCING some kind of result here, although it might be meaningless
 
     maxima = numpy.array([numpy.argmax(signal)])
@@ -146,11 +192,14 @@ def find_extrema_and_prominence(signal, order=5):
 
 def simple_baseline_correction(signal, window_width=None):
     """
-    performs a simple baseline correction by subtracting a strongly smoothed version of the signal from itself
+    Performs a simple baseline correction by subtracting a strongly smoothed version of the signal from itself.
 
     :param signal: input signal
     :param window_width: smoothing window width
     :return:
+
+    >>> simple_baseline_correction(numpy.array([10, 11, 12, 11, 10]))
+    array([-1.        ,  0.375     ,  1.        , -0.375     , -0.96428571])
     """
     if window_width is None or window_width > len(signal):
         window_width = len(signal)
@@ -159,19 +208,64 @@ def simple_baseline_correction(signal, window_width=None):
 
 
 def vertical_mean(image):
+    """
+    Calculates the vertical mean of an image.
+    Note: Image is assumed HORIZONTAL x VERTICAL.
+
+    :param image:
+    :return:
+
+    >>> vertical_mean(numpy.array([[ 1,  2,  3,  4],
+    ...                            [ 5,  6,  7,  8],
+    ...                            [ 9, 10, 11, 12],
+    ...                            [13, 14, 15, 16]]))
+    array([  2.5,   6.5,  10.5,  14.5])
+    """
     return numpy.average(image, axis=1)
 
 
 def horizontal_mean(image):
+    """
+    Calculates the horizontal mean of an image.
+    Note: Image is assumed HORIZONTAL x VERTICAL.
+
+    :param image: input image
+    :type image: numpy.ndarray
+    :return:
+
+    >>> horizontal_mean(numpy.array([[ 1,  2,  3,  4],
+    ...                            [ 5,  6,  7,  8],
+    ...                            [ 9, 10, 11, 12],
+    ...                            [13, 14, 15, 16]]))
+    array([  7.,   8.,   9.,  10.])
+    """
     return numpy.average(image, axis=0)
 
 
 def relative_maxima(signal, order=1):
+    """
+
+    :param signal:
+    :param order:
+    :return:
+
+    >>> relative_maxima(numpy.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
+    array([2, 8])
+    """
     value, = scipy.signal.argrelmax(signal, order=order)
     return value
 
 
 def relative_minima(signal, order=1):
+    """
+
+    :param signal:
+    :param order:
+    :return:
+
+    >>> relative_minima(numpy.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
+    array([ 5, 10])
+    """
     value, = scipy.signal.argrelmin(signal, order=order)
     return value
 
@@ -182,36 +276,60 @@ def normalize(data):
 
     :param data: input array
     :return: normalized array
+    >>> normalize(numpy.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+    array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9,  1. ])
+
+    >>> normalize(numpy.array([10, 15, 20]))
+    array([ 0. ,  0.5,  1. ])
     """
-    maximum = data.max()
-    minimum = data.min()
-    return (data - minimum) / (maximum - minimum)
+    result = data.astype(float)
+    result -= result.min()
+    result /= result.max()
+    return result
 
 
 def fit_to_type(image, new_dtype):
-    img_min = image.min()
-    img_max = image.max()
-    scaled_img = ((image.astype(numpy.float32) - img_min) / (img_max - img_min))
+    """
+
+    :param image:
+    :param new_dtype:
+    :return:
+
+    >>> fit_to_type(numpy.array([-7, 4, 18, 432]), numpy.uint8)
+    array([  0,   6,  14, 255], dtype=uint8)
+    >>> fit_to_type(numpy.array([-7, 4, 18, 432]), numpy.int8)
+    array([-128, -121, -113,  127], dtype=int8)
+    >>> fit_to_type(numpy.array([-7, 4, 18, 432]), numpy.bool)
+    array([False, False, False,  True], dtype=bool)
+    >>> fit_to_type(numpy.array([-7, 4, 18, 432]), numpy.float32)
+    array([  -7.,    4.,   18.,  432.], dtype=float32)
+    """
+    scaled_img = normalize(image)
     to_type = numpy.dtype(new_dtype)
     if to_type.kind == 'f':
-        return image
+        return image.astype(to_type)
     elif to_type.kind == 'u':
-        return (scaled_img * 2 ** (to_type.itemsize * 8)).astype(to_type)
+        return (scaled_img * (2 ** (to_type.itemsize * 8) - 1)).astype(to_type)
     elif to_type.kind == 'i':
-        return (scaled_img * 2 ** (to_type.itemsize * 8 - 1)).astype(to_type)
+        return (scaled_img * (2 ** (to_type.itemsize * 8) - 1) - (2 ** (to_type.itemsize * 8 - 1))).astype(to_type)
     elif to_type.kind == 'b':
         return scaled_img > 0.5
     else:
         raise TypeError("Unsupported new_dtype value used for rescale_and_fit_to_type used!")
 
 
+# TODO: Improve this function!
 def threshold_outliers(data, times_std=2.0):
     """
     removes outliers
 
+
     :param data:
     :param times_std:
     :return:
+
+    >>> threshold_outliers(numpy.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
+    array([10,  9, 11, 20,  8, 12, 14,  7])
     """
 
     data = data.copy()
@@ -223,10 +341,30 @@ def threshold_outliers(data, times_std=2.0):
 
 
 def outliers(data, times_std=2.0):
+    """
+
+    :param data:
+    :param times_std:
+    :return:
+
+    >>> outliers(numpy.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
+    array([False, False, False,  True, False, False, False, False], dtype=bool)
+    """
+
     return numpy.absolute(data - numpy.median(data)) > (times_std * numpy.std(data))
 
 
 def remove_outliers(data, times_std=2.0):
+    """
+
+    :param data:
+    :param times_std:
+    :return:
+
+    >>> remove_outliers(numpy.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
+    array([10,  9, 11,  8, 12, 14,  7])
+    """
+
     try:
         return data[~outliers(data, times_std)]
     except TypeError:
@@ -234,6 +372,15 @@ def remove_outliers(data, times_std=2.0):
 
 
 def find_insides(signal):
+    """
+
+    :param signal:
+    :return:
+
+    >>> find_insides(numpy.array([False, False, True, True, True, False, False, True, True, False, False]))
+    array([[2, 5],
+           [7, 9]])
+    """
     # had a nicer numpy using solution ... which failed in some cases ...
     # plain, but works.
     pairs = []
@@ -252,12 +399,44 @@ def find_insides(signal):
 
 
 def one_every_n(length, n=1, shift=0):
+    """
+
+    :param length:
+    :param n:
+    :param shift:
+    :return:
+
+    >>> one_every_n(10, n=2, shift=0)
+    array([ 1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.])
+    >>> one_every_n(10, n=2, shift=1)
+    array([ 0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.])
+    """
     signal = numpy.zeros(int(length))
-    signal[numpy.around(numpy.arange(shift % n, length - 1, n)).astype(numpy.int32)] = 1
+    signal[numpy.arange(shift % n, length, n, dtype=numpy.int32)] = 1
     return signal
 
 
 def each_image_slice(image, steps, direction='vertical'):
+    """
+
+    :param image:
+    :param steps:
+    :param direction:
+    :return:
+
+    >>> list(each_image_slice(numpy.ones((4, 4,)), 2, direction='vertical'))
+    [(0, 2, array([[ 1.,  1.],
+           [ 1.,  1.],
+           [ 1.,  1.],
+           [ 1.,  1.]])), (1, 2, array([[ 1.,  1.],
+           [ 1.,  1.],
+           [ 1.,  1.],
+           [ 1.,  1.]]))]
+    >>> list(each_image_slice(numpy.ones((4, 4,)), 2, direction='horizontal'))
+    [(0, 2, array([[ 1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.]])), (1, 2, array([[ 1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.]]))]
+    """
     if direction == 'vertical':
         step = image.shape[1] // steps
         for n in range(steps):

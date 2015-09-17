@@ -23,6 +23,7 @@ def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
         for inner_k, inner_tracking, tracker, channels in each_k_tracking_tracker_channels_in_results(outer_tracking):
             yield pos, inner_k, inner_tracking, tracker, channels
 
+import logging
 
 class TrackedPosition(object):
     def __init__(self):
@@ -37,6 +38,8 @@ class TrackedPosition(object):
         self.channel_accumulator = {}
         self.cell_centroid_accumulator = {}
         self.cell_counts = {}
+
+        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
     def set_times(self, times):
         self.times = times
@@ -58,7 +61,7 @@ class TrackedPosition(object):
             if len(self.first) > 0:
                 break
 
-            print("Skipping channel")
+            self.logger.info("Skipping channel")
 
         key_list = list(range(len(self.first)))
 

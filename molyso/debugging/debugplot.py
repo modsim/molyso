@@ -38,8 +38,10 @@ def poly_drawing_helper(p, coords, **kwargs):
 
     gca.add_patch(PathPatch(Path(coords, actions), **kwargs))
 
+
 def inject_poly_drawing_helper(p):
     p.poly_drawing_helper = partial(poly_drawing_helper, p)
+
 
 class DebugPlotInterruptException(Exception):
     pass
@@ -117,7 +119,7 @@ class DebugPlot(object):
     @classmethod
     def call_exit_handlers(cls):
         # perform cleanup, either explicitly,
-        # or by atexit at the end  (__ini__ registers this function)
+        # or by atexit at the end  (__init__ registers this function)
         for handler in cls.exit_handlers:
             handler()
 
@@ -138,8 +140,13 @@ class DebugPlot(object):
         self.info = ''
         if 'info' in kwargs:
             self.info = kwargs['info']
-        #self.filter_okay = Debug.filter(*args)
-        self.filter_str = '.'.join([w.lower() for w in args]) #Debug.filter_to_str(args)
+
+        # Note: DebugPlot had a sister class 'Debug' which took care of filtering
+        # this was however not used in molyso. In a future rewrite, DebugPlot might be attached
+        # more to the Python included log system / its filter capabilities...
+
+        # self.filter_okay = Debug.filter(*args)
+        self.filter_str = '.'.join([w.lower() for w in args])  # Debug.filter_to_str(args)
 
         self.active = self.force_active  # or (self.active and
                                          #     self.filter_okay and
@@ -160,7 +167,7 @@ class DebugPlot(object):
             except ImportError:
                 DebugPlot.individual_and_merge = False
 
-        #if Debug.is_enabled('plot_pdf'):
+        # if Debug.is_enabled('plot_pdf'):
         if self.active:
             if not DebugPlot.individual_files:
                 if DebugPlot.pp is None:
@@ -197,8 +204,7 @@ class DebugPlot(object):
     def __enter__(self):
         if self.active:
             # noinspection PyPep8Naming,PyAttributeOutsideInit
-            for k, v in self.default_config.items():
-                self.pylab.rcParams[k] = v
+            self.pylab.rcParams.update(self.default_config)
             self.figure()
             self.text(0.01, 0.01, "%s\n%s\n%s" % (self.info, self.get_context(), self.filter_str),
                       transform=self.gca().transAxes)

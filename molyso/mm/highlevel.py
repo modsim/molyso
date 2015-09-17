@@ -241,7 +241,7 @@ def main():
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)-15s.%(msecs)03d %(name)s %(levelname)s %(message)s",
                         datefmt='%Y-%m-%d %H:%M:%S')
-    log = logging.getLogger('molyso')
+    log = logging.getLogger(__name__)
 
     if args.quiet:  # silence the progress bar filter
         progress_bar = silent_progress_bar
@@ -302,7 +302,6 @@ def main():
     if args.ground_truth:
         args.debug = False
 
-    Cache.printer = log.info
     cache = Cache(args.input, ignore_cache=args.ignorecache, cache_token=args.cache_token)
 
     if 'tracking' not in cache:
@@ -485,7 +484,7 @@ def main():
     if args.write_tunables:
         if os.path.isfile(args.write_tunables):
             log.warning("Tunable output will not overwrite existing files!")
-            log.warning("NOT outputing tunables.")
+            log.warning("NOT outputting tunables.")
         else:
             tunable_output_name = os.path.abspath(args.write_tunables)
             log.info("Writing tunables to \"%(tunable_output_name)s\"" % {'tunable_output_name': tunable_output_name})
