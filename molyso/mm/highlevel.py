@@ -19,7 +19,8 @@ import datetime
 import traceback
 import logging
 
-from .. import Debug, TunableManager
+from ..debugging import DebugPlot
+from ..generic.tunable import TunableManager
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
     silent_progress_bar, fancy_progress_bar, prettify_numpy_array, bits_to_numpy_type
@@ -172,7 +173,7 @@ def processing_frame(args, t, pos):
 
     setup_image(image, ims, t, pos)
 
-    Debug.set_context(t=t, pos=pos)
+    DebugPlot.set_context(t=t, pos=pos)
 
     image.keep_channel_image = args.keepchan
     image.pack_channel_image = args.channel_bits

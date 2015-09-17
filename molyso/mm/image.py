@@ -11,7 +11,9 @@ from ..generic.signal import fit_to_type
 from ..generic.rotation import find_rotation, apply_rotate_and_cleanup
 from ..generic.registration import translation_2x1d
 from .channel_detection import Channels
-from .. import DebugPlot, tunable
+from ..debugging import DebugPlot
+from ..generic.tunable import tunable
+
 
 
 class BaseImage(object):

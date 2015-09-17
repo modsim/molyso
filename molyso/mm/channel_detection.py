@@ -6,7 +6,7 @@ from __future__ import division, unicode_literals, print_function
 
 import numpy
 
-from .. import DebugPlot
+from ..debugging import DebugPlot
 from ..generic.signal import find_phase, find_extrema_and_prominence, spectrum_fourier, spectrum_bins_by_length,\
     hires_power_spectrum, vertical_mean, horizontal_mean, normalize, threshold_outliers, find_insides, one_every_n,\
     hamming_smooth, each_image_slice

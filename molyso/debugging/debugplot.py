@@ -12,8 +12,6 @@ from os.path import isfile
 from tempfile import TemporaryFile
 from functools import partial
 
-from . import Debug
-
 
 def next_free_filename(prefix, suffix):
     n = 0
@@ -87,6 +85,14 @@ class DebugPlot(object):
     exit_handler_registered = False
 
     @classmethod
+    def set_context(cls, **kwargs):
+        cls.context = ' '.join(["%s=%s" % x for x in kwargs.items()])
+
+    @classmethod
+    def get_context(cls):
+        return cls.context
+
+    @classmethod
     def pdfopener(cls, filename):
         from matplotlib.backends.backend_pdf import PdfPages
 
@@ -132,12 +138,12 @@ class DebugPlot(object):
         self.info = ''
         if 'info' in kwargs:
             self.info = kwargs['info']
-        self.filter_okay = Debug.filter(*args)
-        self.filter_str = Debug.filter_to_str(args)
+        #self.filter_okay = Debug.filter(*args)
+        self.filter_str = '.'.join([w.lower() for w in args]) #Debug.filter_to_str(args)
 
-        self.active = self.force_active or (self.active and
-                                            self.filter_okay and
-                                            (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf')))
+        self.active = self.force_active  # or (self.active and
+                                         #     self.filter_okay and
+                                         #     (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf')))
 
         if not DebugPlot.exit_handler_registered:
             atexit.register(DebugPlot.call_exit_handlers)
@@ -154,7 +160,8 @@ class DebugPlot(object):
             except ImportError:
                 DebugPlot.individual_and_merge = False
 
-        if Debug.is_enabled('plot_pdf'):
+        #if Debug.is_enabled('plot_pdf'):
+        if self.active:
             if not DebugPlot.individual_files:
                 if DebugPlot.pp is None:
                     DebugPlot.pp = self.__class__.pdfopener('debug.pdf')
@@ -193,7 +200,7 @@ class DebugPlot(object):
             for k, v in self.default_config.items():
                 self.pylab.rcParams[k] = v
             self.figure()
-            self.text(0.01, 0.01, "%s\n%s\n%s" % (self.info, Debug.get_context(), self.filter_str),
+            self.text(0.01, 0.01, "%s\n%s\n%s" % (self.info, self.get_context(), self.filter_str),
                       transform=self.gca().transAxes)
         return self
 

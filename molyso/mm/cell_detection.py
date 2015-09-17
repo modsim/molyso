@@ -10,7 +10,8 @@ from ..generic.otsu import threshold_otsu
 from ..generic.signal import hamming_smooth,  simple_baseline_correction, find_extrema_and_prominence, \
     vertical_mean, threshold_outliers
 
-from .. import DebugPlot, tunable
+from ..debugging import DebugPlot
+from ..generic.tunable import tunable
 
 
 class Cell(object):

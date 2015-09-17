@@ -11,7 +11,7 @@ import time
 import logging
 import sqlite3
 
-from .. import Debug
+from ..debugging import DebugPlot
 
 logger = logging
 
@@ -158,7 +158,7 @@ else:
 
 
 def debug_init():
-    Debug.enable('text', 'plot', 'plot_pdf')
+    DebugPlot.force_active = True
     numpy.set_printoptions(threshold=numpy.nan)
 
 

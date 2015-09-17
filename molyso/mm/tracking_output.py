@@ -4,7 +4,7 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
-from .. import tunable
+from ..generic.tunable import tunable
 
 import numpy
 

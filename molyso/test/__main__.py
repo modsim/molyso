@@ -11,7 +11,6 @@ def main():
     import molyso.imageio.imagestack
     import molyso.imageio.imagestack_ometiff
 
-    import molyso.debugging.debug
     import molyso.debugging.debugplot
 
     import molyso.mm.cell_detection
@@ -42,7 +41,6 @@ def main():
     doctest.testmod(molyso.imageio.imagestack)
     doctest.testmod(molyso.imageio.imagestack_ometiff)
 
-    doctest.testmod(molyso.debugging.debug)
     doctest.testmod(molyso.debugging.debugplot)
 
     doctest.testmod(molyso.mm.cell_detection)
