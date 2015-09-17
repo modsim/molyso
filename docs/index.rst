@@ -1,12 +1,7 @@
 Welcome to molyso's documentation!
 ==================================
 
-
-
-
-
-
-
+See :doc:`readme` for information.
 
 Indices and tables
 ==================
@@ -19,17 +14,11 @@ Indices and tables
 Contents:
 
 .. toctree::
-   :maxdepth: 4
+    :maxdepth: 2
 
-   ../molyso/README
-   LICENSE
-   modules
-   devdoc
+    readme
+    license
+    modules
+    jupyter
+    devdoc
 
-Readme
-======
-
-test
-
-Code documentation
-==================

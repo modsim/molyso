@@ -44,7 +44,9 @@ class OMETiffStack(MultiImageStack):
         self.images = self._parse_ome_xml(self.xml_str)
 
     def notify_fork(self):
+        # noinspection PyProtectedMember
         self.tiff._fh.close()
+        # noinspection PyProtectedMember
         self.tiff._fh.open()
 
     @staticmethod
@@ -211,7 +213,9 @@ class PlainTiffStack(MultiImageStack):
     # in the child process (which saves parsing time compared to
     # completely reinstantiating the while ImageStack)
     def notify_fork(self):
+        # noinspection PyProtectedMember
         self.tiff._fh.close()
+        # noinspection PyProtectedMember
         self.tiff._fh.open()
 
     def _get_image(self, **kwargs):

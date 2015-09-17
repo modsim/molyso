@@ -210,6 +210,13 @@ def parse_range(s, maximum=0):
 
 
 def prettify_numpy_array(arr, space_or_prefix):
+    """
+    Returns a properly indented string representation of a numpy array.
+
+    :param arr:
+    :param space_or_prefix:
+    :return:
+    """
     six_spaces = ' ' * 6
     prepared = repr(numpy.array(arr)).replace(')', '').replace('array(', six_spaces)
     if isinstance(space_or_prefix, int):
@@ -219,6 +226,12 @@ def prettify_numpy_array(arr, space_or_prefix):
 
 
 def bits_to_numpy_type(bits):
+    """
+    Returns a numpy.dtype for one of the common image bit-depths: 8 for unsigned int, 16 for unsigned short, 32 for float
+
+    :param bits:
+    :return:
+    """
     # this is supposed to throw an error
     return {
         8: numpy.uint8,
