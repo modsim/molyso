@@ -425,7 +425,9 @@ def one_every_n(length, n=1, shift=0):
     array([ 0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.])
     """
     signal = numpy.zeros(int(length))
-    signal[numpy.arange(shift % n, length, n, dtype=numpy.int32)] = 1
+    indices = numpy.arange(shift % n, length, n, dtype=numpy.int32)
+    indices = indices[indices < len(signal)]
+    signal[indices] = 1
     return signal
 
 

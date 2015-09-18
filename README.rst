@@ -1,4 +1,4 @@
-.. image:: _static/molyso-banner.png
+.. image:: docs/_static/molyso-banner.png
 
 molyso Readme
 =============
