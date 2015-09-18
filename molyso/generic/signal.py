@@ -36,6 +36,7 @@ def find_phase(signal_1=None, signal_2=None,
     :type return_2: bool
     :return: (shift, (fft1 if return_1), (fft2 if return_2))
     :rtype: tuple
+
     >>> find_phase(numpy.array([0, 1, 0, 0, 0]), numpy.array([0, 0, 0, 1, 0]))
     (2,)
     """
@@ -160,6 +161,11 @@ def find_extrema_and_prominence(signal, order=5):
         k = len(maximaintpy) - 1
     if k < 1:
         def max_spline(arg):
+            """
+
+            :param arg:
+            :return:
+            """
             arg = numpy.zeros_like(arg)
             arg[:] = float('Inf')
             return arg
@@ -173,6 +179,11 @@ def find_extrema_and_prominence(signal, order=5):
         k = len(minimaintpy) - 1
     if k < 1:
         def min_spline(arg):
+            """
+
+            :param arg:
+            :return:
+            """
             arg = numpy.zeros_like(arg)
             arg[:] = float('-Inf')
             return arg
@@ -276,6 +287,7 @@ def normalize(data):
 
     :param data: input array
     :return: normalized array
+
     >>> normalize(numpy.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
     array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9,  1. ])
 
@@ -288,6 +300,7 @@ def normalize(data):
     return result
 
 
+# noinspection PyUnresolvedReferences
 def fit_to_type(image, new_dtype):
     """
 

@@ -23,7 +23,7 @@ class TunableManager(object):
     :vartype defaults: dict
     :cvar current: Current tunables, with possible overrides.
     :vartype current: dict
-    :cvar force_default: Whether to force usage of default values (defualt: `False`)
+    :cvar force_default: Whether to force usage of default values (default: `False`)
     :vartype force_default: bool
 
 
@@ -39,6 +39,10 @@ class TunableManager(object):
 
     @classmethod
     def set_printing(cls, state):
+        """
+
+        :param state:
+        """
         cls.print_tunables = state
 
     @classmethod
@@ -49,6 +53,7 @@ class TunableManager(object):
         :param data: set of tunables to load
         :type data: dict
         :rtype: None
+
         >>> TunableManager.load_tunables({'foo': 'bar'})
         >>> tunable('foo', 'not bar')
         'bar'
@@ -62,6 +67,7 @@ class TunableManager(object):
 
         :return: either the overridden tunable or the default value
         :rtype: dependent on default
+
         >>> TunableManager.defaults = {}
         >>> value = tunable('my.tunable', 3.1415)
         >>> TunableManager.get_defaults()
@@ -79,6 +85,7 @@ class TunableManager(object):
         :type what: str
         :param default: default value
         :return: either the overridden tunable or the default value
+
         >>> tunable('my.tunable', 3.1415)
         3.1415
         """
@@ -101,7 +108,7 @@ class TunableManager(object):
 def tunable(what, default):
     """
     Syntactic sugar helper function, to quickly get a tunable.
-    Calls: `TunableManager.get_tunable(what, default)`
+    Calls: :code:`TunableManager.get_tunable(what, default)`
 
     :param what: tunable to look up
     :type what: str or unicode

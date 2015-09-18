@@ -65,8 +65,8 @@ def signals(function, parameters):
     :param function: Window function to be called
     :type function: callable
     :param parameters: Parameters to be passed to the function
-    :type parameters: *any
-    :return: function(*parameters)
+    :type parameters: \*any
+    :return: function(\*parameters)
     :rtype: dependent on function
 
     >>> signals(numpy.ones, 3)

@@ -15,6 +15,13 @@ from ..generic.tunable import tunable
 
 
 class Cell(object):
+    """
+    A Cell.
+
+    :param top: coordinate of the 'top' of the cell, in channel coordinates
+    :param bottom: coordinate of the 'bottom' of the cell, in channel coordinates
+    :param channel: Channel object the cell belongs to
+    """
     __slots__ = ['local_top', 'local_bottom', 'channel']
 
     def __init__(self, top, bottom, channel):
@@ -25,29 +32,69 @@ class Cell(object):
 
     @property
     def top(self):
+        """
+        Returns the absolute (on rotated image) coordinate of the cell top.
+
+        :return: top
+        """
         return self.channel.top + self.local_top
 
     @property
     def bottom(self):
+        """
+        Returns the absolute (on rotated image) coordinate of the cell bottom.
+
+        :return:
+        """
         return self.channel.top + self.local_bottom
 
     @property
     def length(self):
+        """
+        Returns the cell length.
+
+        :return: length
+        """
         return abs(self.top - self.bottom)
 
     @property
     def centroid_1d(self):
+        """
+        Returns the (one dimensional) (absolute coordinate on rotated image) centroid.
+        :return: centroid
+        :rtype: float
+        """
         return (self.top + self.bottom) / 2.0
 
     @property
     def centroid(self):
+        """
+        Returns the (absolute coordinate on rotated image) centroid (2D).
+        :return:
+        :rtype: list
+        """
         return [self.channel.centroid[0], self.centroid_1d]
 
     @property
     def cell_image(self):
+        """
+        The cell image, cropped out of the channel image.
+
+        :return: image
+        :rtype: numpy.ndarray
+        """
         return self.crop_out_of_channel_image(self.channel.channel_image)
 
     def crop_out_of_channel_image(self, channel_image):
+        """
+        Crops the clel out of a provided image.
+        Used internally for :py:meth:`Cell.cell_image`, and to crop cells out of fluorescence channel images.
+
+        :param channel_image:
+        :type channel_image: numpy.ndarray
+        :return: image
+        :rtype: numpy.ndarray
+        """
         return channel_image[self.local_top:self.local_bottom, :]
 
     def __lt__(self, other_cell):
@@ -56,7 +103,7 @@ class Cell(object):
 
 class Cells(object):
     """
-        docstring
+        A Cells object, a collection of Cell objects.
     """
 
     __slots__ = ['cells_list', 'channel', 'nearest_tree']
@@ -86,15 +133,30 @@ class Cells(object):
         return iter(self.cells_list)
 
     def clean(self):
+        """
+        Performs clean-up.
+
+        """
         pass
 
     @property
     def centroids(self):
+        """
+        Returns the centroids of the cells.
+
+        :return: centroids
+        :rtype: list
+        """
         return [cell.centroid for cell in self.cells_list]
 
 
 def find_cells_in_channel(image):
     # processing is as always mainly performed on the intensity profile
+    """
+
+    :param image:
+    :return:
+    """
     profile = vertical_mean(image)
 
     # empty channel detection
@@ -134,6 +196,12 @@ def find_cells_in_channel(image):
     # and changes in cell detection routine will still profit from the size-postprocessing
 
     def is_a_cell(last_pos, pos):
+        """
+
+        :param last_pos:
+        :param pos:
+        :return:
+        """
         return \
             pos - last_pos > 2 and \
             profile_of_binary_image[last_pos:pos].mean() < tunable('cells.filtering.maximum_brightness', 0.5) and \
@@ -154,7 +222,7 @@ def find_cells_in_channel(image):
 
         p.plot(thresholded_profile)
 
-        cell_lines = [pos for pos in cells for pos in pos]
+        cell_lines = [__pos for __pos in cells for __pos in __pos]
 
         p.vlines(cell_lines,
                  [image.shape[1] * -10] * len(cell_lines),

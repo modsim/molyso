@@ -16,6 +16,11 @@ OMETiffStack = OMETiffStack
 
 
 def interactive_main(args):
+    """
+
+    :param args:
+    :raise SystemExit:
+    """
     import matplotlib.pyplot as plt
     from matplotlib.widgets import Slider
     from .image import cell_color, channel_color
@@ -42,6 +47,10 @@ def interactive_main(args):
     env = {'show': True, 'rotated': True}
 
     def update(_):
+        """
+
+        :param _:
+        """
         t = int(timepoint.val)
         pos = int(multipoint.val)
 
@@ -87,6 +96,11 @@ def interactive_main(args):
     timepoint.on_changed(update)
 
     def key_press(event):
+        """
+
+        :param event:
+        :raise SystemExit:
+        """
         if event.key == 'left':
             timepoint.set_val(max(1, int(timepoint.val) - 1))
         elif event.key == 'right':

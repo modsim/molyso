@@ -14,6 +14,12 @@ from functools import partial
 
 
 def next_free_filename(prefix, suffix):
+    """
+
+    :param prefix:
+    :param suffix:
+    :return: :raise IOError:
+    """
     n = 0
     while isfile(prefix + '%04d' % (n,) + suffix):
         n += 1
@@ -22,28 +28,42 @@ def next_free_filename(prefix, suffix):
     return prefix + '%04d' % (n,) + suffix
 
 
-def poly_drawing_helper(p, coords, **kwargs):
+def poly_drawing_helper(p, coordinates, **kwargs):
+    """
+
+    :param p:
+    :param coordinates:
+    :param kwargs:
+    """
     gca = p.gca()
 
     from matplotlib.path import Path
     from matplotlib.patches import PathPatch
 
-    actions = [Path.MOVETO] + [Path.LINETO] * (len(coords) - 1)
+    actions = [Path.MOVETO] + [Path.LINETO] * (len(coordinates) - 1)
 
     if 'closed' in kwargs:
         if kwargs['closed']:
             actions.append(Path.CLOSEPOLY)
-            coords.append((0, 0))
+            coordinates.append((0, 0))
         del kwargs['closed']
 
-    gca.add_patch(PathPatch(Path(coords, actions), **kwargs))
+    gca.add_patch(PathPatch(Path(coordinates, actions), **kwargs))
 
 
 def inject_poly_drawing_helper(p):
+    """
+
+    :param p:
+    """
     p.poly_drawing_helper = partial(poly_drawing_helper, p)
 
 
 class DebugPlotInterruptException(Exception):
+    """
+    Only for internal usage.
+    Used to interrupt plot drawing early if it is disabled.
+    """
     pass
 
 
@@ -88,14 +108,29 @@ class DebugPlot(object):
 
     @classmethod
     def set_context(cls, **kwargs):
+        """
+
+        :param kwargs:
+        """
         cls.context = ' '.join(["%s=%s" % x for x in kwargs.items()])
 
     @classmethod
     def get_context(cls):
+        """
+
+
+        :return:
+        """
         return cls.context
 
     @classmethod
     def pdfopener(cls, filename):
+        """
+        Opens a new PdfPages output, ensuring it will be closed at exit.
+
+        :param filename: filename
+        :return:
+        """
         from matplotlib.backends.backend_pdf import PdfPages
 
         try:
@@ -106,20 +141,24 @@ class DebugPlot(object):
             filename = next_free_filename(basename, pdf)
             newoutput = PdfPages(filename)  # if it throws now, we won't care
 
-        def close_at_exit():
+        def _close_at_exit():
             try:
                 newoutput.close()
             except AttributeError:
                 pass
 
-        cls.exit_handlers.append(close_at_exit)
+        cls.exit_handlers.append(_close_at_exit)
 
         return newoutput
 
     @classmethod
-    def call_exit_handlers(cls):
+    def _call_exit_handlers(cls):
         # perform cleanup, either explicitly,
         # or by atexit at the end  (__init__ registers this function)
+        """
+
+
+        """
         for handler in cls.exit_handlers:
             handler()
 
@@ -128,6 +167,11 @@ class DebugPlot(object):
 
     @classmethod
     def new_pdf_output(cls, filename, collected):
+        """
+
+        :param filename:
+        :param collected:
+        """
         newoutput = cls.pdfopener(filename)
         cls.diverted_outputs[newoutput] = collected
 
@@ -148,12 +192,13 @@ class DebugPlot(object):
         # self.filter_okay = Debug.filter(*args)
         self.filter_str = '.'.join([w.lower() for w in args])  # Debug.filter_to_str(args)
 
-        self.active = self.force_active  # or (self.active and
-                                         #     self.filter_okay and
-                                         #     (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf')))
+        self.active = self.force_active
+        # or (self.active and
+        # self.filter_okay and
+        # (Debug.is_enabled('plot') or Debug.is_enabled('plot_pdf')))
 
         if not DebugPlot.exit_handler_registered:
-            atexit.register(DebugPlot.call_exit_handlers)
+            atexit.register(DebugPlot._call_exit_handlers)
 
         if self.active:
             from matplotlib import pylab
@@ -162,6 +207,7 @@ class DebugPlot(object):
 
         if DebugPlot.individual_and_merge:
             try:
+                # noinspection PyPackageRequirements,PyUnresolvedReferences
                 import PyPDF2
                 DebugPlot.individual_files = True
             except ImportError:
@@ -178,12 +224,24 @@ class DebugPlot(object):
             if hasattr(self.pylab, item):
                 if self.__class__.exp_plot_debugging:
                     def proxy(*args, **kwargs):
+                        """
+
+                        :param args:
+                        :param kwargs:
+                        :return:
+                        """
                         print("pylab.%s(%s%s%s)" % (
                             item, ','.join([repr(a) for a in args]), ',' if len(kwargs) > 0 else '',
                             ','.join(["%s=%s" % (a, repr(b)) for a, b in kwargs.items()])), file=sys.stderr)
                         return getattr(self.pylab, item)(*args, **kwargs)
                 else:
                     def proxy(*args, **kwargs):
+                        """
+
+                        :param args:
+                        :param kwargs:
+                        :return:
+                        """
                         return getattr(self.pylab, item)(*args, **kwargs)
             else:
                 raise NameError("name '%s' is not defined" % item)
@@ -193,11 +251,22 @@ class DebugPlot(object):
             else:
                 # noinspection PyUnusedLocal
                 def proxy(*args, **kwargs):
+                    """
+
+                    :param args:
+                    :param kwargs:
+                    """
                     pass
 
         return proxy
 
     def poly_drawing_helper(self, coords, **kwargs):
+        """
+
+        :param coords:
+        :param kwargs:
+        :return:
+        """
         if self.gca():
             return poly_drawing_helper(self, coords, **kwargs)
 
@@ -239,8 +308,14 @@ class DebugPlot(object):
 
     @classmethod
     def get_file_for_merge(cls):
+        """
+
+
+        :return:
+        """
         if len(cls.files_to_merge) == 0:
             def _merge_exit_handler():
+                # noinspection PyPackageRequirements,PyUnresolvedReferences
                 import PyPDF2
 
                 with open(next_free_filename(cls.file_prefix, cls.file_suffix), 'wb+') as pdf_file:

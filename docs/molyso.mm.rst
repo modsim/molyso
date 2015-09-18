@@ -1,8 +1,10 @@
 molyso.mm package
 =================
 
-Submodules
-----------
+.. automodule:: molyso.mm
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 molyso.mm.cell_detection module
 -------------------------------
@@ -80,15 +82,6 @@ molyso.mm.tracking_output module
 --------------------------------
 
 .. automodule:: molyso.mm.tracking_output
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: molyso.mm
     :members:
     :undoc-members:
     :show-inheritance:

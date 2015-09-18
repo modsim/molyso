@@ -4,6 +4,7 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
+import logging
 from .tracking_infrastructure import CellTracker, CellCrossingCheckingGlobalDuoOptimizerQueue
 from ..generic.signal import find_extrema_and_prominence, hamming_smooth
 from ..generic.etc import ignorant_next, dummy_progress_indicator
@@ -12,6 +13,10 @@ from .tracking_output import *
 
 
 def each_k_tracking_tracker_channels_in_results(tracking):
+    """
+
+    :param tracking:
+    """
     for inner_k in sorted(tracking.tracker_mapping.keys()):
         tracker = tracking.tracker_mapping[inner_k]
         channels = tracking.channel_accumulator[inner_k]
@@ -19,13 +24,21 @@ def each_k_tracking_tracker_channels_in_results(tracking):
 
 
 def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
+    """
+
+    :param inner_tracked_results:
+    """
     for pos, outer_tracking in inner_tracked_results.items():
         for inner_k, inner_tracking, tracker, channels in each_k_tracking_tracker_channels_in_results(outer_tracking):
             yield pos, inner_k, inner_tracking, tracker, channels
 
-import logging
 
 class TrackedPosition(object):
+    """
+    A TrackedPosition object contains various CellTracker objects for each channel within a multipoint position,
+    as well as other information associated with the position.
+    """
+
     def __init__(self):
         self.times = None
         self.n = 0
@@ -39,9 +52,17 @@ class TrackedPosition(object):
         self.cell_centroid_accumulator = {}
         self.cell_counts = {}
 
-        self.logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+    # logger is not set as a regular instance variable,
+    # as it would make the serialization of the class unpleasant ...
+    @property
+    def logger(self):
+        return logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
     def set_times(self, times):
+        """
+
+        :param times:
+        """
         self.times = times
 
         for image in self.times.values():
@@ -51,6 +72,10 @@ class TrackedPosition(object):
         self.find_first_valid_time()
 
     def find_first_valid_time(self):
+        """
+        Finds the first valid time point for the position.
+
+        """
         self.timeslist = list(sorted(self.times.keys()))
 
         for self.n, t in enumerate(self.timeslist):
@@ -71,6 +96,10 @@ class TrackedPosition(object):
         self.cell_counts = {c: [] for c in key_list}
 
     def align_channels(self, progress_indicator=dummy_progress_indicator()):
+        """
+
+        :param progress_indicator:
+        """
         image = None
 
         for _ in range(self.n):
@@ -110,16 +139,26 @@ class TrackedPosition(object):
                                                for n in sorted(self.channel_accumulator[index].keys())]
 
     def remove_empty_channels(self):
+        """
+        Removes empty channels from the data set.
+
+        """
         cell_means = {k: (float(sum(v)) / len(v)) if len(v) > 0 else 0.0 for k, v in self.cell_counts.items()}
 
-        for k, mean_cellcount in cell_means.items():
-            if mean_cellcount < tunable('tracking.empty_channel_filtering.minimum_mean_cells', 2.0):
+        for k, mean_cell_count in cell_means.items():
+            if mean_cell_count < tunable('tracking.empty_channel_filtering.minimum_mean_cells', 2.0):
                 del self.tracker_mapping[k]
                 del self.channel_accumulator[k]
                 del self.cell_counts[k]
                 del self.cell_centroid_accumulator[k]
 
     def guess_channel_orientation(self):
+        """
+        Tries to guess the channel orientation.
+        1 if the closed end ('mother side') is the high coordinates,
+        -1 if low ...
+
+        """
         for channel_num in self.channel_accumulator.keys():
             cells_in_channel = self.cell_centroid_accumulator[channel_num]
             minpos = min(cells_in_channel.keys())
@@ -150,9 +189,18 @@ class TrackedPosition(object):
                 channel.putative_orientation = result
 
     def get_tracking_work_size(self):
+        """
+
+
+        :return:
+        """
         return sum([len(ca) - 1 if len(ca) > 0 else 0 for ca in self.channel_accumulator.values()])
 
     def perform_tracking(self, progress_indicator=dummy_progress_indicator()):
+        """
+
+        :param progress_indicator:
+        """
         for c in self.tracker_mapping.keys():
             tracker = self.tracker_mapping[c]
             channel_list = self.channel_accumulator[c]
@@ -169,6 +217,10 @@ class TrackedPosition(object):
                 previous = current
 
     def remove_empty_channels_post_tracking(self):
+        """
+        Removes empty channels after tracking.
+
+        """
         minimum_average_cells = tunable('tracking.empty_channel_filtering.minimum_mean_cells', 2.0)
         should_skip = True
         for k, tracker in list(self.tracker_mapping.items()):
@@ -178,6 +230,11 @@ class TrackedPosition(object):
                 del self.cell_counts[k]
 
     def perform_everything(self, times):
+        """
+
+        :param times:
+        :return:
+        """
         self.set_times(times)
         self.align_channels()
         self.remove_empty_channels()
@@ -188,17 +245,39 @@ class TrackedPosition(object):
 
 def analyse_cell_fates(tracker, previous_cells, current_cells):
     # original_current_cells = current_cells
+    """
+
+    :param tracker:
+    :param previous_cells:
+    :param current_cells:
+    :return:
+    """
     current_cells = current_cells.cells_list
 
     def outcome_it_is_same(the_previous_cell, the_current_cell):
+        """
+
+        :param the_previous_cell:
+        :param the_current_cell:
+        """
         tracker.get_cell_by_observation(the_previous_cell).add_observation(the_current_cell)
 
     def outcome_it_is_children(the_previous_cell, the_current_cells):
+        """
+
+        :param the_previous_cell:
+        :param the_current_cells:
+        """
         tracker.get_cell_by_observation(the_previous_cell). \
             add_children(tracker.new_observed_cell(the_current_cells[0]),
                          tracker.new_observed_cell(the_current_cells[1]))
 
     def outcome_it_is_new(_, the_current_cell):
+        """
+
+        :param _:
+        :param the_current_cell:
+        """
         tracker.new_observed_origin(the_current_cell)
 
     outcome_it_is_lost = None
@@ -234,6 +313,12 @@ def analyse_cell_fates(tracker, previous_cells, current_cells):
             cost_lost_cell = 1.0 * large_value
 
             def calc_cost_same(one_cell, other_cell):
+                """
+
+                :param one_cell:
+                :param other_cell:
+                :return:
+                """
                 cost = \
                     0.5 * abs(one_cell.top + shift_upper - other_cell.top) + \
                     0.5 * abs(one_cell.bottom + shift_lower - other_cell.bottom)
@@ -245,6 +330,13 @@ def analyse_cell_fates(tracker, previous_cells, current_cells):
 
             def calc_cost_children(one_cell, upper_child, lower_child):
 
+                """
+
+                :param one_cell:
+                :param upper_child:
+                :param lower_child:
+                :return:
+                """
                 one_cell_centroid = 0.5 * one_cell.top + 0.5 * one_cell.bottom + 0.5 * putative_elongation
 
                 cost = \

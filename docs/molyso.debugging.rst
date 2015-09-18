@@ -1,9 +1,10 @@
 molyso.debugging package
 ========================
 
-Submodules
-----------
-
+.. automodule:: molyso.debugging
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 molyso.debugging.debugplot module
 ---------------------------------

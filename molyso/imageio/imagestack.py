@@ -7,13 +7,15 @@ from __future__ import division, unicode_literals, print_function
 import numpy as np
 
 
-
-
 class MultiImageStack(object):
     """
     MultiImageStack is the base class for image stack access functions.
     Besides being the parent of particular image access classes,
     it serves as a registry of access classes and defines a common interface
+
+    :cvar Phase_Contrast: channel constant for phase contrast channels
+    :cvar DIC: channel constant for DIC channels
+    :cvar Fluorescence: channel constant for fluorescence channels
     """
 
     Phase_Contrast = -1
@@ -22,8 +24,15 @@ class MultiImageStack(object):
 
     ExtensionRegistry = {}
 
+    parameters = None
+
     def generate_parameters_from_defaults(self, defaults, parameters):
         # noinspection PyAttributeOutsideInit
+        """
+
+        :param defaults:
+        :param parameters:
+        """
         self.parameters = defaults
 
         for k, v in parameters.items():
@@ -33,9 +42,21 @@ class MultiImageStack(object):
         return self.get_image(*args, **kwargs)
 
     def get_meta(self, *args, **kwargs):
+        """
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
         return self._get_meta(*args, **kwargs)
 
     def get_image(self, *args, **kwargs):
+        """
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
         image = self._get_image(*args, **kwargs)
 
         if 'float' in kwargs and kwargs['float']:
@@ -46,6 +67,10 @@ class MultiImageStack(object):
         return image
 
     def notify_fork(self):
+        """
+
+        Notify the class that a fork has occurred.
+        """
         pass
 
     def _get_image(self, *args, **kwargs):

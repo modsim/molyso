@@ -98,6 +98,12 @@ except ImportError:
     from scipy.ndimage.interpolation import rotate
 
     def rotate_image(image, angle):
+        """
+
+        :param image:
+        :param angle:
+        :return:
+        """
         return rotate(image, angle=angle, reshape=False)
 
 

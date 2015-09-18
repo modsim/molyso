@@ -15,7 +15,6 @@ import itertools
 import codecs
 import json
 import multiprocessing
-import datetime
 import traceback
 import logging
 
@@ -40,7 +39,10 @@ from .highlevel_interactive_ground_truth import interactive_ground_truth_main
 OMETiffStack = OMETiffStack
 
 
-class Hooks:
+class Hooks(object):
+    """
+    Hooks class, static object merely existing to collect hook registrations.
+    """
     main = []
 
     def __init__(self):
@@ -48,6 +50,10 @@ class Hooks:
 
 
 def banner():
+    """
+    Formats the banner.
+    :return: banner
+    """
     return r"""
      \   /\  /\  /                             -------------------------
       | | |O| | |    molyso                    Developed  2013 - 2015 by
@@ -64,6 +70,11 @@ def banner():
 
 
 def create_argparser():
+    """
+
+
+    :return:
+    """
     argparser = argparse.ArgumentParser(description="molyso: MOther machine anaLYsis SOftware")
 
     def _error(message=''):
@@ -106,6 +117,13 @@ def create_argparser():
 
 
 def setup_image(i, local_ims, t, pos):
+    """
+
+    :param i:
+    :param local_ims:
+    :param t:
+    :param pos:
+    """
     image = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Phase_Contrast, float=True)
 
     i.setup_image(image)
@@ -143,6 +161,11 @@ first_to_look_at = 0
 
 
 def check_or_get_first_frame(pos):
+    """
+
+    :param pos:
+    :return:
+    """
     global first_frame_cache
 
     if pos in first_frame_cache:
@@ -156,7 +179,7 @@ def check_or_get_first_frame(pos):
         setup_image(image, ims, first_to_look_at, pos)
 
         image.autorotate()
-        image.autoregister(image)
+        image.autoregistration(image)
 
         first_frame_cache[pos] = image
 
@@ -164,6 +187,13 @@ def check_or_get_first_frame(pos):
 
 
 def processing_frame(args, t, pos):
+    """
+
+    :param args:
+    :param t:
+    :param pos:
+    :return:
+    """
     first = check_or_get_first_frame(pos)
 
     if ims.get_meta('channels') > 1:
@@ -183,7 +213,7 @@ def processing_frame(args, t, pos):
         image.pack_fluorescences_image = args.channel_fluorescence_bits
 
     image.autorotate()
-    image.autoregister(first)
+    image.autoregistration(first)
 
     image.find_channels()
     image.find_cells_in_channels()
@@ -196,6 +226,10 @@ def processing_frame(args, t, pos):
 
 
 def setup_modules(modules):
+    """
+
+    :param modules:
+    """
     import importlib
     for module in modules:
         try:
@@ -208,6 +242,10 @@ def setup_modules(modules):
 
 
 def processing_setup(args):
+    """
+
+    :param args:
+    """
     global ims
     global first_to_look_at
 
@@ -223,13 +261,21 @@ def processing_setup(args):
 
     correct_windows_signal_handlers()
 
+    # OpenCV takes a moment and often nags about missing libraries, let's load it at the
+    # beginning so the rest runs smoothly
     try:
+        # noinspection PyPackageRequirements,PyUnresolvedReferences
         import cv2
     except ImportError:
         pass
 
 
 def main():
+    """
+
+
+    :return: :raise:
+    """
     global ims
 
     argparser = create_argparser()
@@ -285,6 +331,7 @@ def main():
 
     try:
         if not args.ground_truth:
+            # noinspection PyUnresolvedReferences
             import matplotlib
 
             matplotlib.use('PDF')
@@ -340,7 +387,7 @@ def main():
                     results[pos][t] = processing_frame(args, t, pos)
             else:
 
-                #ims = None
+                # ims = None
 
                 log.info("... parallel with %(process_count)d processes" % {'process_count': args.mp})
 
@@ -423,6 +470,10 @@ def main():
         # ( Output of textual results: )################################################################################
 
         def each_pos_k_tracking_tracker_channels_in_results(inner_tracked_results):
+            """
+
+            :param inner_tracked_results:
+            """
             for inner_pos in sorted(inner_tracked_results.keys()):
                 inner_tracking = inner_tracked_results[inner_pos]
                 for inner_k in sorted(inner_tracking.tracker_mapping.keys()):
@@ -456,7 +507,9 @@ def main():
         if args.tracking_output is not None:
 
             try:
+                # noinspection PyUnresolvedReferences
                 import matplotlib
+                # noinspection PyUnresolvedReferences
                 import matplotlib.pylab
             except ImportError:
                 log.warning("Tracking output enabled but matplotlib not found! Cannot proceed.")

@@ -14,11 +14,9 @@ Indices and tables
 Contents:
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 4
 
     readme
     license
-    modules
     jupyter
-    devdoc
-
+    molyso

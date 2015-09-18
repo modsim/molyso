@@ -11,6 +11,16 @@ import numpy
 
 
 def translation_2x1d(image_a=None, image_b=None, ffts_a=(), ffts_b=(), return_a=False, return_b=False):
+    """
+
+    :param image_a:
+    :param image_b:
+    :param ffts_a:
+    :param ffts_b:
+    :param return_a:
+    :param return_b:
+    :return:
+    """
     if ffts_a != ():
         fft_av, fft_ah = ffts_a
         signal_av, signal_ah = None, None
@@ -43,6 +53,13 @@ def translation_2x1d(image_a=None, image_b=None, ffts_a=(), ffts_b=(), return_a=
 
 
 def shift_image(image, shift, background='input'):
+    """
+
+    :param image:
+    :param shift:
+    :param background:
+    :return: :raise ValueError:
+    """
     vertical, horizontal = shift
     height, width = image.shape
 

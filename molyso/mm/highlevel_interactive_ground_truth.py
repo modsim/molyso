@@ -19,9 +19,20 @@ except ImportError:
 
 
 def interactive_ground_truth_main(args, tracked_results):
+    """
+    Ground truth mode entry function.
+
+    :param args:
+    :param tracked_results:
+    :return: :raise SystemExit:
+    """
+
     def plots_info():
+        """
+        Outputs some information about the data set.
+        """
         print("Positions " + str(list(tracked_results.keys())))
-        print("Channels per Positition " + str(
+        print("Channels per Position " + str(
             {p: list(tracked_results[p].channel_accumulator.keys()) for p in list(tracked_results.keys())}
         ))
 
@@ -42,24 +53,37 @@ def interactive_ground_truth_main(args, tracked_results):
         all_envs = {}
 
     def save_data():
-        with open(ground_truth_data, 'wb+') as fp:
-            pickle.dump(all_envs, fp, protocol=pickle.HIGHEST_PROTOCOL)
+        """
+        Saves the ground truth data to the file specified. (pickled data)
+
+        """
+        with open(ground_truth_data, 'wb+') as inner_fp:
+            pickle.dump(all_envs, inner_fp, protocol=pickle.HIGHEST_PROTOCOL)
             print("Saved data to %s" % (ground_truth_data,))
 
     next_dataset = [0, 0]
 
     def perform_it():
+        """
+        Runs the ground truth mode.
+
+        :return: :raise SystemExit:
+        """
         next_pos, next_chan = next_dataset
 
         def empty_env():
-            env = {
+            """
+            Generates an empty environment.
+
+            :return:
+            """
+            return {
                 'points': numpy.ma.array(numpy.zeros((1024, 3)), mask=False),
                 'points_empty': numpy.ma.array(numpy.zeros((1024, 3)), mask=False),
                 'used': 0,
                 'last_point_x': None,
                 'last_point_y': None,
             }
-            return env
 
         if (next_pos, next_chan) not in all_envs:
             all_envs[(next_pos, next_chan)] = empty_env()
@@ -132,12 +156,20 @@ def interactive_ground_truth_main(args, tracked_results):
         o_lines, = plt.plot(0, 0)
 
         def refresh():
+            """
+            Refreshs the overlay.
+
+            """
             o_lines.set_data(env['points'][:env['used'], 0], env['points'][:env['used'], 1])
 
             o_scatter.set_offsets(env['points'][:env['used'], :2])
             fig.canvas.draw()
 
         def show_help():
+            """
+            Shows a help text for the ground truth mode.
+
+            """
             print("""
             Ground Truth Mode:
             = Mouse =====================================
@@ -162,6 +194,11 @@ def interactive_ground_truth_main(args, tracked_results):
         show_help()
 
         def click(e):
+            """
+
+            :param e:
+            :return:
+            """
             x, y = e.xdata, e.ydata
             if x is None or y is None:
                 return
@@ -202,17 +239,33 @@ def interactive_ground_truth_main(args, tracked_results):
                     env['last_point_x'], env['last_point_y'] = x, y
 
         def key_press(event):
+            """
+
+            :param event:
+            :return: :raise SystemExit:
+            """
+
             def show_stats():
-                times = env['points'][:env['used'], 2].compressed()
-                times = times.reshape(times.size / 2, 2)
-                deltas = times[:, 1] - times[:, 0]
-                deltas /= 60.0 * 60.0
-                mu = numpy.log(2) / deltas
-                print(mu, numpy.mean(mu))
+                """
+                Shows statistics.
+
+                """
+                inner_times = env['points'][:env['used'], 2].compressed()
+                inner_times = inner_times.reshape(inner_times.size / 2, 2)
+                inner_deltas = inner_times[:, 1] - inner_times[:, 0]
+                inner_deltas /= 60.0 * 60.0
+                inner_mu = numpy.log(2) / inner_deltas
+                print(inner_mu, numpy.mean(inner_mu))
 
             def try_new_poschan(p, c):
                 # next_pos, next_chan
                 # next_dataset
+                """
+
+                :param p:
+                :param c:
+                :return:
+                """
                 if (next_pos + p) not in acceptable_pos_chans:
                     print("Position does not exist")
                     return
@@ -269,16 +322,16 @@ def interactive_ground_truth_main(args, tracked_results):
                     deltas = times[:, 1] - times[:, 0]
                     mu = numpy.log(2) / (deltas / (60.0 * 60.0))
 
-                    for n in range(len(mu)):
+                    for num in range(len(mu)):
 
                         out.add({
                             'position': x_pos,
                             'channel': x_chan,
-                            'growth_rate': mu[n],
+                            'growth_rate': mu[num],
                             'growth_rate_channel_mean': numpy.mean(mu),
-                            'division_age': s_to_h(deltas[n]),
-                            'growth_start': s_to_h(times[n, 1]),
-                            'growth_end': s_to_h(times[n, 1]),
+                            'division_age': s_to_h(deltas[num]),
+                            'growth_start': s_to_h(times[num, 1]),
+                            'growth_end': s_to_h(times[num, 1]),
                         })
 
             elif event.key == 'w':

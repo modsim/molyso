@@ -15,7 +15,6 @@ from ..debugging import DebugPlot
 from ..generic.tunable import tunable
 
 
-
 class BaseImage(object):
     """
         An image object stores the original image, rotation and cropping information as well as the modified image.
@@ -23,11 +22,6 @@ class BaseImage(object):
     """
 
     def __init__(self):
-        """
-        creates an image object
-        :return: BaseImage object
-        """
-
         self.image = None
         self.original_image = None
 
@@ -58,12 +52,17 @@ class BaseImage(object):
         self.shift = [0, 0]
 
     def setup_image(self, image):
+        """
+
+        :param image:
+        """
         self.image = image
         self.original_image = image
 
     def pixel_to_mu(self, pix):
         """
         converts a distance in pixels to micrometers using the calibration data of the image
+
         :param pix: pixel distance to convert
         :return: distance in micrometers as floating point number
         """
@@ -72,6 +71,7 @@ class BaseImage(object):
     def mu_to_pixel(self, mu):
         """
         converts a distance in micrometers to pixels using the calibration data of the image
+
         :param mu: micrometer distance to convert
         :return: distance in pixels as floating point number
         """
@@ -80,6 +80,7 @@ class BaseImage(object):
     def cp(self, x, y):
         """
         calculate point. transforms one coordinate in rotated, cropped space to one in the original image
+
         :param x: x position
         :param y: y position
         :return: a tuple of floats
@@ -94,6 +95,10 @@ class BaseImage(object):
 
 
 class AutoRotationProvider(object):
+    """
+    This mixin class adds automatic rotation (by :py:func:`molyso.generic.rotation.find_rotation`) functionality to the Image class.
+    """
+
     def __init__(self):
         super(AutoRotationProvider, self).__init__()
         self.angle = float('NaN')
@@ -116,6 +121,10 @@ class AutoRotationProvider(object):
 
 # noinspection PyUnresolvedReferences
 class AutoRegistrationProvider(object):
+    """
+    This mixin class adds automatic registration (by :py:func:`molyso.generic.registration.translation_2x1d`) functionality to the Image class.
+    """
+
     def __init__(self):
         super(AutoRegistrationProvider, self).__init__()
         self._fft_pair_cached = False
@@ -123,11 +132,21 @@ class AutoRegistrationProvider(object):
 
     @property
     def fft_pair(self):
+        """
+        Retrieves the cached or calculates and caches the FT pair necessary for fast registration.
+
+        :return:
+        """
         if not getattr(self, '_fft_pair_cached', False):
             _, self._fft_pair_cached = translation_2x1d(self.original_image, self.original_image, return_a=True)
         return self._fft_pair_cached
 
-    def autoregister(self, reference):
+    def autoregistration(self, reference):
+        """
+        Performs automatic registration of the image.
+
+        :param reference:
+        """
         shift, self._fft_pair_cached = translation_2x1d(None, self.original_image, ffts_a=reference.fft_pair,
                                                         return_b=True)
 
@@ -183,6 +202,10 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
         self.channel_images = None
 
     def setup_image(self, image):
+        """
+
+        :param image:
+        """
         super(Image, self).setup_image(image)
         with DebugPlot('image', 'input') as p:
             p.title("Input image")
@@ -237,6 +260,10 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
             self.debug_print_cells(p)
 
     def debug_print_cells(self, p):
+        """
+
+        :param p:
+        """
         p.title("Detected cells")
         p.imshow(self.image)
         # noinspection PyTypeChecker
@@ -254,6 +281,11 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
                 p.poly_drawing_helper(coordinates, lw=0.5, edgecolor=cell_color, fill=False)
 
     def guess_channel_orientation(self):
+        """
+
+
+        :return:
+        """
         if getattr(self, 'channel_orientation_cache', None) is None:
             orientations = [float(channel.putative_orientation) for channel in self.channels
                             if channel.putative_orientation != 0]
@@ -263,10 +295,13 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
     def flatten(self):
         """
-        flattens the internal data structures into a more compact way
-        (or to be more precise: in a way which is more efficiently serialized)
 
-        Warning, dependant on inner structure of dependant classes.
+        Flattens the image by reducing the object graph to information-identical array representations.
+        This is done to ease the burden on the serializer and get smaller, conciser caches.
+
+        It can as well be helpful, if serialized single frame data should be transferred over the wire.
+
+        Warning, dependent on inner structure of dependent classes.
 
         :return:
         """
@@ -299,7 +334,8 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
     def unflatten(self):
         """
-        unflattens the internal data structures from an object with previously flattened structures
+        Reconstructs the associated analysis results from the flattened state.
+
         :return:
         """
 
@@ -343,7 +379,8 @@ class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):
 
     def clean(self):
         """
-        removes references to image data to allow for cleanup
+        Performs clean up, among other by removing the image data from the object.
+
         :return:
         """
 

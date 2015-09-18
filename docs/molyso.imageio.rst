@@ -1,8 +1,11 @@
 molyso.imageio package
 ======================
 
-Submodules
-----------
+.. automodule:: molyso.imageio
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 molyso.imageio.imagestack module
 --------------------------------
@@ -20,19 +23,3 @@ molyso.imageio.imagestack_ometiff module
     :undoc-members:
     :show-inheritance:
 
-molyso.imageio.tifffile module
-------------------------------
-
-.. automodule:: molyso.imageio.tifffile
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: molyso.imageio
-    :members:
-    :undoc-members:
-    :show-inheritance:

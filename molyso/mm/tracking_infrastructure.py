@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-documentation
+This module contains cell tracking infrastructure.
 """
 from __future__ import division, unicode_literals, print_function
 
@@ -9,9 +9,9 @@ import numpy
 
 class CellTracker(object):
     """
+    The CellTracker contains all tracks of a channel.
 
     """
-
     __slots__ = ['all_tracked_cells', 'origins', 'timepoints']
 
     def __init__(self):
@@ -20,37 +20,83 @@ class CellTracker(object):
         self.timepoints = 0
 
     def tick(self):
+        """
+        Ticks the clock. Sets the internal timepoint counter forward by one.
+
+        """
         self.timepoints += 1
 
     @property
     def average_cells(self):
+        """
+        Returns the average count of cells present in this tracked channel.
+
+        :return:
+        """
         if self.timepoints > 0:
             return float(len(self.all_tracked_cells)) / self.timepoints
         else:
             return 0.0
 
     def new_cell(self):
+        """
+        Creates a new TrackedCell object associated with this tracker.
+
+        :return:
+        """
         return TrackedCell(self)
 
     def new_observed_cell(self, where):
+        """
+        Creates a new TrackedCell object, with added observation.
+
+        :param where:
+        :return:
+        """
         return self.new_cell().add_observation(where)
 
     def new_origin(self):
+        """
+        Creates a new TrackedCell object and adds it as an origin.
+
+        :return:
+        """
         t = self.new_cell()
         self.origins.append(t)
         return t
 
     def new_observed_origin(self, where):
+        """
+        Creates a new TrackedCell object and adds it as an origin, with added observation.
+        :param where:
+        :return:
+        """
         return self.new_origin().add_observation(where)
 
     def is_tracked(self, cell):
+        """
+        Returns whether the cell is tracked.
+
+        :param cell:
+        :return:
+        """
         return cell in self.all_tracked_cells
 
     def get_cell_by_observation(self, where):
+        """
+        Returns the associated cell by its observation.
+
+        :param where:
+        :return:
+        """
         return self.all_tracked_cells[where]
 
 
 class TrackedCell(object):
+    """
+
+    :param tracker:
+    """
     __slots__ = ['tracker', 'parent', 'children', 'seen_as', 'raw_elongation_rates', 'raw_trajectories']
 
     def __init__(self, tracker):
@@ -65,6 +111,11 @@ class TrackedCell(object):
 
     @property
     def ultimate_parent(self):
+        """
+
+
+        :return:
+        """
         if self.parent is None:
             return self
         else:
@@ -76,6 +127,11 @@ class TrackedCell(object):
         # return self.parent.elongation_rates + self.raw_elongation_rates
         # else:
         #     return self.raw_elongation_rates
+        """
+
+
+        :return:
+        """
         return self.raw_elongation_rates
 
     @property
@@ -84,18 +140,37 @@ class TrackedCell(object):
         # return self.parent.trajectories + self.raw_trajectories
         # else:
         #     return self.raw_trajectories
+        """
+
+
+        :return:
+        """
         return self.raw_trajectories
 
     def add_child(self, tcell):
+        """
+
+        :param tcell:
+        :return:
+        """
         tcell.parent = self
         self.children.append(tcell)
         return self
 
     def add_children(self, *children):
+        """
+
+        :param children:
+        """
         for child in children:
             self.add_child(child)
 
     def add_observation(self, cell):
+        """
+
+        :param cell:
+        :return:
+        """
         self.seen_as.append(cell)
         self.tracker.all_tracked_cells[cell] = self
 
@@ -116,10 +191,19 @@ class TrackedCell(object):
 
 
 def to_list(x):
+    """
+
+    :param x:
+    :return:
+    """
     return x if type(x) == list else [x]
 
 
 class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
+    """
+
+    """
+
     def __init__(self):
         self.set_a = set()
         self.set_b = set()
@@ -132,6 +216,14 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
 
     def add_outcome(self, cost, involved_a, involved_b, what):
         # nan check
+        """
+
+        :param cost:
+        :param involved_a:
+        :param involved_b:
+        :param what:
+        :return:
+        """
         if cost != cost:
             return
 
@@ -141,6 +233,11 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
         self.set_b |= involved_b
 
     def perform_optimal(self):
+        """
+
+
+        :return:
+        """
         ordered_a = list(sorted(self.set_a))
         ordered_b = list(sorted(self.set_b))
 
@@ -176,6 +273,12 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
             costs[i] = cost
 
         def crossing_check(used_rows, row_to_add):
+            """
+
+            :param used_rows:
+            :param row_to_add:
+            :return:
+            """
             local_used_rows = used_rows.copy()
             local_used_rows[row_to_add] = True
             summed_deps = dependencies[local_used_rows, :, :].sum(axis=0)

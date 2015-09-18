@@ -1,7 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+The test module's __main__ contains the main() function to run the doctests.
+"""
+
+
 def main():
+    """
+    Runs all the doctests.
+
+    """
     import molyso.generic.etc
     import molyso.generic.fft
-    import molyso.generic.otsu
     import molyso.generic.registration
     import molyso.generic.rotation
     import molyso.generic.signal
@@ -30,7 +39,6 @@ def main():
 
     doctest.testmod(molyso.generic.etc)
     doctest.testmod(molyso.generic.fft)
-    doctest.testmod(molyso.generic.otsu)
 
     doctest.testmod(molyso.generic.registration)
     doctest.testmod(molyso.generic.rotation)

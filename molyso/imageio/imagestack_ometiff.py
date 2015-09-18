@@ -17,6 +17,11 @@ with warnings.catch_warnings():
 
 
 class OMETiffStack(MultiImageStack):
+    """
+
+    :param parameters:
+    :raise RuntimeError:
+    """
     SimpleMapping = {
         MultiImageStack.Phase_Contrast: 0,
         MultiImageStack.DIC: 0,
@@ -32,29 +37,39 @@ class OMETiffStack(MultiImageStack):
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self.tiff = TiffFile(self.parameters['filename'], fastij=False)  # OME.TIFF shouldnt be ij, but safe is safe
+            self.tiff = TiffFile(self.parameters['filename'], fastij=False)  # shouldn't be ij, but safe is safe
 
         self.fp = self.tiff.pages[0]
         if not self.fp.is_ome:
-            raise Exception('Not an OMETiffStack')
+            raise RuntimeError('Not an OMETiffStack')
         self.xml = None
         self.ns = ''
         self.xml_str = self.fp.tags['image_description'].value
 
         self.images = self._parse_ome_xml(self.xml_str)
 
+    # noinspection PyProtectedMember
     def notify_fork(self):
         # noinspection PyProtectedMember
+        """
+        Notify class of fork. Important, as tifffile will otherwise return garbled data.
+
+        """
         self.tiff._fh.close()
         # noinspection PyProtectedMember
         self.tiff._fh.open()
 
     @staticmethod
     def pixel_attrib_sanity_check(pa):
+        """
+
+        :param pa:
+        :raise RuntimeError:
+        """
         if pa['BigEndian'] == 'true':
-            raise Exception("Unsupported Pixel format")
+            raise RuntimeError("Unsupported Pixel format")
         if pa['Interleaved'] == 'true':
-            raise Exception("Unsupported Pixel format")
+            raise RuntimeError("Unsupported Pixel format")
 
     def _parse_ome_xml(self, xml):
         try:  # bioformats seem to copy some (wrongly encoded) strings verbatim
@@ -68,6 +83,11 @@ class OMETiffStack(MultiImageStack):
 
         # sometimes string properties creep up, but then we don't care as we don't plan on using them ...
         def float_or_int(s):
+            """
+
+            :param s:
+            :return:
+            """
             try:
                 if '.' in s:
                     return float(s)
@@ -93,11 +113,13 @@ class OMETiffStack(MultiImageStack):
 
             pai = list({k: v for k, v in pa.items() if k in keep_pa}.items())
 
-            tiffdata = {(n.attrib['FirstC'], n.attrib['FirstT'], n.attrib['FirstZ']): n.attrib for n in
-                        pixels.getchildren() if n.tag == ElementTree.QName(ns, 'TiffData')}
+            tiff_data = {
+                (n.attrib['FirstC'], n.attrib['FirstT'], n.attrib['FirstZ']): n.attrib
+                for n in pixels.getchildren() if n.tag == ElementTree.QName(ns, 'TiffData')
+            }
             planes = [dict(
                 list(n.attrib.items()) +
-                list(tiffdata[(n.attrib['TheC'], n.attrib['TheT'], n.attrib['TheZ'])].items()) + pai
+                list(tiff_data[(n.attrib['TheC'], n.attrib['TheT'], n.attrib['TheZ'])].items()) + pai
             ) for n in pixels.getchildren() if n.tag == ElementTree.QName(ns, 'Plane')]
 
             planes = [{k: float_or_int(v) for k, v in p.items()} for p in planes]
@@ -105,12 +127,12 @@ class OMETiffStack(MultiImageStack):
             images = {mp: [p for p in planes if p['TheZ'] == mp] for mp in multipoints}
             # more fixing
 
-            def _correct_attributes(p, planes):
-                p['PositionX'] = planes[0]['PositionX']
-                p['PositionY'] = planes[0]['PositionY']
-                p['PositionZ'] = planes[0]['PositionZ']
-                p['TheZ'] = 0
-                return p
+            def _correct_attributes(inner_p, inner_planes):
+                inner_p['PositionX'] = inner_planes[0]['PositionX']
+                inner_p['PositionY'] = inner_planes[0]['PositionY']
+                inner_p['PositionZ'] = inner_planes[0]['PositionZ']
+                inner_p['TheZ'] = 0
+                return inner_p
 
             images = {mp: [_correct_attributes(p, planes) for p in planes] for mp, planes in images.items()}
 
@@ -125,11 +147,13 @@ class OMETiffStack(MultiImageStack):
 
                 pai = list({k: v for k, v in pa.items() if k in keep_pa}.items())
 
-                tiffdata = {(n.attrib['FirstC'], n.attrib['FirstT'], n.attrib['FirstZ']): n.attrib for n in
-                            pixels.getchildren() if n.tag == ElementTree.QName(ns, 'TiffData')}
+                tiff_data = {
+                    (n.attrib['FirstC'], n.attrib['FirstT'], n.attrib['FirstZ']): n.attrib
+                    for n in pixels.getchildren() if n.tag == ElementTree.QName(ns, 'TiffData')
+                }
                 planes = [dict(
                     list(n.attrib.items()) +
-                    list(tiffdata[(n.attrib['TheC'], n.attrib['TheT'], n.attrib['TheZ'])].items()) + pai
+                    list(tiff_data[(n.attrib['TheC'], n.attrib['TheT'], n.attrib['TheZ'])].items()) + pai
                 ) for n in pixels.getchildren() if n.tag == ElementTree.QName(ns, 'Plane')]
 
                 planes = [{k: float_or_int(v) for k, v in p.items()} for p in planes]
@@ -184,6 +208,10 @@ MultiImageStack.ExtensionRegistry['.ome.tif'] = OMETiffStack
 
 
 class PlainTiffStack(MultiImageStack):
+    """
+
+    :param parameters:
+    """
     SimpleMapping = {
         MultiImageStack.Phase_Contrast: 0,
         MultiImageStack.DIC: 0,
@@ -212,8 +240,14 @@ class PlainTiffStack(MultiImageStack):
     # thus, the class here closes and reopens the file descriptor
     # in the child process (which saves parsing time compared to
     # completely reinstantiating the while ImageStack)
+
+    # noinspection PyProtectedMember
     def notify_fork(self):
         # noinspection PyProtectedMember
+        """
+        Notify class of fork. Important, as tifffile will otherwise return garbled data.
+
+        """
         self.tiff._fh.close()
         # noinspection PyProtectedMember
         self.tiff._fh.open()

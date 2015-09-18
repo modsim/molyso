@@ -32,6 +32,7 @@ def silent_progress_bar(iterable):
     return iter(iterable)
 
 try:
+    # noinspection PyPackageRequirements,PyUnresolvedReferences
     import clint.textui
 
     def fancy_progress_bar(iterable):
@@ -41,8 +42,8 @@ try:
 
         :param iterable: the iterable to progress-ify
         :type iterable: iterable
-        :rtype iterable
-        :return progress-ified iterable
+        :rtype: iterable
+        :return: progress-ified iterable
         """
         return clint.textui.progress.bar(iterable, width=50)
 except ImportError:
@@ -62,8 +63,8 @@ def iter_time(iterable):
     Will print the total time elapsed during iteration of ``iterable`` afterwards.
 
     :param iterable: iterable
-    :type iterable
-    :rtype iterable
+    :type iterable: iterable
+    :rtype: iterable
     :return: iterable
     """
     start_time = time.time()
@@ -74,11 +75,22 @@ def iter_time(iterable):
 
 _fancy_progress_bar = fancy_progress_bar
 
+
 def fancy_progress_bar(iterable):
+    """
+
+    :param iterable:
+    :return:
+    """
     return iter_time(_fancy_progress_bar(iterable))
 
 
 def dummy_progress_indicator():
+    """
+
+
+    :return:
+    """
     return iter(int, 1)
 
 
@@ -97,6 +109,10 @@ def ignorant_next(iterable):
 
 class QuickTableDumper(object):
 
+    """
+
+    :param recipient:
+    """
     delimiter = '\t'
     line_end = '\n'
 
@@ -110,9 +126,17 @@ class QuickTableDumper(object):
         self.headers = []
 
     def write_list(self, the_list):
+        """
+
+        :param the_list:
+        """
         self.recipient.write(self.delimiter.join(map(self.stringify, the_list)) + self.line_end)
 
     def add(self, row):
+        """
+
+        :param row:
+        """
         if len(self.headers) == 0:
             self.headers = list(sorted(row.keys()))
             self.write_list(self.headers)
@@ -120,6 +144,11 @@ class QuickTableDumper(object):
         self.write_list(row[k] for k in self.headers)
 
     def stringify(self, obj):
+        """
+
+        :param obj:
+        :return:
+        """
         if type(obj) in (float, numpy.float32, numpy.float64) and self.precision:
             return str(round(obj, self.precision))
         else:
@@ -141,20 +170,29 @@ except ImportError:
 
 if os.name != 'nt':
     def correct_windows_signal_handlers():
+        """
+        Dummy for non-windows os.
+        """
         pass
 else:
     def correct_windows_signal_handlers():
+        """
+        Corrects Windows signal handling, otherwise multiprocessing solutions will not correctly
+        exit if Ctrl-C is used to interrupt them.
+
+        :return:
+        """
         os.environ['PATH'] += os.path.pathsep + os.path.dirname(os.path.abspath(sys.executable))
 
         try:
             # noinspection PyUnresolvedReferences
             import win32api
 
-            def handler(_, hook=_thread.interrupt_main):
+            def _handler(_, hook=_thread.interrupt_main):
                 hook()
                 return 1
 
-            win32api.SetConsoleCtrlHandler(handler, 1)
+            win32api.SetConsoleCtrlHandler(_handler, 1)
 
         except ImportError:
             logger.warning("Running on Windows, but module 'win32api' could not be imported to fix signal handler.\n" +
@@ -163,11 +201,21 @@ else:
 
 
 def debug_init():
+    """
+    Initialized debug mode, as of now this means that DebugPlot is set to active (it will produce a debug.pdf)
+
+    """
     DebugPlot.force_active = True
     numpy.set_printoptions(threshold=numpy.nan)
 
 
 def parse_range(s, maximum=0):
+    """
+
+    :param s:
+    :param maximum:
+    :return:
+    """
     maximum -= 1
     splits = s.replace(' ', '').replace(';', ',').split(',')
 
@@ -227,7 +275,8 @@ def prettify_numpy_array(arr, space_or_prefix):
 
 def bits_to_numpy_type(bits):
     """
-    Returns a numpy.dtype for one of the common image bit-depths: 8 for unsigned int, 16 for unsigned short, 32 for float
+    Returns a numpy.dtype for one of the common image bit-depths:
+    8 for unsigned int, 16 for unsigned short, 32 for float
 
     :param bits:
     :return:
@@ -247,6 +296,11 @@ class BaseCache(object):
 
     @staticmethod
     def prepare_key(key):
+        """
+
+        :param key:
+        :return:
+        """
         if isinstance(key, type('')):
             return key
         else:
@@ -254,10 +308,16 @@ class BaseCache(object):
 
     @staticmethod
     def serialize(data):
+        """
+
+        :param data:
+        :return:
+        """
         try:
             bio = BytesIO()
             pickle.dump(data, bio, protocol=pickle.HIGHEST_PROTOCOL)
             try:
+                # noinspection PyUnresolvedReferences
                 pickled_data = bio.getbuffer()
             except AttributeError:
                 pickled_data = bio.getvalue()
@@ -268,6 +328,11 @@ class BaseCache(object):
 
     @staticmethod
     def deserialize(data):
+        """
+
+        :param data:
+        :return:
+        """
         assert data is not None
         bio = BytesIO(data)
         return pickle.load(bio)
@@ -292,12 +357,28 @@ class BaseCache(object):
             self.ignore_cache = ignore_cache.split(',')
 
     def contains(self, key):
+        """
+
+        :param key:
+        :return:
+        """
         return False
 
     def get(self, key):
+        """
+
+        :param key:
+        :return:
+        """
         return ''
 
     def set(self, key, value):
+        """
+
+        :param key:
+        :param value:
+        :return:
+        """
         return
 
     def __contains__(self, key):
@@ -345,16 +426,36 @@ class FileCache(BaseCache):
     A caching class which stores the data in flat files.
     """
     def build_cache_filename(self, suffix):
+        """
+
+        :param suffix:
+        :return:
+        """
         return "%s.%s.cache" % (self.cache_token, suffix,)
 
     def contains(self, key):
+        """
+
+        :param key:
+        :return:
+        """
         return os.path.isfile(self.build_cache_filename(key))
 
     def get(self, key):
+        """
+
+        :param key:
+        :return:
+        """
         with open(self.build_cache_filename(key), 'rb') as fp:
             return fp.read(os.path.getsize(self.build_cache_filename(key)))
 
     def set(self, key, value):
+        """
+
+        :param key:
+        :param value:
+        """
         with open(self.build_cache_filename(key), 'wb+') as fp:
             fp.write(value)
 
@@ -366,21 +467,41 @@ class Sqlite3Cache(BaseCache):
     A caching class which stores the data in a sqlite3 database.
     """
     def contains(self, key):
+        """
+
+        :param key:
+        :return:
+        """
         result = self.conn.execute('SELECT COUNT(*) FROM entries WHERE name = ?', (key,))
         for row in result:
             return row[0] == 1
         return False
 
     def get(self, key):
+        """
+
+        :param key:
+        :return:
+        """
         result = self.conn.execute('SELECT value FROM entries WHERE name = ?', (key,))
         for row in result:
             return row[0]
 
     def keys(self):
+        """
+
+
+        :return:
+        """
         result = self.conn.execute('SELECT name FROM entries')
         return [row[0] for row in result]
 
     def set(self, key, value):
+        """
+
+        :param key:
+        :param value:
+        """
         self.conn.execute('DELETE FROM entries WHERE name = ?', (key,))
 
         self.conn.execute(

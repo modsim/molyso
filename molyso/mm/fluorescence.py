@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-
+Module for handling datasets with fluorescence information.
+Due to *molyso*'s object-oriented design, the added functionality can be achieved
+merely by subclassing the particular non-fluorescence-handling base classes.
 """
 from __future__ import division, unicode_literals, print_function
 
@@ -13,6 +15,11 @@ from ..generic.signal import fit_to_type
 
 
 class FluorescentCell(Cell):
+    """
+
+    :param args:
+    :param kwargs:
+    """
     __slots__ = ['fluorescences_mean', 'fluorescences_std']
 
     def __init__(self, *args, **kwargs):
@@ -42,6 +49,11 @@ class FluorescentCell(Cell):
 
     @property
     def fluorescences(self):
+        """
+
+
+        :return:
+        """
         return [
             self.fluorescences_mean[f] - self.channel.image.background_fluorescences[f]
             for f in range(len(self.channel.image.image_fluorescences))
@@ -49,17 +61,39 @@ class FluorescentCell(Cell):
 
     @property
     def fluorescences_raw(self):
+        """
+
+
+        :return:
+        """
         return self.fluorescences_mean
 
     def get_fluorescence_cell_image(self, f=0):
+        """
+
+        :param f:
+        :return:
+        """
         return self.crop_out_of_channel_image(self.channel.fluorescences_channel_image[f])
 
 
 class FluorescentCells(Cells):
+    """
+    A subclass to handle fluorescences.
+    """
     cell_type = FluorescentCell
 
 
 class FluorescentChannel(Channel):
+    """
+    A subclass to handle fluorescences.
+
+    :param image:
+    :param left:
+    :param right:
+    :param top:
+    :param bottom:
+    """
     __slots__ = 'fluorescences_channel_image'
     cells_type = FluorescentCells
 
@@ -78,10 +112,18 @@ class FluorescentChannel(Channel):
 
 
 class FluorescentChannels(Channels):
+    """
+    A subclass to handle fluorescences.
+
+    """
     channel_type = FluorescentChannel
 
 
 class FluorescentImage(Image):
+    """
+    A subclass to handle fluorescences.
+
+    """
     channels_type = FluorescentChannels
 
     def __init__(self):
@@ -100,24 +142,40 @@ class FluorescentImage(Image):
         self.channel_fluorescences_images = None
 
     def setup_add_fluorescence(self, fimg):
+        """
+
+        :param fimg:
+        """
         self.image_fluorescences.append(fimg)
         self.original_image_fluorescences.append(fimg)
 
         self.background_fluorescences.append(0.0)
 
     def autorotate(self):
+        """
+        Rotates the image, as well as the fluorescence channels.
+
+        """
         super(FluorescentImage, self).autorotate()
         self.image_fluorescences = [
             apply_rotate_and_cleanup(fluorescence_image, self.angle)[0]
             for fluorescence_image in self.image_fluorescences]
 
     def clean(self):
+        """
+        Performs clean up routines.
+
+        """
         super(FluorescentImage, self).clean()
         fluorescences_count = len(self.image_fluorescences)
         self.image_fluorescences = [None] * fluorescences_count
         self.original_image_fluorescences = [None] * fluorescences_count
 
     def find_channels(self):
+        """
+        Find channels in the image.
+
+        """
         super(FluorescentImage, self).find_channels()
 
         fluorescences_count = len(self.image_fluorescences)
@@ -151,6 +209,16 @@ class FluorescentImage(Image):
                     numpy.sum(background_fluorescence_means[:, 0]) / numpy.sum(background_fluorescence_means[:, 1])
 
     def flatten(self):
+        """
+        Flattens the image by reducing the object graph to information-identical array representations.
+        This is done to ease the burden on the serializer and get smaller, conciser caches.
+
+        It can as well be helpful, if serialized single frame data should be transferred over the wire.
+
+         Warning, dependent on inner structure of dependent classes.
+
+        :return:
+        """
         channels = self.channels
 
         fluorescences_count = len(self.image_fluorescences)
@@ -181,6 +249,10 @@ class FluorescentImage(Image):
         super(FluorescentImage, self).flatten()
 
     def unflatten(self):
+        """
+        Reconstructs the associated analysis results from the flattened state.
+
+        """
         super(FluorescentImage, self).unflatten()
         fluorescences_count = len(self.image_fluorescences)
         for n, channel in enumerate(self.channels):

@@ -10,6 +10,11 @@ import numpy
 
 
 def iterate_over_cells(cells):
+    """
+
+    :param cells:
+    :return:
+    """
     collector = []
 
     def _rec(another_cell):
@@ -17,8 +22,8 @@ def iterate_over_cells(cells):
         for yet_another_cell in another_cell.children:
             _rec(yet_another_cell)
 
-    for cell in cells:
-        _rec(cell)
+    for a_cell in cells:
+        _rec(a_cell)
 
     # for reproducible results, sort the cells
 
@@ -63,6 +68,17 @@ def plot_timeline(p, channels, cells,
                   figure_presetup=None, figure_finished=None,
                   show_images=True, show_overlay=True,
                   leave_open=False):
+    """
+
+    :param p:
+    :param channels:
+    :param cells:
+    :param figure_presetup:
+    :param figure_finished:
+    :param show_images:
+    :param show_overlay:
+    :param leave_open:
+    """
     from ..debugging.debugplot import poly_drawing_helper
     import matplotlib.colors
 
@@ -232,6 +248,11 @@ _unique_id_value = 1
 
 
 def get_object_unique_id(obj):
+    """
+
+    :param obj:
+    :return:
+    """
     global _unique_id_cache, _unique_id_value
 
     if obj is None:
@@ -245,6 +266,11 @@ def get_object_unique_id(obj):
 
 
 def analyze_tracking(cells, receptor):
+    """
+
+    :param cells:
+    :param receptor:
+    """
     for cell in cells:
         for sn, sa in enumerate(cell.seen_as):
             tmp = {

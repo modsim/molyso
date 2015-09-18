@@ -16,6 +16,14 @@ from ..generic.tunable import tunable
 
 
 class Channel(object):
+    """
+
+    :param image:
+    :param left:
+    :param right:
+    :param top:
+    :param bottom:
+    """
     cells_type = Cells
 
     __slots__ = ['image', 'left', 'right', 'real_top', 'real_bottom', 'putative_orientation', 'cells', 'channel_image']
@@ -34,27 +42,60 @@ class Channel(object):
 
     @property
     def top(self):
+        """
+
+
+        :return:
+        """
         return self.real_top + self.image.shift[0]
 
     @property
     def bottom(self):
+        """
+
+
+        :return:
+        """
         return self.real_bottom + self.image.shift[0]
 
     @property
     def centroid(self):
+        """
+
+
+        :return:
+        """
         return (self.left + self.right) / 2, (self.top + self.bottom) / 2
 
     def crop_out_of_image(self, image):
+        """
+
+        :param image:
+        :return:
+        """
         return image[self.real_top:self.real_bottom, self.left:self.right].copy()
 
     def get_coordinates(self):
+        """
+
+
+        :return:
+        """
         return [[self.left, self.bottom], [self.right, self.bottom], [self.right, self.top], [self.left, self.top],
                 [self.left, self.bottom]]
 
     def detect_cells(self):
+        """
+        Performs Cell detection (by instantiating a Cells object).
+
+        """
         self.cells = self.__class__.cells_type(self)
 
     def clean(self):
+        """
+        Peforms clean up routines.
+
+        """
         self.cells.clean()
         if not self.image.keep_channel_image:
             self.channel_image = None
@@ -94,19 +135,38 @@ class Channels(object):
         return iter(self.channels_list)
 
     def clean(self):
+        """
+        Performs clean up routines.
+
+        """
         for channel in self:
             channel.clean()
 
     @property
     def centroids(self):
+        """
+
+
+        :return:
+        """
         return [chan.centroid for chan in self]
 
     def find_nearest(self, pos):
+        """
+
+        :param pos:
+        :return:
+        """
         if self.nearest_tree is None:
             self.nearest_tree = treeprovider(self.centroids)
         return self.nearest_tree.query(pos)
 
     def align_with_and_return_indices(self, other_channels):
+        """
+
+        :param other_channels:
+        :return:
+        """
         if len(other_channels) == 0 or len(self) == 0:
             return []
         return [[ind, other_channels.find_nearest(cen)[1]] for ind, cen in enumerate(self.centroids)]
@@ -142,6 +202,11 @@ def horizontal_channel_detection(image):
     n = tunable('channels.horizontal.fft_oversampling', 8)
 
     def calc_bins_freqs_main(the_profile):
+        """
+
+        :param the_profile:
+        :return:
+        """
         frequencies, fourier_value = hires_power_spectrum(the_profile, oversampling=n)
         fourier_value = hamming_smooth(fourier_value, 3)
         return frequencies, fourier_value, frequencies[numpy.argmax(fourier_value)]
@@ -156,12 +221,12 @@ def horizontal_channel_detection(image):
     with DebugPlot('channel_detection', 'details', 'powerspectra', 'upper') as p:
         p.title("Powerspectrum (upper)")
         p.semilogx(frequencies_upper, fourier_value_upper)
-        p.title("mainfreq=%f" % mainfrequency_upper)
+        p.title("main_frequency=%f" % mainfrequency_upper)
 
     with DebugPlot('channel_detection', 'details', 'powerspectra', 'lower') as p:
         p.title("Powerspectrum (lower)")
         p.semilogx(frequencies_lower, fourier_value_lower)
-        p.title("mainfreq=%f" % mainfrequency_lower)
+        p.title("main_frequency=%f" % mainfrequency_lower)
 
     main_frequency = (mainfrequency_upper + mainfrequency_lower) / 2
 
@@ -183,11 +248,11 @@ def horizontal_channel_detection(image):
     preliminary_signal = \
         one_every_n(profile_diff_len, main_frequency) + one_every_n(profile_diff_len, main_frequency, shift=width)
 
-    tempoary_signal = numpy.zeros_like(absolute_differentiated_profile)
+    temporary_signal = numpy.zeros_like(absolute_differentiated_profile)
 
-    tempoary_extrema = find_extrema_and_prominence(absolute_differentiated_profile, order=max(1, abs(width // 2)))
-    tempoary_signal[tempoary_extrema.maxima] = 1
-    phase, = find_phase(tempoary_signal, preliminary_signal)
+    temporary_extrema = find_extrema_and_prominence(absolute_differentiated_profile, order=max(1, abs(width // 2)))
+    temporary_signal[temporary_extrema.maxima] = 1
+    phase, = find_phase(temporary_signal, preliminary_signal)
 
     new_signal = \
         one_every_n(profile_diff_len, main_frequency, shift=phase + 0.5 * width) + \
@@ -216,8 +281,10 @@ def horizontal_channel_detection(image):
         left = 0
 
     try:
+        # noinspection PyUnresolvedReferences
         right = help_signal.size - numpy.where(help_signal[::-1])[0][0]
     except IndexError:
+        # noinspection PyUnresolvedReferences
         right = help_signal.size
 
     left, right = int(left), int(right)
@@ -253,10 +320,22 @@ def horizontal_channel_detection(image):
 
 def alternate_vertical_channel_region_detection(image):
 
+    """
+
+    :param image:
+    :return:
+    """
     f = spectrum_bins_by_length(image.shape[1])
     ft_h_s = tunable('channels.vertical.alternate.fft_smoothing_width', 3)
 
     def horizontal_mean_frequency(img_frag, clean_around=None, clean_width=0.0):
+        """
+
+        :param img_frag:
+        :param clean_around:
+        :param clean_width:
+        :return:
+        """
         ft = numpy.absolute(spectrum_fourier(horizontal_mean(img_frag)))
 
         ft /= 0.5 * ft[0]
@@ -295,12 +374,24 @@ FIRST_CALL, FROM_TOP, FROM_BOTTOM = 0, -1, 1
 
 
 def vertical_channel_region_detection(image):
+    """
+
+    :param image:
+    :return:
+    """
     f = spectrum_bins_by_length(image.shape[1])
 
     ft_h_s = tunable('channels.vertical.recursive.fft_smoothing_width', 3)
 
     def horizontal_mean_frequency(img_frag, clean_around=None, clean_width=0.0):
 
+        """
+
+        :param img_frag:
+        :param clean_around:
+        :param clean_width:
+        :return:
+        """
         ft = numpy.absolute(spectrum_fourier(horizontal_mean(img_frag)))
 
         ft /= 0.5 * ft[0]
@@ -323,6 +414,11 @@ def vertical_channel_region_detection(image):
     current_clean_width = overall_f / 2.0
 
     def matches(img_frag):
+        """
+
+        :param img_frag:
+        :return:
+        """
         power_local_f, local_f = horizontal_mean_frequency(
             img_frag, clean_around=overall_f, clean_width=current_clean_width)
         return (abs(overall_f - local_f) < d) and ((power_local_f / power_overall_f) > power_min_quotient)
@@ -332,6 +428,13 @@ def vertical_channel_region_detection(image):
     collector = numpy.zeros(height)
 
     def recursive_check(top, bottom, orientation=FIRST_CALL):
+        """
+
+        :param top:
+        :param bottom:
+        :param orientation:
+        :return:
+        """
         if (bottom - top) < break_condition:
             return
 

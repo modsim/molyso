@@ -1,8 +1,10 @@
 molyso.generic package
 ======================
 
-Submodules
-----------
+.. automodule:: molyso.generic
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 molyso.generic.etc module
 -------------------------
@@ -69,10 +71,3 @@ molyso.generic.tunable module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: molyso.generic
-    :members:
-    :undoc-members:
-    :show-inheritance:

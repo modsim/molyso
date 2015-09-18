@@ -235,6 +235,11 @@ dft_sizes = numpy.array([
 
 
 def get_optimal_dft_size_w_numpy(n):
+    """
+
+    :param n:
+    :return:
+    """
     if n > dft_sizes[-1]:
         return n
     return dft_sizes[numpy.searchsorted(dft_sizes, n)]
