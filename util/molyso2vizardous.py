@@ -24,7 +24,6 @@ def create_argparser():
 
     argparser.add_argument('input', metavar='input', type=str, help="input file")
     argparser.add_argument('-o', '--output', dest='output', type=str, default=None)
-    argparser.add_argument('-ns', '--no-split', dest='no_split', default=False, action='store_true')
     argparser.add_argument('-d', '--minimum-depth', dest='minimum_depth', default=0, type=int)
     argparser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true')
 
@@ -33,22 +32,45 @@ def create_argparser():
 def unit(value):
     return {'unit': value}
 
-def molyso2vizardous(data):
-    phyloXML = ET.Element('phyloxml', {'xmlns': 'http://www.phyloxml.org' ,
-                                       'xmlns:metaxml': 'http://13cflux.net/static/schemas/metaXML/2',
-                                       'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
-                                       'xsi:schemaLocation':
-                                           'http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd'})
-    metaXML = ET.Element('metaInformation', {'xmlns': 'http://13cflux.net/static/schemas/metaXML/2',
-                                             'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
-                                             'xsi:schemaLocation':
-                                                 'http://13cflux.net/static/schemas/metaXML/2 metaXML-2.7.0.xsd'})
+def root_phyloXML():
+    return ET.Element(
+        'phyloxml', {
+            'xmlns': 'http://www.phyloxml.org',
+            'xmlns:metaxml': 'http://13cflux.net/static/schemas/metaXML/2',
+            'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'xsi:schemaLocation': 'http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd'
+        }
+    )
 
-    project_name = 'Mother Machine Experiment'
+
+def root_metaXML():
+    return ET.Element(
+        'metaInformation', {
+            'xmlns': 'http://13cflux.net/static/schemas/metaXML/2',
+            'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'xsi:schemaLocation': 'http://13cflux.net/static/schemas/metaXML/2 metaXML-2.7.0.xsd'
+        }
+    )
+
+
+def empty_metaXML(project_name, duration_in_seconds):
+    metaXML = root_metaXML()
     ET.SubElement(metaXML, 'projectName').text = project_name
-    ET.SubElement(phyloXML, 'metaxml:projectName').text = project_name
-    ET.SubElement(metaXML, 'experimentDuration', unit('min')).text = str(data.timepoint.max() / 60.0)
+    ET.SubElement(metaXML, 'experimentDuration', unit('min')).text = str(duration_in_seconds / 60.0)
+    return metaXML
 
+
+def empty_phyloXML(project_name):
+    phyloXML = root_phyloXML()
+    ET.SubElement(phyloXML, 'metaxml:projectName').text = project_name
+    return phyloXML
+
+
+def empty_trees(project_name, duration):
+    return empty_phyloXML(project_name), empty_metaXML(project_name, duration)
+
+
+def molyso2vizardous(data, phyloXML, metaXML):
     def make_cell(cell):
         cell_element = ET.Element('cell', {'id': str(cell.uid_thiscell)})
 
@@ -138,23 +160,30 @@ def main():
 
     data = pandas.read_table(args.input)
 
-    phyloXML, metaXML = molyso2vizardous(data)
-
-    if args.output is None:
-        args.output, _ = os.path.splitext(args.input)
-
-    PHYLO_SUFFIX = 'phylo.xml'
-    META_SUFFIX = 'meta.xml'
+    duration = data.timepoint.max()
+    project_name = 'Mother Machine Experiment'
 
 
-    def write_outputs(result_files):
-        for file_suffix, tree in result_files.items():
-            with open('%s.%s' % (args.output, file_suffix), mode='wb+') as fp:
-                ET.ElementTree(tree).write(fp)
+    for (multipoint, channel_in_multipoint), subset in data.groupby(by=['multipoint', 'channel_in_multipoint']):
 
-    if args.no_split:
-        write_outputs({PHYLO_SUFFIX: phyloXML, META_SUFFIX: metaXML})
-    else:
+
+        phyloXML, metaXML = empty_trees(project_name, duration)
+
+        phyloXML, metaXML = molyso2vizardous(subset, phyloXML, metaXML)
+
+        if args.output is None:
+            args.output, _ = os.path.splitext(args.input)
+
+        PHYLO_SUFFIX = 'phylo.xml'
+        META_SUFFIX = 'meta.xml'
+
+
+        def write_outputs(result_files):
+            for file_suffix, tree in result_files.items():
+                with open('%s.%s' % (args.output, file_suffix), mode='wb+') as fp:
+                    ET.ElementTree(tree).write(fp)
+
+        channel_identifier = 'mp.%d.channel.%d' % (multipoint, channel_in_multipoint,)
 
         jobs = phyloXML.findall('phylogeny')
 
@@ -167,13 +196,13 @@ def main():
             copy_phyloXML = deepcopy(phyloXML)
             copy_metaXML = deepcopy(metaXML)
 
-
-
             filter_trees(copy_phyloXML, copy_metaXML, n)
 
-            infix = '%d.of.%d.depth.%d.' % (n+1, len(jobs), depth_of_phylogeny)
+            infix = '%s.%d.of.%d.depth.%d.' % (channel_identifier, n+1, len(jobs), depth_of_phylogeny)
 
             write_outputs({infix + PHYLO_SUFFIX: copy_phyloXML, infix + META_SUFFIX: copy_metaXML})
+
+# write_outputs({PHYLO_SUFFIX: phyloXML, META_SUFFIX: metaXML})
 
 
 if __name__ == '__main__':
