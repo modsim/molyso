@@ -33,17 +33,33 @@ class TunableManager(object):
 
     current = {}
 
+    descriptions = {}
+
     force_default = False
 
     logger = logging.getLogger(__name__ + '.' + 'TunableManager')
 
     @classmethod
-    def set_printing(cls, state):
+    def set_description(cls, what, description):
         """
+        Sets a description for a paremeter.
 
-        :param state:
+        :param what: paramter to describe
+        :param description: description
+        :return:
         """
-        cls.print_tunables = state
+        cls.descriptions[what] = description
+
+    @classmethod
+    def get_descriptions(cls):
+        """
+        Gets descriptions.
+
+        :return: The descriptions.
+        :rtype: dict
+        """
+        return cls.descriptions
+
 
     @classmethod
     def load_tunables(cls, data):
@@ -105,7 +121,7 @@ class TunableManager(object):
         return result
 
 
-def tunable(what, default):
+def tunable(what, default, description=None):
     """
     Syntactic sugar helper function, to quickly get a tunable.
     Calls: :code:`TunableManager.get_tunable(what, default)`
@@ -119,4 +135,8 @@ def tunable(what, default):
     >>> tunable('my.tunable', 3.1415)
     3.1415
     """
+
+    if description:
+        TunableManager.set_description(what, description)
+
     return TunableManager.get_tunable(what, default)

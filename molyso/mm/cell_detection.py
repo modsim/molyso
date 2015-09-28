@@ -123,7 +123,10 @@ class Cells(object):
 
         for b, e in find_cells_in_channel(self.channel.channel_image):
             # ... this is the actual minimal size filtering
-            if self.channel.image.mu_to_pixel(tunable('cells.minimal_length.in_mu', 1.0)) < e - b:
+            if self.channel.image.mu_to_pixel(
+                    tunable('cells.minimal_length.in_mu', 1.0,
+                            description="The minimal allowed cell size (Smaller cells will be filtered out).")
+            ) < e - b:
                 self.cells_list.append(self.__class__.cell_type(b, e, self.channel))
 
     def __len__(self):
@@ -160,21 +163,39 @@ def find_cells_in_channel(image):
     profile = vertical_mean(image)
 
     # empty channel detection
-    thresholded_profile = threshold_outliers(profile, tunable('cells.empty_channel.skipping.outlier_times_sigma', 2.0))
+    thresholded_profile = threshold_outliers(
+        profile,
+        tunable('cells.empty_channel.skipping.outlier_times_sigma', 2.0,
+                description="For empty channel detection, maximum sigma used for thresholding the profile."
+                )
+    )
 
-    # if active, a non-empty channel must have a certain dynamic range min/max
-    if ((thresholded_profile.max() - thresholded_profile.min()) / thresholded_profile.max()) < \
-            tunable('cells.empty_channel.skipping.intensity_range_quotient', 0.5) and \
-            tunable('cells.empty_channel.skipping', False):  # is off by default!
-        return []
+    if tunable('cells.empty_channel.skipping', False, description="For empty channel detection, whether it is enabled."):
+
+        # if active, a non-empty channel must have a certain dynamic range min/max
+        if ((thresholded_profile.max() - thresholded_profile.min()) / thresholded_profile.max()) < \
+                tunable(
+                    'cells.empty_channel.skipping.intensity_range_quotient',
+                    0.5,
+                    description="For empty channel detection, the minimum relative difference between max and min."):
+            return []
 
     # for cell detection, another intensity profile based on an Otsu binarization is used as well
-    binary_image = image > threshold_otsu(image) * tunable('cells.otsu_bias', 1.0)
+    binary_image = image > threshold_otsu(image) * \
+                           tunable(
+                               'cells.otsu_bias',
+                               1.0,
+                               description="Bias factor for the cell detection Otsu image."
+                           )
+
     profile_of_binary_image = vertical_mean(binary_image.astype(float))
 
     # the profile is first baseline corrected and smoothed ...
     profile = simple_baseline_correction(profile)
-    profile = hamming_smooth(profile, tunable('cells.smoothing.length', 10))
+    profile = hamming_smooth(profile, tunable(
+        'cells.smoothing.length',
+        10,
+        description="Length of smoothing Hamming window for cell detection."))
 
     # the the smoothing steps above seem to subtly change the profile
     # in a python2 vs. python3 different way
