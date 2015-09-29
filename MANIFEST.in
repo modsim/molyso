@@ -1,0 +1,9 @@
+include util/*.py
+include examples/*.ipynb
+include examples/*.tsv
+
+recursive-include docs *.rst
+include docs/conf.py
+
+recursive-include docs/_static *
+
