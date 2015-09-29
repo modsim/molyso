@@ -188,10 +188,21 @@ def horizontal_channel_detection(image):
     upper_profile = +(profile_diff * (profile_diff > 0))
     lower_profile = -(profile_diff * (profile_diff < 0))
 
-    upper_profile[upper_profile < upper_profile.max() * 0.5] *= \
-        tunable('channels.horizontal.noise_suppression_factor.upper', 0.1)
-    lower_profile[lower_profile < lower_profile.max() * 0.5] *= \
-        tunable('channels.horizontal.noise_suppression_factor.lower', 0.1)
+    upper_profile[
+        upper_profile < upper_profile.max() *
+        tunable(
+            'channels.horizontal.noise_suppression_range.upper', 0.5,
+            description="For channel detection, upper profile, noise reduction, reduction range."
+        )
+    ] *= tunable('channels.horizontal.noise_suppression_factor.upper', 0.1,
+                 description="For channel detection, upper profile, noise reduction, reduction factor.")
+
+    lower_profile[
+        lower_profile < lower_profile.max() *
+        tunable('channels.horizontal.noise_suppression_range.lower', 0.5,
+                description="For channel detection, lower profile, noise reduction, reduction range.")
+    ] *= tunable('channels.horizontal.noise_suppression_factor.lower', 0.1,
+                 description="For channel detection, lower profile, noise reduction, reduction factor.")
 
     with DebugPlot('channel_detection', 'details', 'differentials', 'smoothed') as p:
         p.title("Channel detection/Differentials/Smoothed")
@@ -199,7 +210,8 @@ def horizontal_channel_detection(image):
         p.plot(lower_profile)
 
     # oversample the fft n-times
-    n = tunable('channels.horizontal.fft_oversampling', 8)
+    n = tunable('channels.horizontal.fft_oversampling', 8,
+                description="For channel detection, FFT oversampling factor.")
 
     def calc_bins_freqs_main(the_profile):
         """
@@ -215,8 +227,12 @@ def horizontal_channel_detection(image):
     frequencies_upper, fourier_value_upper, mainfrequency_upper = calc_bins_freqs_main(upper_profile)
     frequencies_lower, fourier_value_lower, mainfrequency_lower = calc_bins_freqs_main(lower_profile)
 
-    upper_profile = hamming_smooth(upper_profile, tunable('channels.horizontal.profile_smoothing_width.upper', 5))
-    lower_profile = hamming_smooth(lower_profile, tunable('channels.horizontal.profile_smoothing_width.lower', 5))
+    upper_profile = hamming_smooth(upper_profile,
+                                   tunable('channels.horizontal.profile_smoothing_width.upper', 5,
+                                           description="For channel detection, upper profile, smoothing window width."))
+    lower_profile = hamming_smooth(lower_profile,
+                                   tunable('channels.horizontal.profile_smoothing_width.lower', 5,
+                                           description="For channel detection, lower profile, smoothing window width."))
 
     with DebugPlot('channel_detection', 'details', 'powerspectra', 'upper') as p:
         p.title("Powerspectrum (upper)")
@@ -265,7 +281,8 @@ def horizontal_channel_detection(image):
     # maximum (test image), I guess it's wiser to remove it
     help_signal = threshold_outliers(help_signal)
 
-    threshold_factor = tunable('channels.horizontal.threshold_factor', 0.2)
+    threshold_factor = tunable('channels.horizontal.threshold_factor', 0.2,
+                               description="For channel detection, threshold factor for l/r border determination.")
     min_val, max_val = help_signal.min(), help_signal.max()
     help_signal = help_signal > (max_val - min_val) * threshold_factor + min_val
 
@@ -326,7 +343,8 @@ def alternate_vertical_channel_region_detection(image):
     :return:
     """
     f = spectrum_bins_by_length(image.shape[1])
-    ft_h_s = tunable('channels.vertical.alternate.fft_smoothing_width', 3)
+    ft_h_s = tunable('channels.vertical.alternate.fft_smoothing_width', 3,
+                     description="For channel detection (alternate, vertical), spectrum smoothing width.")
 
     def horizontal_mean_frequency(img_frag, clean_around=None, clean_width=0.0):
         """
@@ -348,7 +366,8 @@ def alternate_vertical_channel_region_detection(image):
 
         return ft.max(), f[numpy.argmax(ft)]
 
-    split_factor = tunable('channels.vertical.alternate.split_factor', 60)
+    split_factor = tunable('channels.vertical.alternate.split_factor', 60,
+                           description="For channel detection (alternate, vertical), split factor.")
 
     collector = numpy.zeros(image.shape[0])
 
@@ -364,7 +383,8 @@ def alternate_vertical_channel_region_detection(image):
     bins = numpy.bincount(int_collector)
     winner = numpy.argmax(bins[1:]) + 1
 
-    delta = tunable('channels.vertical.alternate.delta', 5)
+    delta = tunable('channels.vertical.alternate.delta', 5,
+                    description="For channel detection (alternate, vertical), acceptable delta.")
 
     collector = (numpy.absolute(int_collector - winner) < delta) | (numpy.absolute(int_collector - 2*winner) < delta)
 
@@ -381,7 +401,8 @@ def vertical_channel_region_detection(image):
     """
     f = spectrum_bins_by_length(image.shape[1])
 
-    ft_h_s = tunable('channels.vertical.recursive.fft_smoothing_width', 3)
+    ft_h_s = tunable('channels.vertical.recursive.fft_smoothing_width', 3,
+                     description="For channel detection (recursive, vertical), spectrum smoothing width.")
 
     def horizontal_mean_frequency(img_frag, clean_around=None, clean_width=0.0):
 
@@ -407,9 +428,12 @@ def vertical_channel_region_detection(image):
 
     power_overall_f, overall_f = horizontal_mean_frequency(image)
 
-    d = tunable('channels.vertical.recursive.maximum_delta', 2.0)
-    power_min_quotient = tunable('channels.vertical.recursive.power_min_quotient', 0.005)
-    break_condition = tunable('channels.vertical.recursive.break_condition', 2.0)
+    d = tunable('channels.vertical.recursive.maximum_delta', 2.0,
+                description="For channel detection (recursive, vertical), maximum delta.")
+    power_min_quotient = tunable('channels.vertical.recursive.power_min_quotient', 0.005,
+                                 description="For channel detection (recursive, vertical), minimum power quotient")
+    break_condition = tunable('channels.vertical.recursive.break_condition', 2.0,
+                              description="For channel detection (recursive, vertical), recursive break condition.")
 
     current_clean_width = overall_f / 2.0
 
@@ -474,7 +498,10 @@ def find_channels(image):
     :return:
     """
 
-    method_to_use = tunable('channels.vertical.method', 'alternate')
+    method_to_use = tunable(
+        'channels.vertical.method',
+        'alternate',
+        description="For channel detection, vertical method to use (either alternate or recursive).")
 
     if method_to_use == 'alternate':
         upper, lower = alternate_vertical_channel_region_detection(image)

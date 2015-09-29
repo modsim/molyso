@@ -112,7 +112,8 @@ class AutoRotationProvider(object):
         """
 
         if self.angle != self.angle:
-            self.angle = find_rotation(self.image, steps=tunable('orientation-detection.strips', 10))
+            self.angle = find_rotation(self.image, steps=
+            tunable('orientation-detection.strips', 10, description="Number of strips for orientation correction."))
 
         # noinspection PyAttributeOutsideInit
         self.image, self.angle, self.crop_height, self.crop_width = \
@@ -160,8 +161,8 @@ class AutoRegistrationProvider(object):
         self.shift = [yn, xn]
 
 
-cell_color = tunable('colors.cell', '#005b82')
-channel_color = tunable('colors.channel', '#e7af12')
+cell_color = tunable('colors.cell', '#005b82', description="For debug output, cell color.")
+channel_color = tunable('colors.channel', '#e7af12', description="For debug output, channel color.")
 
 
 class Image(AutoRegistrationProvider, AutoRotationProvider, BaseImage):

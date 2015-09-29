@@ -153,7 +153,8 @@ def plot_timeline(p, channels, cells,
 
     type_nothing, type_start, type_stop, type_junction = 0.0, 1.0, 2.0, 3.0
 
-    numpy.random.seed(tunable('colors.visualization.track.random.seed', 3141592653))
+    numpy.random.seed(tunable('colors.visualization.track.random.seed', 3141592653,
+                              description="Random seed for tracking visualization."))
 
     for cell in cells:
         old_scatter_used = scatter_used
@@ -191,10 +192,10 @@ def plot_timeline(p, channels, cells,
 
             scatter_used += 1
 
-        color = tunable('colors.visualization.track.color', '#005B82')
-        color_alpha = tunable('colors.visualization.track.alpha', 0.3)
+        color = tunable('colors.visualization.track.color', '#005B82', description="Track color for visualization.")
+        color_alpha = tunable('colors.visualization.track.alpha', 0.3, description="Track alpha for visualization.")
 
-        if tunable('colors.visualization.track.random', 1) == 1:
+        if tunable('colors.visualization.track.random', 1, description="Randomize tracking color palette?") == 1:
             color = colors[numpy.random.randint(0, len(colors))]
 
         if show_overlay:

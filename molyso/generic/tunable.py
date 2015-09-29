@@ -60,6 +60,19 @@ class TunableManager(object):
         """
         return cls.descriptions
 
+    @classmethod
+    def get_table(cls):
+        descriptions = cls.get_descriptions()
+
+        return [
+            {
+                'name': k,
+                'default': v,
+                'type_': type(v).__name__,
+                'description': descriptions[k] if k in descriptions else ''
+            }
+            for k, v in cls.get_defaults().items()
+        ]
 
     @classmethod
     def load_tunables(cls, data):

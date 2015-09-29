@@ -146,7 +146,8 @@ class TrackedPosition(object):
         cell_means = {k: (float(sum(v)) / len(v)) if len(v) > 0 else 0.0 for k, v in self.cell_counts.items()}
 
         for k, mean_cell_count in cell_means.items():
-            if mean_cell_count < tunable('tracking.empty_channel_filtering.minimum_mean_cells', 2.0):
+            if mean_cell_count < tunable('tracking.empty_channel_filtering.minimum_mean_cells', 2.0,
+                                         description="For empty channel removal, minimum of cell mean per channel."):
                 del self.tracker_mapping[k]
                 del self.channel_accumulator[k]
                 del self.cell_counts[k]
@@ -221,7 +222,8 @@ class TrackedPosition(object):
         Removes empty channels after tracking.
 
         """
-        minimum_average_cells = tunable('tracking.empty_channel_filtering.minimum_mean_cells', 2.0)
+        minimum_average_cells = tunable('tracking.empty_channel_filtering.minimum_mean_cells', 2.0,
+                                        description="For empty channel removal, minimum of cell mean per channel.")
         should_skip = True
         for k, tracker in list(self.tracker_mapping.items()):
             if should_skip and tracker.average_cells < minimum_average_cells:
