@@ -18,5 +18,7 @@ Contents:
 
     readme
     license
+    tunables
+    molyso2vizardous
     jupyter
     molyso
