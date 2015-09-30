@@ -225,6 +225,22 @@ def processing_frame(args, t, pos):
     return image
 
 
+def setup_tunables(args, log=None):
+    # load tunables
+    if args.read_tunables:
+        with open(args.read_tunables, 'r') as tunable_file:
+            tunables = json.load(tunable_file)
+            if log:
+                log.info("Loaded tunable file \"%(filename)s\" with data: %(data)s" %
+                         {'filename': args.read_tunables, 'data': repr(tunables)})
+            TunableManager.load_tunables(tunables)
+
+    if args.tunables:
+        tunables = json.loads(args.tunables)
+        if log:
+            log.info("Loaded command line tunables: %(data)s" % {'data': repr(tunables)})
+        TunableManager.load_tunables(tunables)
+
 def setup_modules(modules):
     """
 
@@ -253,6 +269,8 @@ def processing_setup(args):
 
     if args.modules:
         setup_modules(args.modules)
+
+    setup_tunables(args)
 
     if ims is None:
         ims = MultiImageStack.open(args.input)
@@ -303,21 +321,7 @@ def main():
     if args.modules:
         setup_modules(args.modules)
 
-    # load tunables
-    if args.read_tunables:
-        with open(args.read_tunables, 'r') as tunable_file:
-            tunables = json.load(tunable_file)
-            log.info("Loaded tunable file \"%(filename)s\" with data: %(data)s" %
-                     {'filename': args.read_tunables, 'data': repr(tunables)})
-            TunableManager.load_tunables(tunables)
-
-    if args.tunables:
-        tunables = json.loads(args.tunables)
-        log.info("Loaded command line tunables: %(data)s" % {'data': repr(tunables)})
-        TunableManager.load_tunables(tunables)
-
-    if args.print_tunables:
-        TunableManager.set_printing(True)
+    setup_tunables(args, log)
 
     if sys.maxsize <= 2 ** 32:
         log.warning("Warning, running on a 32 bit Python interpreter! This is most likely not what you want,"
