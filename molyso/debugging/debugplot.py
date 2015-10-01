@@ -112,7 +112,7 @@ class DebugPlot(object):
 
         :param kwargs:
         """
-        cls.context = ' '.join(["%s=%s" % x for x in kwargs.items()])
+        cls.context = ' '.join(["%s=%s" % x for x in sorted(kwargs.items())])
 
     @classmethod
     def get_context(cls):
