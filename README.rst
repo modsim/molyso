@@ -13,10 +13,23 @@ License
 -------
 *molyso* is free/libre open source software under the 2-clause BSD License. See :doc:`license`
 
+Prerequisites
+-------------
+
+*molyso* needs Python 3, if you are using Windows, we recommend WinPython [ https://winpython.github.io ], as it contains
+ the necessary module already. Pick a >=3.4 64 bit version.
+
+If you are using Ubuntu, install the necessary packages via:
+
+.. code-block:: bash
+
+    > sudo apt-get install python3 python3-pip python3-numpy python3-scipy python3-matplotlib
+
+
 Ways to install molyso
 ----------------------
 
-*molyso* has been tested with Python 3. There are three different ways to install molyso:
+There are three different ways to install molyso:
 
 Via the Python Package Index (recommended)
 ##########################################
@@ -35,12 +48,13 @@ From github
     > cd molyso
     > python3 setup.py install --user
 
-From a source distribution zip archive
-######################################
+From a source distribution zip archive or wheel
+###############################################
 
 .. code-block:: bash
 
     > pip3 install --user molyso-1.0.0.zip
+    > # pip3 install --user molyso-1.0-py2.py3-none-any.whl
 
 
 First Steps
@@ -124,6 +138,19 @@ To start the interactive viewer, just call molyso without any other parameters:
     > python3 -m molyso dataset.ome.tiff
 
 To start batch processing, run molyso with the `-p` option. Give an output file for tabular output with `-o` and/or an output directory for individual tracked kymographs with `-ot`.
+
+Note: While OME-TIFF file contain calibration of time and voxel size, simple `.tif` files may not,
+you can tell molyso manually about the calibration by adding comma-delimited parameters after the file name (followed by a question mark):
+Example:
+
+.. code-block:: bash
+
+    > python3 -m molyso "filename.tif?interval=300,calibration=0.08"
+
+
+Supported are among others: the acquisition `interval` (seconds), and the pixel size `calibration` in um per pixel.
+Don't forget to escape/quote the ? in the command line.
+
 
 .. code-block:: bash
 
