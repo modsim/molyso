@@ -15,7 +15,8 @@ M0 366.241
 L498.39 366.241
 L498.39 0
 L0 0
-L0 366.241" style="fill:none;"/>
+z
+" style="fill:#ffffff;"/>
   </g>
   <g id="axes_1">
    <g id="patch_2">
@@ -1572,18 +1573,18 @@ L486.105 20.9356" style="fill:none;"/>
    </g>
    <g id="patch_4">
     <path d="
-M486.105 327.836
-L486.105 20.9356" style="fill:none;"/>
+M39.7052 327.836
+L39.7052 20.9356" style="fill:none;"/>
    </g>
    <g id="patch_5">
     <path d="
 M39.7052 327.836
-L39.7052 20.9356" style="fill:none;"/>
+L486.105 327.836" style="fill:none;"/>
    </g>
    <g id="patch_6">
     <path d="
-M39.7052 327.836
-L486.105 327.836" style="fill:none;"/>
+M486.105 327.836
+L486.105 20.9356" style="fill:none;"/>
    </g>
    <g id="text_20">
     <text style="fill:#262626;font-family:Arial;font-size:12.0px;font-style:normal;text-anchor:middle;" transform="rotate(-0.000000, 262.905156, 15.935625)" x="262.90515625" y="15.935625">Scatter plot of detected division events</text>

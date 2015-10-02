@@ -36,7 +36,7 @@ For the example, a test image shipped with *molyso* will be used.
 
 .. parsed-literal::
 
-    <matplotlib.image.AxesImage at 0x7febc6cb27f0>
+    <matplotlib.image.AxesImage at 0x7f09dbf04f98>
 
 
 
@@ -70,7 +70,7 @@ For the example, a test image shipped with *molyso* will be used.
 
 .. parsed-literal::
 
-    <matplotlib.image.AxesImage at 0x7feba73860b8>
+    <matplotlib.image.AxesImage at 0x7f09c8443e48>
 
 
 
@@ -133,7 +133,7 @@ For the example, a test image shipped with *molyso* will be used.
 
 .. parsed-literal::
 
-    <matplotlib.image.AxesImage at 0x7feba73195f8>
+    <matplotlib.image.AxesImage at 0x7f09c8369898>
 
 
 
@@ -150,7 +150,7 @@ For the example, a test image shipped with *molyso* will be used.
 
 .. parsed-literal::
 
-    [<molyso.mm.cell_detection.Cell object at 0x7febc6ca8c48>, <molyso.mm.cell_detection.Cell object at 0x7febc6ca8ac8>, <molyso.mm.cell_detection.Cell object at 0x7febc6ca8608>, <molyso.mm.cell_detection.Cell object at 0x7febc6bcb588>]
+    [<molyso.mm.cell_detection.Cell object at 0x7f09d9e46f48>, <molyso.mm.cell_detection.Cell object at 0x7f09d9dd6248>, <molyso.mm.cell_detection.Cell object at 0x7f09d9e35d88>, <molyso.mm.cell_detection.Cell object at 0x7f09d9e151c8>]
 
 
 .. code:: python

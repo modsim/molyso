@@ -67,13 +67,13 @@ See the following explanation of the table columns:
 +-----------------------------------+--------------------------------------------------------------------------------------------------------------------------------+
 | timepoint\_num                    | The timepoint number (within the dataset) of the cell sighting                                                                 |
 +-----------------------------------+--------------------------------------------------------------------------------------------------------------------------------+
-| uid\_cell                         | A unique id for this cell track                                                                                                |
+| uid\_cell                         | A unique id for this tracked cell                                                                                              |
 +-----------------------------------+--------------------------------------------------------------------------------------------------------------------------------+
 | uid\_parent                       | A unique id for the cell's parent cell                                                                                         |
 +-----------------------------------+--------------------------------------------------------------------------------------------------------------------------------+
 | uid\_thiscell                     | A unique id for this particular cell sighting                                                                                  |
 +-----------------------------------+--------------------------------------------------------------------------------------------------------------------------------+
-| uid\_track                        | A unique id for this cell track (complete over many generations)                                                               |
+| uid\_track                        | A unique id for origin (the whole tracking from one start)                                                                     |
 +-----------------------------------+--------------------------------------------------------------------------------------------------------------------------------+
 
 .. code:: python
@@ -306,7 +306,7 @@ See the following explanation of the table columns:
 
 .. parsed-literal::
 
-    <matplotlib.collections.PathCollection at 0x7f32853a2c88>
+    <matplotlib.collections.PathCollection at 0x7fc000aea240>
 
 
 
@@ -318,76 +318,108 @@ As you can see, the points are quite nicely crowded in a meaningful
 range, with some outliers. As a reminder, the dataset was acquired with
 a 15 min interval, which produces quite some error.
 
-Also, bear in mind that the results here are from one multi-point
-position, while the whole dataset contains dozens, thus, the graphs will
-not be identical to those in the paper, which are based on the whole
-dataset.
+Let's look into a unified growth rate ...
+
+.. code:: python
+
+    division_events_on_first_day = results.query('about_to_divide == 1 and timepoint < 24*60*60')
+    
+    doubling_times = numpy.array(division_events_on_first_day.division_age)
+    
+    print("Unfiltered growth rate on first day µ=%f" % (numpy.log(2)/doubling_times.mean(),))
+
+
+.. parsed-literal::
+
+    Unfiltered growth rate on first day µ=0.483987
+
+
+That way, the data contains quite some outliers, let's remove them by
+applying some biological prior knowledge:
+
+.. code:: python
+
+    mu_min = 0.01
+    mu_max = 1.00
+    
+    filtered_doubling_times = doubling_times[
+        ((numpy.log(2)/mu_min) > doubling_times) & (doubling_times > (numpy.log(2)/mu_max))
+    ]
+    
+    print("Filtered growth rate on first day µ=%f" % (numpy.log(2)/filtered_doubling_times.mean(),))
+
+
+.. parsed-literal::
+
+    Filtered growth rate on first day µ=0.403989
+
 
 Now, how do we generate an overall growth rate graph from the scattered
 points? We use the simple moving average to unify many points into a
-single points (over time).
+single points (over time). [And group the points by their timepoints to
+have a measure if enough division events occured within a certain time
+frame. There are multiple possible approaches here, and if precise µ is
+desired, the graph should be based on filtered data as well!]
 
 .. code:: python
 
     #division_events = division_events.sort('timepoint')
     division_events = division_events.query('timepoint < (50.0 * 60.0 * 60.0)')
     
-    window_width = 4
+    grouped_division_events = division_events.groupby(by=('timepoint_num',))
     
-    sma_time = pandas.rolling_mean(numpy.array(division_events.timepoint), window_width)
-    sma_divison_age = pandas.rolling_mean(numpy.array(division_events.division_age), window_width)
-    sma_mu = numpy.log(2) / sma_divison_age
+    window_width = 25
     
-    grouped = division_events.groupby(by='timepoint_num')
+    sma_division_age = pandas.rolling_mean(numpy.array(grouped_division_events.mean().division_age), window_width)
+    sma_time = pandas.rolling_mean(numpy.array(grouped_division_events.mean().timepoint), window_width)
+    sma_count = pandas.rolling_mean(numpy.array(grouped_division_events.count().division_age), window_width)
+    sma_division_age[sma_count < 5] = float('nan')
     
-    t = pandas.rolling_mean(numpy.array(grouped.timepoint.mean()), window_width)  / (60.0*60.0)
-    count = pandas.rolling_mean(numpy.array(grouped.division_age.count()), window_width)
-    ages = pandas.rolling_mean(numpy.array(grouped.division_age.mean()), window_width)
-    ages[count < 2] = float('nan')
-    mu = numpy.log(2)/ages
-    
+    t = sma_time / 60.0 / 60.0
+    mu = numpy.log(2)/sma_division_age
     
     pylab.title('Growth graph')
     pylab.xlabel('Experiment time [h]')
     pylab.ylabel('Growth rate µ [h⁻¹]')
     pylab.plot(t, mu)
-    pylab.xlim(0, 50)
+    pylab.ylim(0, 0.6)
+    pylab.xlim(0, 60)
     pylab.show()
 
 
 
-.. image:: _static/Example_Analysis_files/Example_Analysis_7_0.svg
+.. image:: _static/Example_Analysis_files/Example_Analysis_11_0.svg
 
 
 .. code:: python
 
     fluor = results.query('fluorescence_0 == fluorescence_0')  # while the example dataset does not contain nans, other data might
-    fluor = fluor.sort('timepoint')
+    fluor = fluor.groupby(by=('timepoint_num'))
     
-    window_width = 500  # we have a lot more fluorescence data (for every cell actually), so we can use a wider window
-    
-    
-    fluor_time = pandas.rolling_mean(numpy.array(fluor.timepoint), window_width)  / (60.0*60.0)
-    fluor_value = pandas.rolling_mean(numpy.array(fluor.fluorescence_0), window_width)
+    fluor_time = pandas.rolling_mean(numpy.array(fluor.timepoint.mean()), window_width)  / (60.0*60.0)
+    fluor_value = pandas.rolling_mean(numpy.array(fluor.fluorescence_0.mean()), window_width)
     
     pylab.title('Growth and fluorescence graph')
     pylab.xlabel('Experiment time [h]')
     pylab.ylabel('Growth rate µ [h⁻¹]')
+    pylab.ylim(0, 0.6)
     pylab.plot(t, mu)
     pylab.twinx()
     pylab.ylabel('Fluorescence [a.u.]')
     pylab.plot(0, 0, label='µ')  # to add a legend entry
     pylab.plot(fluor_time, fluor_value, label='Fluorescence', color='yellow')
-    pylab.xlim(0, 50)
+    pylab.xlim(0, 60)
     pylab.legend()
     pylab.show()
 
 
 
-.. image:: _static/Example_Analysis_files/Example_Analysis_8_0.svg
+.. image:: _static/Example_Analysis_files/Example_Analysis_12_0.svg
 
 
-Let's look into some single cell data, *e.g.*, cell length:
+Let's look into some single cell data, *e.g.*, cell length or
+fluorescence (note that different timepoints are used then in the
+paper):
 
 .. code:: python
 
@@ -412,7 +444,7 @@ Let's look into some single cell data, *e.g.*, cell length:
 
 
 
-.. image:: _static/Example_Analysis_files/Example_Analysis_10_0.svg
+.. image:: _static/Example_Analysis_files/Example_Analysis_14_0.svg
 
 
 .. code:: python
@@ -429,7 +461,7 @@ Let's look into some single cell data, *e.g.*, cell length:
 
 
 
-.. image:: _static/Example_Analysis_files/Example_Analysis_11_0.svg
+.. image:: _static/Example_Analysis_files/Example_Analysis_15_0.svg
 
 
 That's it so far. We hope this notebook gave you some ideas how to

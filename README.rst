@@ -15,9 +15,9 @@ License
 
 Prerequisites
 -------------
+*molyso* needs Python 3, if you are using Windows, we recommend WinPython_, as it contains the necessary modules already. Pick a >=3.4 64 bit version.
 
-*molyso* needs Python 3, if you are using Windows, we recommend WinPython [ https://winpython.github.io ], as it contains
- the necessary module already. Pick a >=3.4 64 bit version.
+.. _WinPython: https://winpython.github.io
 
 If you are using Ubuntu, install the necessary packages via:
 
