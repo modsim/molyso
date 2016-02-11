@@ -196,7 +196,11 @@ class OMETiffStack(MultiImageStack):
             'calibration': lambda: image['PhysicalSizeX'] * subsampling_spatial,
             'channels': lambda: image['SizeC'],
             'fluorescenceChannels': lambda: list(range(1, image['SizeC'])),
-            'position': lambda: (image['PositionX'], image['PositionY'], image['PositionZ'],),
+            'position': lambda: (
+                image['PositionX'] if 'PositionX' in image else float('nan'),
+                image['PositionY'] if 'PositionY' in image else float('nan'),
+                image['PositionZ'] if 'PositionZ' in image else float('nan'),
+            ),
             'time': lambda: image['DeltaT'],
             'timepoints': lambda: image['SizeT'] // subsampling_temporal,
             'multipoints': lambda: len(self.images)
