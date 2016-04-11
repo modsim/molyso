@@ -28,7 +28,7 @@ def smooth(signal, kernel):
     return numpy.convolve(
         kernel / kernel.sum(),
         numpy.r_[signal[kernel.size - 1:0:-1], signal, signal[-1:-kernel.size:-1]],
-        mode='valid')[kernel.size / 2 - 1:-kernel.size / 2][0:len(signal)]
+        mode='valid')[kernel.size // 2 - 1:-kernel.size // 2][0:len(signal)]
 
 
 def hamming_smooth(signal, window_width, no_cache=False):

@@ -73,7 +73,7 @@ class Channel(object):
         :param image:
         :return:
         """
-        return image[self.real_top:self.real_bottom, self.left:self.right].copy()
+        return image[int(self.real_top):int(self.real_bottom), int(self.left):int(self.right)].copy()
 
     def get_coordinates(self):
         """
