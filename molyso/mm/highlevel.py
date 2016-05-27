@@ -56,7 +56,7 @@ def banner():
     """
     return r"""
      \   /\  /\  /                             -------------------------
-      | | |O| | |    molyso                    Developed  2013 - 2015 by
+      | | |O| | |    molyso                    Developed  2013 - 2016 by
       | | | | |O|                              Christian   C.  Sachs  at
       |O| |O| |O|    MOther    machine         ModSim / Microscale Group
       \_/ \_/ \_/    anaLYsis SOftware         Research  Center  Juelich
