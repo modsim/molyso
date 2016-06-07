@@ -3,11 +3,32 @@
 molyso Readme
 =============
 
+.. image:: https://img.shields.io/pypi/v/molyso.svg
+   :target: https://pypi.python.org/pypi/molyso
+
+.. image:: https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat
+   :target: https://molyso.readthedocs.io/en/latest/
+
+.. image:: https://img.shields.io/pypi/l/molyso.svg
+   :target: https://opensource.org/licenses/BSD-2-Clause
+
+.. image:: https://zenodo.org/badge/doi/10.5281/zenodo.53764.svg
+   :target: https://dx.doi.org/10.5281/zenodo.53764
+   
+
 Publication
 -----------
 When using *molyso* for scientific applications, cite our publication, which is currently in preparation!
 
     *Sachs et al. ...*
+
+Example Datasets
+----------------
+You can find example datasets (as used in the publication) deposited at zenodo `DOI: 10.5281/zenodo.53764 <https://dx.doi.org/10.5281/zenodo.53764>`_.
+
+Documentation
+-------------
+Documentation can be built using sphinx, but is available online as well at `Read the Docs <https://molyso.readthedocs.io/en/latest/>`_.
 
 License
 -------
