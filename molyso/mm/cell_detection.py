@@ -95,7 +95,7 @@ class Cell(object):
         :return: image
         :rtype: numpy.ndarray
         """
-        return channel_image[self.local_top:self.local_bottom, :]
+        return channel_image[int(self.local_top):int(self.local_bottom), :]
 
     def __lt__(self, other_cell):
         return self.local_top < other_cell.local_top

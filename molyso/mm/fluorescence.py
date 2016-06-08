@@ -196,8 +196,8 @@ class FluorescentImage(Image):
                 previous_channel = next(channel_iterator)
                 for n, next_channel in enumerate(channel_iterator):
                     background_fragment = fluorescence_image[
-                        next_channel.real_top:next_channel.real_bottom,
-                        previous_channel.right:next_channel.left
+                        int(next_channel.real_top):int(next_channel.real_bottom),
+                        int(previous_channel.right):int(next_channel.left)
                     ]
                     background_fluorescence_means[n, 0] = background_fragment.mean()
                     background_fluorescence_means[n, 1] = background_fragment.size
