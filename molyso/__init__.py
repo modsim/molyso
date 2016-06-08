@@ -62,7 +62,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = "Christian C. Sachs"
 
-__version__ = '1.0'
+__version__ = '1.0.1'
 
 __citation__ = \
     """Image-based Single Cell Profiling:
