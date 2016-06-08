@@ -66,9 +66,9 @@ class OMETiffStack(MultiImageStack):
         :param pa:
         :raise RuntimeError:
         """
-        if pa['BigEndian'] == 'true':
+        if 'BigEndian' in pa and pa['BigEndian'] == 'true':
             raise RuntimeError("Unsupported Pixel format")
-        if pa['Interleaved'] == 'true':
+        if 'Interleaved' in pa and pa['Interleaved'] == 'true':
             raise RuntimeError("Unsupported Pixel format")
 
     def _parse_ome_xml(self, xml):
