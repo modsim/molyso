@@ -59,6 +59,12 @@ Via the Python Package Index (recommended)
 
     > pip3 install --user molyso
 
+Via the Python Package Index with the github Version
+####################################################
+
+.. code-block:: bash
+
+    > pip3 install --user git+https://github.com/modsim/molyso
 
 From github
 ###########
@@ -68,15 +74,6 @@ From github
     > git clone https://github.com/modsim/molyso
     > cd molyso
     > python3 setup.py install --user
-
-From a source distribution zip archive or wheel
-###############################################
-
-.. code-block:: bash
-
-    > pip3 install --user molyso-1.0.0.zip
-    > # pip3 install --user molyso-1.0-py2.py3-none-any.whl
-
 
 First Steps
 -----------
