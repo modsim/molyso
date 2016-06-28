@@ -97,6 +97,7 @@ def create_argparser():
     argparser.add_argument('-nb', '--no-banner', dest='nb', default=False, action='store_true')
     argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
     argparser.add_argument('-debug', '--debug', dest='debug', default=False, action='store_true')
+    argparser.add_argument('-do', '--detect-once', dest='detect_once', default=False, action='store_true')
     argparser.add_argument('-nci', '--no-channel-images', dest='keepchan', default=True, action='store_false')
     argparser.add_argument('-cfi', '--channel-fluorescence-images', dest='keepfluorchan',
                            default=False, action='store_true')
@@ -160,7 +161,7 @@ first_frame_cache = {}
 first_to_look_at = 0
 
 
-def check_or_get_first_frame(pos):
+def check_or_get_first_frame(pos, args):
     """
 
     :param pos:
@@ -181,6 +182,20 @@ def check_or_get_first_frame(pos):
         image.autorotate()
         image.autoregistration(image)
 
+        if args.detect_once:
+            from .channel_detection import find_channels
+
+            def _find_channels(im):
+                image._find_channels_positions = find_channels(im)
+                return image._find_channels_positions
+
+            image.find_channels_function = _find_channels
+
+        image.find_channels()
+
+        if args.detect_once:
+            delattr(image, 'find_channels_function')
+
         first_frame_cache[pos] = image
 
         return image
@@ -194,7 +209,7 @@ def processing_frame(args, t, pos):
     :param pos:
     :return:
     """
-    first = check_or_get_first_frame(pos)
+    first = check_or_get_first_frame(pos, args)
 
     if ims.get_meta('channels') > 1:
         image = FluorescentImage()
@@ -212,10 +227,33 @@ def processing_frame(args, t, pos):
         image.keep_fluorescences_image = args.keepfluorchan
         image.pack_fluorescences_image = args.channel_fluorescence_bits
 
+    if args.detect_once:
+        image.angle = first.angle
+
     image.autorotate()
     image.autoregistration(first)
 
+    if args.detect_once:
+        from ..generic.registration import shift_image
+
+        image.image = shift_image(image.image, image.shift)
+
+        if type(image) == FluorescentImage:
+            for n in range(len(image.image_fluorescences)):
+                image.image_fluorescences[n] = shift_image(image.image_fluorescences[n], image.shift)
+
+        image.shift = [0.0, 0.0]
+
+        def _find_channels_function(im):
+            return first._find_channels_positions
+
+        image.find_channels_function = _find_channels_function
+
     image.find_channels()
+
+    if args.detect_once:
+        delattr(image, 'find_channels_function')
+
     image.find_cells_in_channels()
 
     image.clean()

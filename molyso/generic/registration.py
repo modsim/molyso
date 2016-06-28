@@ -60,7 +60,9 @@ def shift_image(image, shift, background='input'):
     :param background:
     :return: :raise ValueError:
     """
+
     vertical, horizontal = shift
+    vertical, horizontal = round(vertical), round(horizontal)
     height, width = image.shape
 
     if vertical < 0:
