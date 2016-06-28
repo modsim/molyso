@@ -123,7 +123,11 @@ class Channels(object):
         if not bootstrap:
             return
 
-        positions, (upper, lower) = find_channels(self.image.image)
+        find_channels_function = find_channels
+        if hasattr(self.image, 'find_channels_function'):
+            find_channels_function = self.image.find_channels_function
+
+        positions, (upper, lower) = find_channels_function(self.image.image)
 
         for begin, end in positions:
             self.channels_list.append(self.__class__.channel_type(self.image, begin, end, upper, lower))
