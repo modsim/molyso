@@ -236,6 +236,12 @@ class PlainTiffStack(MultiImageStack):
 
         self.fp = self.tiff.pages[0]
 
+        self.series = self.tiff.series[0]
+        self._series_array = None
+
+        if self.series.axes not in {'ZYX', 'TYX', 'ZCYX', 'TCYX'}:
+            warnings.warn("Unsupported TIFF structure, processing will most likely fail.")
+
     # fix to a very nasty bug:
     # if multiprocessing on linux uses fork, the file descriptor
     # of the TiffFile object becomes shared between the child processes
@@ -256,12 +262,33 @@ class PlainTiffStack(MultiImageStack):
         # noinspection PyProtectedMember
         self.tiff._fh.open()
 
+    @property
+    def series_array(self):
+        if self._series_array is None:
+                self._series_array = self.series.asarray()
+        return self._series_array
+
     def _get_image(self, **kwargs):
         subsampling_temporal = int(self.parameters['subsample_t'])
         subsampling_spatial = int(self.parameters['subsample_xy'])
-        return self.tiff.pages[kwargs['t'] * subsampling_temporal].asarray()[
-               ::subsampling_spatial, ::subsampling_spatial
-                ]
+
+        channel = 0
+        if 'channel' in kwargs:
+            channel = kwargs['channel']
+        if channel in self.__class__.SimpleMapping:
+            channel = self.__class__.SimpleMapping[channel]
+
+        if len(self.series.axes) == 4:
+            return self.series_array[
+                   kwargs['t'] * subsampling_temporal,
+                   channel,
+                   ::subsampling_spatial,
+                   ::subsampling_spatial
+                   ]
+        else:
+            return self.tiff.pages[kwargs['t'] * subsampling_temporal].asarray()[
+                   ::subsampling_spatial, ::subsampling_spatial
+                    ]
 
     def _get_meta(self, *args, **kwargs):
         what = args[0]
@@ -278,11 +305,11 @@ class PlainTiffStack(MultiImageStack):
 
         return {
             'calibration': lambda: float(self.parameters['calibration']) * subsampling_spatial,
-            'channels': lambda: 1,
+            'channels': lambda: self.series_array.shape[1] if len(self.series.axes) == 4 else 1,
             'fluorescenceChannels': lambda: [],
             'position': lambda: (0.0, 0.0, 0.0,),
             'time': lambda: float(self.parameters['interval']) * t * subsampling_temporal,
-            'timepoints': lambda: len(self.tiff.pages) // subsampling_temporal,
+            'timepoints': lambda: (self.series_array.shape[0] if len(self.series.axes) == 4 else len(self.tiff.pages)) // subsampling_temporal,
             'multipoints': lambda: 1
         }[what]()
 
