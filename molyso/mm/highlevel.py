@@ -201,7 +201,7 @@ def check_or_get_first_frame(pos, args):
         return image
 
 
-def processing_frame(args, t, pos):
+def processing_frame(args, t, pos, clean=True):
     """
 
     :param args:
@@ -209,6 +209,7 @@ def processing_frame(args, t, pos):
     :param pos:
     :return:
     """
+
     first = check_or_get_first_frame(pos, args)
 
     if ims.get_meta('channels') > 1:
@@ -256,9 +257,11 @@ def processing_frame(args, t, pos):
 
     image.find_cells_in_channels()
 
-    image.clean()
+    if clean:
 
-    image.flatten()
+        image.clean()
+
+        image.flatten()
 
     return image
 
@@ -303,8 +306,6 @@ def processing_setup(args):
     global ims
     global first_to_look_at
 
-    first_to_look_at = args.timepoints[0]
-
     if args.modules:
         setup_modules(args.modules)
 
@@ -314,6 +315,14 @@ def processing_setup(args):
         ims = MultiImageStack.open(args.input)
     else:
         ims.notify_fork()
+
+    if isinstance(args.multipoints, str):
+        args.multipoints = parse_range(args.multipoints, maximum=ims.get_meta('multipoints'))
+
+    if isinstance(args.timepoints, str):
+        args.timepoints = parse_range(args.timepoints, maximum=ims.get_meta('timepoints'))
+
+    first_to_look_at = args.timepoints[0]
 
     correct_windows_signal_handlers()
 

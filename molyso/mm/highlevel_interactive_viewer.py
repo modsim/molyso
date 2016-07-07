@@ -8,7 +8,6 @@ from __future__ import division, unicode_literals, print_function
 import warnings
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
-from .image import Image
 from ..debugging.debugplot import inject_poly_drawing_helper
 
 
@@ -25,10 +24,16 @@ def interactive_main(args):
     from matplotlib.widgets import Slider
     from .image import cell_color, channel_color
 
-    ims = MultiImageStack.open(args.input)
+    from .highlevel import processing_frame, processing_setup
+
+    processing_setup(args)
+
+    from .highlevel import ims
 
     mp_max = ims.get_meta('multipoints')
     tp_max = ims.get_meta('timepoints')
+
+    fluor_chan = ims.get_meta('fluorescenceChannels')
 
     fig, ax = plt.subplots()
 
@@ -46,6 +51,7 @@ def interactive_main(args):
 
     env = {'show': True, 'rotated': True}
 
+
     def update(_):
         """
 
@@ -56,11 +62,6 @@ def interactive_main(args):
 
         fig.canvas.set_window_title("Image Viewer - [BUSY]")
 
-        image = ims.get_image(t=t - 1, pos=pos - 1, channel=ims.__class__.Phase_Contrast, float=True)
-
-        i = Image()
-        i.setup_image(image)
-
         inject_poly_drawing_helper(plt)
 
         plt.rcParams['image.cmap'] = 'gray'
@@ -70,12 +71,9 @@ def interactive_main(args):
 
         plt.suptitle('[left/right] timepoint [up/down] multipoint [h] hide analysis [r] toggle rotated (in raw mode)')
 
-        if env['show'] or env['rotated']:
-            i.autorotate()
+        i = processing_frame(args, t, pos, clean=False)
 
         if env['show']:
-            i.find_channels()
-            i.find_cells_in_channels()
             i.debug_print_cells(plt)
         else:
             if env['rotated']:
@@ -119,6 +117,8 @@ def interactive_main(args):
         elif event.key == 'r':
             env['rotated'] = not env['rotated']
             update(None)
+        elif event.key == 'f':
+            env['']
         elif event.key == 'q':
             raise SystemExit
 
