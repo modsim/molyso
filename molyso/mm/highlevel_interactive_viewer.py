@@ -8,7 +8,6 @@ from __future__ import division, unicode_literals, print_function
 import warnings
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
-from .image import Image
 from ..debugging.debugplot import inject_poly_drawing_helper
 
 
@@ -25,10 +24,16 @@ def interactive_main(args):
     from matplotlib.widgets import Slider
     from .image import cell_color, channel_color
 
-    ims = MultiImageStack.open(args.input)
+    from .highlevel import processing_frame, processing_setup
 
-    mp_max = ims.get_meta('multipoints')
-    tp_max = ims.get_meta('timepoints')
+    processing_setup(args)
+
+    from .highlevel import ims
+
+    mp_max = ims.get_meta('multipoints') - 1
+    tp_max = ims.get_meta('timepoints') - 1
+
+    fluor_chan = list(range(len(ims.get_meta('fluorescenceChannels'))))
 
     fig, ax = plt.subplots()
 
@@ -41,10 +46,11 @@ def interactive_main(args):
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
-        multipoint = Slider(ax_mp, 'Multipoint', 1, mp_max, valinit=1, valfmt="%d", color=cell_color)
-        timepoint = Slider(ax_tp, 'Timepoint', 1, tp_max, valinit=1, valfmt="%d", color=cell_color)
+        multipoint = Slider(ax_mp, 'Multipoint', 0, mp_max, valinit=0, valfmt="%d", color=cell_color)
+        timepoint = Slider(ax_tp, 'Timepoint', 0, tp_max, valinit=0, valfmt="%d", color=cell_color)
 
-    env = {'show': True, 'rotated': True}
+    env = {'show': True, 'rotated': True, 'fluor_ind': False}
+
 
     def update(_):
         """
@@ -56,11 +62,6 @@ def interactive_main(args):
 
         fig.canvas.set_window_title("Image Viewer - [BUSY]")
 
-        image = ims.get_image(t=t - 1, pos=pos - 1, channel=ims.__class__.Phase_Contrast, float=True)
-
-        i = Image()
-        i.setup_image(image)
-
         inject_poly_drawing_helper(plt)
 
         plt.rcParams['image.cmap'] = 'gray'
@@ -70,12 +71,14 @@ def interactive_main(args):
 
         plt.suptitle('[left/right] timepoint [up/down] multipoint [h] hide analysis [r] toggle rotated (in raw mode)')
 
-        if env['show'] or env['rotated']:
-            i.autorotate()
+        i = processing_frame(args, t, pos, clean=False)
 
-        if env['show']:
-            i.find_channels()
-            i.find_cells_in_channels()
+        if env['fluor_ind'] is not False:
+            if env['show']:
+                i.debug_print_cells(plt)
+            plt.title("Fluorescence Image (Fluorescence channel #%d)" % (env['fluor_ind'],))
+            mapping = plt.imshow(i.image_fluorescences[env['fluor_ind']])
+        elif env['show']:
             i.debug_print_cells(plt)
         else:
             if env['rotated']:
@@ -85,8 +88,8 @@ def interactive_main(args):
                 plt.title("Image (raw)")
                 plt.imshow(i.original_image)
 
-        fig.canvas.set_window_title("Image Viewer - %s timepoint %d/%d multipoint %d/%d" %
-                                    (args.input, t, tp_max, pos, mp_max))
+        fig.canvas.set_window_title("Image Viewer - %s timepoint #%d %d/%d multipoint #%d %d/%d" %
+                                    (args.input, t, 1+t, 1+tp_max, pos, 1+pos, 1+mp_max))
 
         plt.draw()
 
@@ -119,6 +122,13 @@ def interactive_main(args):
         elif event.key == 'r':
             env['rotated'] = not env['rotated']
             update(None)
+        elif event.key == 'F':
+            if len(fluor_chan) > 0:
+                if env['fluor_ind'] is False:
+                    env['fluor_ind'] = fluor_chan[0]
+                else:
+                    env['fluor_ind'] = False if env['fluor_ind'] == len(fluor_chan) - 1 else current + 1
+                update(None)
         elif event.key == 'q':
             raise SystemExit
 

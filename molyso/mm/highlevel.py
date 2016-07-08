@@ -19,7 +19,7 @@ import traceback
 import logging
 
 from ..debugging import DebugPlot
-from ..generic.tunable import TunableManager
+from ..generic.tunable import TunableManager, tunable
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
     silent_progress_bar, fancy_progress_bar, prettify_numpy_array, bits_to_numpy_type
@@ -110,6 +110,7 @@ def create_argparser():
                            const='everything', type=str, nargs='?')
     argparser.add_argument('-nt', '--no-tracking', dest='no_tracking', default=False, action='store_true')
     argparser.add_argument('-t', '--tunables', dest='tunables', type=str, default=None)
+    argparser.add_argument('-s', '--set-tunable', dest='tunable_list', type=list, nargs=2, default=None, action='append')
     argparser.add_argument('-pt', '--print-tunables', dest='print_tunables', default=False, action='store_true')
     argparser.add_argument('-rt', '--read-tunables', dest='read_tunables', type=str, default=None)
     argparser.add_argument('-wt', '--write-tunables', dest='write_tunables', type=str, default=None)
@@ -127,12 +128,21 @@ def setup_image(i, local_ims, t, pos):
     """
     image = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Phase_Contrast, float=True)
 
-    i.setup_image(image)
+    left, right, top, bottom = (
+        tunable('preprocess.crop.left', 0, description="Cropping, left border."),
+        tunable('preprocess.crop.right', 0, description="Cropping, right border."),
+        tunable('preprocess.crop.top', 0, description="Cropping, top border."),
+        tunable('preprocess.crop.bottom', 0, description="Cropping, bottom border."))
+
+    right = None if right == 0 else -right
+    bottom = None if bottom == 0 else -bottom
+
+    i.setup_image(image[top:bottom, left:right])
 
     if getattr(i, 'setup_add_fluorescence', False) and local_ims.get_meta('channels') > 1:
         for channel in local_ims.get_meta('fluorescenceChannels'):
             fimg = local_ims.get_image(t=t, pos=pos, channel=channel, float=True)
-            i.setup_add_fluorescence(fimg)
+            i.setup_add_fluorescence(fimg[top:bottom, left:right])
 
     i.multipoint = int(pos)
     i.timepoint_num = int(t)
@@ -201,7 +211,7 @@ def check_or_get_first_frame(pos, args):
         return image
 
 
-def processing_frame(args, t, pos):
+def processing_frame(args, t, pos, clean=True):
     """
 
     :param args:
@@ -209,6 +219,7 @@ def processing_frame(args, t, pos):
     :param pos:
     :return:
     """
+
     first = check_or_get_first_frame(pos, args)
 
     if ims.get_meta('channels') > 1:
@@ -256,9 +267,11 @@ def processing_frame(args, t, pos):
 
     image.find_cells_in_channels()
 
-    image.clean()
+    if clean:
 
-    image.flatten()
+        image.clean()
+
+        image.flatten()
 
     return image
 
@@ -278,6 +291,15 @@ def setup_tunables(args, log=None):
         if log:
             log.info("Loaded command line tunables: %(data)s" % {'data': repr(tunables)})
         TunableManager.load_tunables(tunables)
+
+    if args.tunable_list:
+        tunables = {}
+        for k, v in args.tunable_list:
+            tunables[''.join(k)] = ''.join(v)
+        if log:
+            log.info("Loaded command line tunables: %(data)s" % {'data': repr(tunables)})
+        TunableManager.load_tunables(tunables)
+
 
 def setup_modules(modules):
     """
@@ -303,8 +325,6 @@ def processing_setup(args):
     global ims
     global first_to_look_at
 
-    first_to_look_at = args.timepoints[0]
-
     if args.modules:
         setup_modules(args.modules)
 
@@ -314,6 +334,14 @@ def processing_setup(args):
         ims = MultiImageStack.open(args.input)
     else:
         ims.notify_fork()
+
+    if isinstance(args.multipoints, str):
+        args.multipoints = parse_range(args.multipoints, maximum=ims.get_meta('multipoints'))
+
+    if isinstance(args.timepoints, str):
+        args.timepoints = parse_range(args.timepoints, maximum=ims.get_meta('timepoints'))
+
+    first_to_look_at = args.timepoints[0]
 
     correct_windows_signal_handlers()
 
