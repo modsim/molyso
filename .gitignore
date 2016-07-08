@@ -1,0 +1,29 @@
+local/
+tmp/
+
+build/
+dist/
+_build/
+
+.ipynb_checkpoints/
+
+# IDE files
+
+.idea/workspace.xml
+.idea/
+
+# Python files
+*.pyc
+MANIFEST
+*.egg-info/
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
