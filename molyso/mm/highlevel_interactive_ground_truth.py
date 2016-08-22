@@ -330,7 +330,7 @@ def interactive_ground_truth_main(args, tracked_results):
                             'growth_rate': mu[num],
                             'growth_rate_channel_mean': numpy.mean(mu),
                             'division_age': s_to_h(deltas[num]),
-                            'growth_start': s_to_h(times[num, 1]),
+                            'growth_start': s_to_h(times[num, 0]),
                             'growth_end': s_to_h(times[num, 1]),
                         })
 
