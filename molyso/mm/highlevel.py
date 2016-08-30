@@ -28,6 +28,7 @@ from ..generic.etc import Sqlite3Cache as Cache
 
 from ..imageio.imagestack import MultiImageStack
 from ..imageio.imagestack_ometiff import OMETiffStack
+from ..imageio.imagestack_czi import CziStack
 from .image import Image
 from .fluorescence import FluorescentImage
 
@@ -37,6 +38,7 @@ from .highlevel_interactive_viewer import interactive_main
 from .highlevel_interactive_ground_truth import interactive_ground_truth_main
 
 OMETiffStack = OMETiffStack
+CziStack = CziStack
 
 
 class Hooks(object):
