@@ -78,7 +78,7 @@ class CziStack(MultiImageStack):
         ) * 1E6
 
         calibration_y = float(
-            self.metadata.find("./Metadata/Scaling/Items/Distance[@Id='X']/Value").text
+            self.metadata.find("./Metadata/Scaling/Items/Distance[@Id='Y']/Value").text
         ) * 1E6
 
         assert calibration_x == calibration_y
