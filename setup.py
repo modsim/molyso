@@ -15,14 +15,7 @@ setup(
     author=molyso.__author__,
     author_email='c.sachs@fz-juelich.de',
     url='https://github.com/modsim/molyso',
-    packages=[  # find_packages
-        'molyso',
-        'molyso.debugging',
-        'molyso.generic',
-        'molyso.test',
-        'molyso.imageio',
-        'molyso.mm',
-    ],
+    packages=find_packages(),
     scripts=['molyso.py'],
     requires=['numpy', 'scipy', 'matplotlib'],
     extras_require={
