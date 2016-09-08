@@ -27,18 +27,17 @@ def interactive_ground_truth_main(args, tracked_results):
     :return: :raise SystemExit:
     """
 
+    acceptable_pos_chans = \
+        {p: list(range(len(tracked_results[list(tracked_results.keys())[p]].channel_accumulator.keys())))
+            for p in range(len(tracked_results.keys())) if len(tracked_results[list(tracked_results.keys())[p]].channel_accumulator.keys()) > 0}
+
     def plots_info():
         """
         Outputs some information about the data set.
         """
-        print("Positions " + str(list(tracked_results.keys())))
-        print("Channels per Position " + str(
-            {p: list(tracked_results[p].channel_accumulator.keys()) for p in list(tracked_results.keys())}
-        ))
 
-    acceptable_pos_chans = \
-        {p: range(len(tracked_results[list(tracked_results.keys())[p]].channel_accumulator.keys()))
-            for p in range(len(tracked_results.keys()))}
+        print("Positions " + str(list(tracked_results.keys())))
+        print("Acceptable channels per position " + repr(acceptable_pos_chans))
 
     plots_info()
 
@@ -61,7 +60,10 @@ def interactive_ground_truth_main(args, tracked_results):
             pickle.dump(all_envs, inner_fp, protocol=pickle.HIGHEST_PROTOCOL)
             print("Saved data to %s" % (ground_truth_data,))
 
-    next_dataset = [0, 0]
+    lowest_position = min(acceptable_pos_chans.keys())
+    highest_position = max(acceptable_pos_chans.keys())
+
+    next_dataset = [lowest_position, next(iter(acceptable_pos_chans[lowest_position]))]
 
     def perform_it():
         """
@@ -258,17 +260,36 @@ def interactive_ground_truth_main(args, tracked_results):
                 print(inner_mu, numpy.mean(inner_mu))
 
             def try_new_poschan(p, c):
-                # next_pos, next_chan
-                # next_dataset
                 """
 
                 :param p:
                 :param c:
                 :return:
                 """
+
+                next_pos, next_chan = next_dataset
+
+                if p == 1:
+                    while (next_pos + p) not in acceptable_pos_chans and (next_pos + p) < highest_position:
+                        p += 1
+                elif p == -1:
+                    while (next_pos + p) not in acceptable_pos_chans and (next_pos + p) > lowest_position:
+                        p -= 1
+
                 if (next_pos + p) not in acceptable_pos_chans:
                     print("Position does not exist")
                     return
+
+                if p != 0:
+                    c = 0
+                    next_chan = acceptable_pos_chans[next_pos + p][0]
+
+                if c == 1:
+                    while (next_chan + c) not in acceptable_pos_chans[next_pos + p] and (next_chan + c) < max(acceptable_pos_chans[next_pos + p]):
+                        c += 1
+                elif c == -1:
+                    while (next_chan + c) not in acceptable_pos_chans[next_pos + p] and (next_chan + c) > min(acceptable_pos_chans[next_pos + p]):
+                        c -= 1
 
                 if (next_chan + c) not in acceptable_pos_chans[next_pos + p]:
                     print("Channel does not exist")
