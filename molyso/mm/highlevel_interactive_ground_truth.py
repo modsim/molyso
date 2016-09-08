@@ -122,7 +122,7 @@ def interactive_ground_truth_main(args, tracked_results):
 
         low, high = int(numpy.floor(min_top)), int(numpy.ceil(max_bottom))
 
-        large_image = numpy.zeros((high - low, data[-1, n_width_cumsum]), dtype=some_channel_image.dtype)
+        large_image = numpy.zeros((high - low, int(data[-1, n_width_cumsum])), dtype=some_channel_image.dtype)
 
         for n, cc in enumerate(channels):
             lower_border = int(numpy.floor(data[n, n_top] - low))
