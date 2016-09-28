@@ -14,13 +14,21 @@ molyso Readme
 
 .. image:: https://zenodo.org/badge/doi/10.5281/zenodo.53764.svg
    :target: https://dx.doi.org/10.5281/zenodo.53764
+
+.. image:: https://zenodo.org/badge/doi/10.1371/journal.pone.0163453.svg
+   :target: https://dx.doi.org/10.1371/journal.pone.0163453
    
 
 Publication
 -----------
-When using *molyso* for scientific applications, cite our publication, which is currently in preparation!
+When using *molyso* for scientific applications, cite our publication:
 
-    *Sachs et al. ...*
+    Sachs CC, Grünberger A, Helfrich S, Probst C, Wiechert W, Kohlheyer D, Nöh K (2016)
+    Image-Based Single Cell Profiling:
+    High-Throughput Processing of Mother Machine Experiments.
+    PLoS ONE 11(9): e0163453. doi: 10.1371/journal.pone.0163453
+
+It is available on the PLoS ONE homepage at `DOI: 10.1371/journal.pone.0163453 <https://dx.doi.org/10.1371/journal.pone.0163453>`_
 
 Example Datasets
 ----------------
@@ -96,19 +104,21 @@ And you will be greeted by the help screen of molyso:
         --------------------------------------------------------------------
         If you use this software in a publication, cite our paper:
 
-        Image-based Single Cell Profiling:
-        High-Throughput Processing of Mother Machine Experiments
 
-        Sachs et al. (In preparation)
+        Sachs CC, Grünberger A, Helfrich S, Probst C, Wiechert W, Kohlheyer D, Nöh K (2016)
+        Image-Based Single Cell Profiling:
+        High-Throughput Processing of Mother Machine Experiments.
+        PLoS ONE 11(9): e0163453. doi: 10.1371/journal.pone.0163453
 
         --------------------------------------------------------------------
 
     usage: __main__.py [-h] [-m MODULES] [-p] [-gt GROUND_TRUTH] [-ct CACHE_TOKEN]
                        [-tp TIMEPOINTS] [-mp MULTIPOINTS] [-o TABLE_OUTPUT]
-                       [-ot TRACKING_OUTPUT] [-nb] [-cpu MP] [-debug] [-nci]
+                       [-ot TRACKING_OUTPUT] [-nb] [-cpu MP] [-debug] [-do] [-nci]
                        [-cfi] [-ccb CHANNEL_BITS] [-cfb CHANNEL_FLUORESCENCE_BITS]
-                       [-q] [-nc [IGNORECACHE]] [-nt] [-t TUNABLES] [-pt]
-                       [-rt READ_TUNABLES] [-wt WRITE_TUNABLES]
+                       [-q] [-nc [IGNORECACHE]] [-nt] [-t TUNABLES]
+                       [-s TUNABLE_LIST TUNABLE_LIST] [-pt] [-rt READ_TUNABLES]
+                       [-wt WRITE_TUNABLES]
                        input
 
     molyso: MOther machine anaLYsis SOftware
@@ -129,6 +139,7 @@ And you will be greeted by the help screen of molyso:
       -nb, --no-banner
       -cpu MP, --cpus MP
       -debug, --debug
+      -do, --detect-once
       -nci, --no-channel-images
       -cfi, --channel-fluorescence-images
       -ccb CHANNEL_BITS, --channel-image-channel-bits CHANNEL_BITS
@@ -137,6 +148,7 @@ And you will be greeted by the help screen of molyso:
       -nc [IGNORECACHE], --no-cache [IGNORECACHE]
       -nt, --no-tracking
       -t TUNABLES, --tunables TUNABLES
+      -s TUNABLE_LIST TUNABLE_LIST, --set-tunable TUNABLE_LIST TUNABLE_LIST
       -pt, --print-tunables
       -rt READ_TUNABLES, --read-tunables READ_TUNABLES
       -wt WRITE_TUNABLES, --write-tunables WRITE_TUNABLES

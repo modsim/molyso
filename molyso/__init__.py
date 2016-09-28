@@ -62,10 +62,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = "Christian C. Sachs"
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 __citation__ = \
-    """Image-based Single Cell Profiling:
-    High-Throughput Processing of Mother Machine Experiments
-
-    Sachs et al. (In preparation)"""
+    """
+    Sachs CC, Grünberger A, Helfrich S, Probst C, Wiechert W, Kohlheyer D, Nöh K (2016)
+    Image-Based Single Cell Profiling:
+    High-Throughput Processing of Mother Machine Experiments.
+    PLoS ONE 11(9): e0163453. doi: 10.1371/journal.pone.0163453
+"""
