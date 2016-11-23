@@ -105,8 +105,7 @@ class TrackedPosition(object):
         for _ in range(self.n):
             ignorant_next(progress_indicator)
 
-        for t in self.timeslist[self.n + 1:]:
-
+        for t in self.timeslist[self.n:]:
             if image is None:
                 image = self.times[t]
 
@@ -134,6 +133,7 @@ class TrackedPosition(object):
                         current_index]
 
             ignorant_next(progress_indicator)
+
         for index in self.channel_accumulator.keys():
             self.channel_accumulator[index] = [self.channel_accumulator[index][n]
                                                for n in sorted(self.channel_accumulator[index].keys())]
