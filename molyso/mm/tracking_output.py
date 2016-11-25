@@ -266,7 +266,7 @@ def get_object_unique_id(obj):
     return _unique_id_cache[id(obj)]
 
 
-def analyze_tracking(cells, receptor):
+def analyze_tracking(cells, receptor, meta=None):
     """
 
     :param cells:
@@ -288,6 +288,7 @@ def analyze_tracking(cells, receptor):
                 'cellyposition': sa.centroid_1d,
                 'cellxposition': (sa.channel.left + sa.channel.right)/2,
                 'multipoint': sa.channel.image.multipoint,
+                'meta': str(meta) if meta else '',
                 'channel_in_multipoint': sa.channel.image.channels.channels_list.index(sa.channel),
                 'channel_average_cells': cell.tracker.average_cells,
                 'channel_orientation': sa.channel.image.guess_channel_orientation(),

@@ -95,6 +95,7 @@ def create_argparser():
     argparser.add_argument('-tp', '--timepoints', dest='timepoints', default='0-', type=str)
     argparser.add_argument('-mp', '--multipoints', dest='multipoints', default='0-', type=str)
     argparser.add_argument('-o', '--table-output', dest='table_output', type=str, default=None)
+    argparser.add_argument('--meta', '--meta', dest='meta', type=str, default=None)
     argparser.add_argument('-ot', '--output-tracking', dest='tracking_output', type=str, default=None)
     argparser.add_argument('-nb', '--no-banner', dest='nb', default=False, action='store_true')
     argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
@@ -568,7 +569,7 @@ def main():
             iterable = progress_bar(flat_results) if recipient is not sys.stdout else silent_progress_bar(flat_results)
 
             for pos, k, tracking, tracker, channels in iterable:
-                analyze_tracking(tracker_to_cell_list(tracker), lambda x: table_dumper.add(x))
+                analyze_tracking(tracker_to_cell_list(tracker), lambda x: table_dumper.add(x), meta=args.meta)
 
         finally:
             if recipient is not sys.stdout:
@@ -590,10 +591,10 @@ def main():
 
             log.info("Outputting graphical tracking data ...")
 
-            figdir = os.path.abspath(args.tracking_output)
+            figures_directory = os.path.abspath(args.tracking_output)
 
-            if not os.path.isdir(figdir):
-                os.mkdir(figdir)
+            if not os.path.isdir(figures_directory):
+                os.mkdir(figures_directory)
 
             for pos, k, tracking, tracker, channels in progress_bar(flat_results):
                 plot_timeline(matplotlib.pylab, channels, tracker_to_cell_list(tracker),
@@ -601,7 +602,7 @@ def main():
                               lambda p: p.title("Channel #%02d (average cells = %.2f)" % (k, tracker.average_cells)),
                               figure_finished=
                               lambda p: p.savefig("%(dir)s/tracking_pt_%(mp)02d_chan_%(k)02d.pdf" %
-                                                  {'dir': figdir, 'mp': pos, 'k': k}),
+                                                  {'dir': figures_directory, 'mp': pos, 'k': k}),
                               show_images=True, show_overlay=True)
 
     # ( Post-Tracking: Just write some tunables, if desired )###########################################################
