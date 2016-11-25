@@ -261,7 +261,7 @@ def horizontal_channel_detection(image):
     if width > main_frequency:
         width = int(width % main_frequency)
     elif width < 0:
-        width = int(width + main_frequency)
+        width = int(width + main_frequency * numpy.ceil(abs(width / main_frequency)))
 
     main_frequency += (width / (profile_diff_len / main_frequency))
 
