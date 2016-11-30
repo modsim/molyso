@@ -87,13 +87,15 @@ def plot_timeline(p, channels, cells,
     time_points = numpy.sort([cc.image.timepoint for cc in channels])
 
     channels_per_inch = 5.0
-    p.rcParams['figure.figsize'] = (len(time_points) / channels_per_inch, 4.0)
-    p.rcParams['figure.dpi'] = 150
 
-    p.rcParams['figure.subplot.top'] = 0.8
-    p.rcParams['figure.subplot.bottom'] = 0.2
-    p.rcParams['figure.subplot.left'] = 0.2
-    p.rcParams['figure.subplot.right'] = 0.8
+    p.rcParams.update({
+        'figure.figsize': (len(time_points) / channels_per_inch, 4.0),
+        'figure.dpi': 150,
+        'figure.subplot.top': 0.8,
+        'figure.subplot.bottom': 0.2,
+        'figure.subplot.left': 0.2,
+        'figure.subplot.right': 0.8
+    })
 
     p.figure()
 
