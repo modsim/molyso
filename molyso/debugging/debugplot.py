@@ -5,12 +5,13 @@ documentation
 from __future__ import division, unicode_literals, print_function
 
 import os
-import sys
 import atexit
 
 from os.path import isfile
 from tempfile import TemporaryFile
 from functools import partial
+
+from .callserialization import CallSerialization
 
 
 def next_free_filename(prefix, suffix):
@@ -65,6 +66,15 @@ class DebugPlotInterruptException(Exception):
     Used to interrupt plot drawing early if it is disabled.
     """
     pass
+
+
+class DebugPlotInterruptThrower(object):
+    """
+    Dummy object which raises an exception
+    on every call. To be used when debug mode is deactivated.
+    """
+    def __getattr__(self, item):
+        raise DebugPlotInterruptException()
 
 
 class DebugPlot(object):
@@ -205,6 +215,8 @@ class DebugPlot(object):
 
             self.pylab = pylab
 
+        self.call_serialization = CallSerialization()
+
         if DebugPlot.individual_and_merge:
             try:
                 # noinspection PyPackageRequirements,PyUnresolvedReferences
@@ -219,92 +231,54 @@ class DebugPlot(object):
                 if DebugPlot.pp is None:
                     DebugPlot.pp = self.__class__.pdfopener('debug.pdf')
 
-    def __getattr__(self, item):
-        if self.active:
-            if hasattr(self.pylab, item):
-                if self.__class__.exp_plot_debugging:
-                    def proxy(*args, **kwargs):
-                        """
-
-                        :param args:
-                        :param kwargs:
-                        :return:
-                        """
-                        print("pylab.%s(%s%s%s)" % (
-                            item, ','.join([repr(a) for a in args]), ',' if len(kwargs) > 0 else '',
-                            ','.join(["%s=%s" % (a, repr(b)) for a, b in kwargs.items()])), file=sys.stderr)
-                        return getattr(self.pylab, item)(*args, **kwargs)
-                else:
-                    def proxy(*args, **kwargs):
-                        """
-
-                        :param args:
-                        :param kwargs:
-                        :return:
-                        """
-                        return getattr(self.pylab, item)(*args, **kwargs)
-            else:
-                raise NameError("name '%s' is not defined" % item)
-        else:
-            if self.__class__.throw_on_anything:
-                raise DebugPlotInterruptException()
-            else:
-                # noinspection PyUnusedLocal
-                def proxy(*args, **kwargs):
-                    """
-
-                    :param args:
-                    :param kwargs:
-                    """
-                    pass
-
-        return proxy
-
-    def poly_drawing_helper(self, coords, **kwargs):
-        """
-
-        :param coords:
-        :param kwargs:
-        :return:
-        """
-        if self.gca():
-            return poly_drawing_helper(self, coords, **kwargs)
-
     def __enter__(self):
+        #if self.active:
+        #    # noinspection PyPep8Naming,PyAttributeOutsideInit
+
         if self.active:
-            # noinspection PyPep8Naming,PyAttributeOutsideInit
-            self.pylab.rcParams.update(self.default_config)
-            self.figure()
-            self.text(0.01, 0.01, "%s\n%s\n%s" % (self.info, self.get_context(), self.filter_str),
-                      transform=self.gca().transAxes)
-        return self
+            return self.call_serialization.get_proxy()
+        else:
+            return DebugPlotInterruptThrower()
 
     # noinspection PyUnusedLocal
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type == DebugPlotInterruptException:
             return True
+
         if self.active:
+
+            p = self.pylab
+
+            p.rcParams.update(self.default_config)
+            p.figure()
+            p.text(0.01, 0.01, "%s\n%s\n%s" % (self.info, self.get_context(), self.filter_str),
+                      transform=p.gca().transAxes)
+
+            inject_poly_drawing_helper(p)
+
+            self.call_serialization.execute(p)
+
             if not DebugPlot.individual_files:
                 if DebugPlot.pp:
-                    self.savefig(DebugPlot.pp, format='pdf')
+                    p.savefig(DebugPlot.pp, format='pdf')
             else:
                 if DebugPlot.individual_and_merge:
-                    self.savefig(
+                    p.savefig(
                         self.get_file_for_merge(),
                         format='pdf')
                 else:
-                    self.savefig(
+                    p.savefig(
                         next_free_filename(DebugPlot.individual_file_prefix, DebugPlot.file_suffix),
                         format='pdf')
 
             for pp, okay in DebugPlot.diverted_outputs.items():
                 if self.filter_str in okay:
-                    self.savefig(pp, format='pdf')
+                    p.savefig(pp, format='pdf')
 
             if self.post_figure == 'show':
-                self.show()
+                p.show()
             else:
-                self.close()
+                p.close()
 
     @classmethod
     def get_file_for_merge(cls):

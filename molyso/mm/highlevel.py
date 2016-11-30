@@ -19,6 +19,8 @@ import traceback
 import logging
 
 from ..debugging import DebugPlot
+from ..debugging.debugplot import inject_poly_drawing_helper
+from ..debugging.callserialization import CallSerialization
 from ..generic.tunable import TunableManager, tunable
 
 from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
@@ -97,6 +99,8 @@ def create_argparser():
     argparser.add_argument('-o', '--table-output', dest='table_output', type=str, default=None)
     argparser.add_argument('--meta', '--meta', dest='meta', type=str, default=None)
     argparser.add_argument('-ot', '--output-tracking', dest='tracking_output', type=str, default=None)
+    argparser.add_argument('-otf', '--output-tracking-format', dest='tracking_output_format',
+                           type=list, default=None, action='append')
     argparser.add_argument('-nb', '--no-banner', dest='nb', default=False, action='store_true')
     argparser.add_argument('-cpu', '--cpus', dest='mp', default=-1, type=int)
     argparser.add_argument('-debug', '--debug', dest='debug', default=False, action='store_true')
@@ -596,14 +600,43 @@ def main():
             if not os.path.isdir(figures_directory):
                 os.mkdir(figures_directory)
 
+            if args.tracking_output_format is None:
+                args.tracking_output_format = {'pdf'}
+            else:
+                args.tracking_output_format = set(''.join(sublist) for sublist in args.tracking_output_format)
+
             for pos, k, tracking, tracker, channels in progress_bar(flat_results):
-                plot_timeline(matplotlib.pylab, channels, tracker_to_cell_list(tracker),
+
+                tracking_filename = "%(dir)s/tracking_pt_%(mp)02d_chan_%(k)02d" % \
+                                    {'dir': figures_directory, 'mp': pos, 'k': k}
+
+                cs = CallSerialization()
+
+                plot_timeline(cs.get_proxy(), channels, tracker_to_cell_list(tracker),
                               figure_presetup=
                               lambda p: p.title("Channel #%02d (average cells = %.2f)" % (k, tracker.average_cells)),
                               figure_finished=
-                              lambda p: p.savefig("%(dir)s/tracking_pt_%(mp)02d_chan_%(k)02d.pdf" %
-                                                  {'dir': figures_directory, 'mp': pos, 'k': k}),
-                              show_images=True, show_overlay=True)
+                              lambda p: p,
+                              show_images=True, show_overlay=True, leave_open=True)
+
+                if 'kymograph' in args.tracking_output_format:
+                    with open(tracking_filename + '.kymograph', 'wb') as fp:
+                        fp.write(cs.as_pickle)
+
+                if 'pdf' in args.tracking_output_format:
+                    pylab = matplotlib.pylab
+                    inject_poly_drawing_helper(pylab)
+                    cs.execute(pylab)
+                    pylab.savefig(tracking_filename + '.pdf')
+                    pylab.close('all')
+
+                del cs
+
+
+
+
+
+
 
     # ( Post-Tracking: Just write some tunables, if desired )###########################################################
 
