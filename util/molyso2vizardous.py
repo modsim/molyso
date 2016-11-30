@@ -12,6 +12,7 @@ from collections import namedtuple
 from itertools import chain
 from copy import deepcopy
 
+
 def create_argparser():
     argparser = argparse.ArgumentParser(description="molyso2vizardous molyso-tabular data format to Vizardous metaXML/phyloXML converter")
 
@@ -29,8 +30,10 @@ def create_argparser():
 
     return argparser
 
+
 def unit(value):
     return {'unit': value}
+
 
 def root_phyloXML():
     return ET.Element(
