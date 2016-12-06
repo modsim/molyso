@@ -42,6 +42,9 @@ class Proxy(object):
             self.cs.add_step(Step(-1, self.parent, False, item, [], {}, {}))
         )
 
+    def __getitem__(self, item):
+        return self.__getattr__('__getitem__').__call__(item)
+
     def __call__(self, *args, **kwargs):
         overrides = {}
         args = list(args)
