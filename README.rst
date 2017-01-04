@@ -197,7 +197,7 @@ Note that this software contains the following portions from other authors, unde
 
 molyso/imageio/tifffile.py:
     tifffile.py by Christoph Gohlke, licensed BSD (see file head).
-        Copyright (c) 2008-2015, Christoph Gohlke, 2008-2015, The Regents of the University of California
+        Copyright (c) 2008-2016, Christoph Gohlke, 2008-2016, The Regents of the University of California
 molyso/imageio/czifile.py:
     czifile.py by Christoph Gohlke, licensed BSD (see file head).
         Copyright (c) 2013-2015, Christoph Gohlke, 2013-2015, The Regents of the University of California
