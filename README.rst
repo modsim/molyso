@@ -58,21 +58,28 @@ If you are using Ubuntu, install the necessary packages via:
 Ways to install molyso
 ----------------------
 
-There are three different ways to install molyso:
+There are different ways to install molyso (although not always perfectly stable, usually the latest github version is the best choice):
 
-Via the Python Package Index (recommended)
-##########################################
+Via the Python Package Index (release version)
+##############################################
 
 .. code-block:: bash
 
     > pip3 install --user molyso
 
-Via the Python Package Index with the github Version
-####################################################
+Via the pip with the github Version
+###################################
 
 .. code-block:: bash
 
     > pip3 install --user git+https://github.com/modsim/molyso
+
+Via the pip with the github Version (alternate, e.g. for Windows, no git required)
+##################################################################################
+
+.. code-block:: bash
+
+    > pip3 install --user https://github.com/modsim/molyso/archive/master.zip
 
 From github
 ###########
