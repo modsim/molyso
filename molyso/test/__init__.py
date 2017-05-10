@@ -15,7 +15,7 @@ import warnings
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     # code tend to throw warnings because of missing C extensions
-    from ..imageio.tifffile import TiffFile
+    from tifffile import TiffFile
 
 _test_image = None
 

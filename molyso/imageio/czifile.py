@@ -117,7 +117,7 @@ except ImportError:
 import numpy
 from scipy.ndimage.interpolation import zoom
 
-from .tifffile import FileHandle, decode_lzw, lazyattr, stripnull
+from tifffile import FileHandle, decode_lzw, lazyattr, stripnull
 
 try:
     if __package__:
