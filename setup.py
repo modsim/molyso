@@ -17,7 +17,7 @@ setup(
     url='https://github.com/modsim/molyso',
     packages=find_packages(),
     scripts=['molyso.py'],
-    requires=['numpy', 'scipy', 'matplotlib'],
+    install_requires=['numpy', 'scipy', 'matplotlib', 'nd2file'],
     extras_require={
         'fast_rotation': ['cv2'],
         'nice_progressbar': ['clint']
