@@ -37,7 +37,7 @@ class OMETiffStack(MultiImageStack):
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self.tiff = TiffFile(self.parameters['filename'], fastij=False)  # shouldn't be ij, but safe is safe
+            self.tiff = TiffFile(self.parameters['filename'], fastij=False, is_ome=True)  # shouldn't be ij, but safe is safe
 
         self.fp = self.tiff.pages[0]
         if not self.fp.is_ome:
