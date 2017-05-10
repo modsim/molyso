@@ -41,8 +41,8 @@ def interactive_main(args):
 
     fig.canvas.set_window_title("Image Viewer")
 
-    ax_mp = plt.axes([0.25, 0.1, 0.65, 0.03], axisbg=channel_color)
-    ax_tp = plt.axes([0.25, 0.15, 0.65, 0.03], axisbg=channel_color)
+    ax_mp = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=channel_color)
+    ax_tp = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=channel_color)
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
