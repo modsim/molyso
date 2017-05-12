@@ -232,7 +232,7 @@ def vertical_mean(image):
     ...                            [13, 14, 15, 16]]))
     array([  2.5,   6.5,  10.5,  14.5])
     """
-    return numpy.average(image, axis=1)
+    return numpy.mean(image, axis=1)
 
 
 def horizontal_mean(image):
@@ -250,7 +250,7 @@ def horizontal_mean(image):
     ...                            [13, 14, 15, 16]]))
     array([  7.,   8.,   9.,  10.])
     """
-    return numpy.average(image, axis=0)
+    return numpy.mean(image, axis=0)
 
 
 def relative_maxima(signal, order=1):
