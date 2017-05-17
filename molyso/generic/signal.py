@@ -423,11 +423,13 @@ def one_every_n(length, n=1, shift=0):
     array([ 1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.])
     >>> one_every_n(10, n=2, shift=1)
     array([ 0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.])
+    >>> one_every_n(10, n=1, shift=0)
+    array([ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.])
     """
     # major regression here?
     # don't use numpy.arange(a,b,c, dtype=numpy.int32) !!!
     signal = numpy.zeros(int(length))
-    signal[numpy.around(numpy.arange(shift % n, length - 1, n)).astype(numpy.int32)] = 1
+    signal[numpy.around(numpy.arange(shift % n, length, n)).astype(numpy.int32)] = 1
     return signal
 
 
