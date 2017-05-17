@@ -429,7 +429,9 @@ def one_every_n(length, n=1, shift=0):
     # major regression here?
     # don't use numpy.arange(a,b,c, dtype=numpy.int32) !!!
     signal = numpy.zeros(int(length))
-    signal[numpy.around(numpy.arange(shift % n, length, n)).astype(numpy.int32)] = 1
+    indices = numpy.around(numpy.arange(shift % n, length, n)).astype(numpy.int32)
+    indices = indices[indices < signal.size]
+    signal[indices] = 1
     return signal
 
 
