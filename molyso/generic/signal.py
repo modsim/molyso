@@ -454,7 +454,7 @@ def each_image_slice(image, steps, direction='vertical'):
            [ 1.,  1.],
            [ 1.,  1.],
            [ 1.,  1.]]))]
-    >>> list(each_image_slice(numpy.ones((4, 4,)), 2, direction='horizontal'))
+    >>> list(each_image_slice(np.ones((4, 4,)), 2, direction='horizontal'))
     [(0, 2, array([[ 1.,  1.,  1.,  1.],
            [ 1.,  1.,  1.,  1.]])), (1, 2, array([[ 1.,  1.,  1.,  1.],
            [ 1.,  1.,  1.,  1.]]))]
