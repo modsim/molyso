@@ -2,50 +2,11 @@
 """
 fft.py contains Fourier transform related helper functions
 mainly it abstracts the Fourier transform itself
-(currently just passing the calls through to the numpy functions),
-as well as providing the get_optimal_dft_size command, which will provide
-a Fourier length which will yield faster results (for many sizes)
+(currently just passing the calls through to the numpy functions)
 """
 
 import numpy
-from itertools import product
-
-
-def prepare_dft_sizes(max_exp=5, radices=(2, 3, 4, 5, 8, 9)):  # 7, 13, 16
-    result = set()
-
-    for exponents in product(*([list(range(max_exp))] * len(radices))):
-        result.add(numpy.product(numpy.power(radices, exponents)))
-
-    return numpy.array(sorted(result))
-
-# create lookup table
-dft_sizes = prepare_dft_sizes()
-
-
-def get_optimal_dft_size_w_numpy(n):
-    """
-
-    :param n:
-    :return:
-    """
-    if n > dft_sizes[-1]:
-        return n
-    return dft_sizes[numpy.searchsorted(dft_sizes, n)]
-
-
-def get_optimal_dft_size(n):
-    """
-    Due to the nature of the FFT algorithm, certain sizes of transforms are vastly faster than others.
-    This function will yield a number >= n, which will yield a fast FFT.
-    A lookup table from OpenCV is used.
-
-    :param n: desired size
-    :type n: int
-    :return: optimal size
-    :rtype: n
-    """
-    return get_optimal_dft_size_w_numpy(n)
+from scipy.fftpack import next_fast_len
 
 fft = numpy.fft.fft
 ifft = numpy.fft.ifft
@@ -130,9 +91,9 @@ def hires_power_spectrum(signal, oversampling=1):
     :rtype: tuple(numpy.array, numpy.array)
     """
     arr_len = len(signal)
-    xsize = get_optimal_dft_size(oversampling * arr_len)
+    fast_size = next_fast_len(oversampling * arr_len)
 
-    tmp_data = numpy.zeros(xsize)
+    tmp_data = numpy.zeros(fast_size)
     tmp_data[:arr_len] = signal
 
     frequencies, fourier_values = power_spectrum(tmp_data)
