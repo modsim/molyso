@@ -208,8 +208,8 @@ def horizontal_channel_detection(image):
     ] *= tunable('channels.horizontal.noise_suppression_factor.lower', 0.1,
                  description="For channel detection, lower profile, noise reduction, reduction factor.")
 
-    with DebugPlot('channel_detection', 'details', 'differentials', 'smoothed') as p:
-        p.title("Channel detection/Differentials/Smoothed")
+    with DebugPlot('channel_detection', 'details', 'differences') as p:
+        p.title("Channel detection/Differences")
         p.plot(upper_profile)
         p.plot(lower_profile)
 
