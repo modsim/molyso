@@ -5,7 +5,8 @@ documentation
 
 from __future__ import division, unicode_literals, print_function
 
-import numpy
+import numpy as np
+
 from .tracking_output import s_to_h
 from ..generic.etc import QuickTableDumper
 
@@ -80,8 +81,8 @@ def interactive_ground_truth_main(args, tracked_results):
             :return:
             """
             return {
-                'points': numpy.ma.array(numpy.zeros((1024, 3))),
-                'points_empty': numpy.ma.array(numpy.zeros((1024, 3))),
+                'points': np.ma.array(np.zeros((1024, 3))),
+                'points_empty': np.ma.array(np.zeros((1024, 3))),
                 'used': 0,
                 'last_point_x': None,
                 'last_point_y': None,
@@ -101,7 +102,7 @@ def interactive_ground_truth_main(args, tracked_results):
 
         print("Opening position %d, channel %d" % (pos, chan_num,))
 
-        data = numpy.zeros((len(channels), 6))
+        data = np.zeros((len(channels), 6))
 
         n_timepoint, n_width, n_height, n_top, n_bottom, n_width_cumsum = 0, 1, 2, 3, 4, 5
 
@@ -115,17 +116,17 @@ def interactive_ground_truth_main(args, tracked_results):
             data[n, n_bottom] = cc.bottom
             some_channel_image = cc.channel_image
 
-        data[:, n_width_cumsum] = numpy.cumsum(data[:, n_width])
+        data[:, n_width_cumsum] = np.cumsum(data[:, n_width])
 
         max_top, min_top = data[:, n_top].max(), data[:, n_top].min()
         max_bottom, min_bottom = data[:, n_bottom].max(), data[:, n_bottom].min()
 
-        low, high = int(numpy.floor(min_top)), int(numpy.ceil(max_bottom))
+        low, high = int(np.floor(min_top)), int(np.ceil(max_bottom))
 
-        large_image = numpy.zeros((high - low, int(data[-1, n_width_cumsum])), dtype=some_channel_image.dtype)
+        large_image = np.zeros((high - low, int(data[-1, n_width_cumsum])), dtype=some_channel_image.dtype)
 
         for n, cc in enumerate(channels):
-            lower_border = int(numpy.floor(data[n, n_top] - low))
+            lower_border = int(np.floor(data[n, n_top] - low))
             large_image[
                 lower_border:int(lower_border + data[n, n_height]),
                 int(data[n, n_width_cumsum] - data[n, n_width]):int(data[n, n_width_cumsum])
@@ -211,12 +212,12 @@ def interactive_ground_truth_main(args, tracked_results):
 
                     if env['used'] + 3 >= env['points'].shape[0]:
                         oldmask = env['points'].mask[:env['used']]
-                        env['points'] = numpy.ma.array(numpy.r_[env['points'], env['points_empty']])
-                        env['points'].mask = numpy.zeros_like(env['points']).astype(numpy.dtype(bool))  # [:env['used']]
+                        env['points'] = np.ma.array(np.r_[env['points'], env['points_empty']])
+                        env['points'].mask = np.zeros_like(env['points']).astype(np.dtype(bool))  # [:env['used']]
                         env['points'].mask[:env['used']] = oldmask
 
-                    n_x = numpy.searchsorted(data[:, n_width_cumsum], x, side='right')
-                    n_last_x = numpy.searchsorted(data[:, n_width_cumsum], last_point_x, side='right')
+                    n_x = np.searchsorted(data[:, n_width_cumsum], x, side='right')
+                    n_last_x = np.searchsorted(data[:, n_width_cumsum], last_point_x, side='right')
 
                     if x < last_point_x:
                         x, y, last_point_x, last_point_y = last_point_x, last_point_y, x, y
@@ -230,7 +231,7 @@ def interactive_ground_truth_main(args, tracked_results):
                     env['points'][env['used'], 1] = y
                     env['points'][env['used'], 2] = data[n_x, n_timepoint]
                     env['used'] += 1
-                    env['points'][env['used'], :] = numpy.ma.masked
+                    env['points'][env['used'], :] = np.ma.masked
                     env['used'] += 1
 
                     refresh()
@@ -256,8 +257,8 @@ def interactive_ground_truth_main(args, tracked_results):
                 inner_times = inner_times.reshape(inner_times.size // 2, 2)
                 inner_deltas = inner_times[:, 1] - inner_times[:, 0]
                 inner_deltas /= 60.0 * 60.0
-                inner_mu = numpy.log(2) / inner_deltas
-                print(inner_mu, numpy.mean(inner_mu))
+                inner_mu = np.log(2) / inner_deltas
+                print(inner_mu, np.mean(inner_mu))
 
             def try_new_poschan(p, c):
                 """
@@ -341,7 +342,7 @@ def interactive_ground_truth_main(args, tracked_results):
                     times = t_env['points'][:t_env['used'], 2].compressed()
                     times = times.reshape(times.size // 2, 2)
                     deltas = times[:, 1] - times[:, 0]
-                    mu = numpy.log(2) / (deltas / (60.0 * 60.0))
+                    mu = np.log(2) / (deltas / (60.0 * 60.0))
 
                     for num in range(len(mu)):
 
@@ -349,7 +350,7 @@ def interactive_ground_truth_main(args, tracked_results):
                             'position': x_pos,
                             'channel': x_chan,
                             'growth_rate': mu[num],
-                            'growth_rate_channel_mean': numpy.mean(mu),
+                            'growth_rate_channel_mean': np.mean(mu),
                             'division_age': s_to_h(deltas[num]),
                             'growth_start': s_to_h(times[num, 0]),
                             'growth_end': s_to_h(times[num, 1]),

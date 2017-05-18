@@ -4,11 +4,14 @@ signal processing helper routines
 """
 
 from __future__ import division, unicode_literals, print_function
-from collections import namedtuple
+
 import warnings
 
+import numpy as np
 import scipy.signal
 import scipy.interpolate
+
+from collections import namedtuple
 
 from .smoothing import hamming_smooth
 from .fft import *
@@ -37,7 +40,7 @@ def find_phase(signal_1=None, signal_2=None,
     :return: (shift, (fft1 if return_1), (fft2 if return_2))
     :rtype: tuple
 
-    >>> find_phase(numpy.array([0, 1, 0, 0, 0]), numpy.array([0, 0, 0, 1, 0]))
+    >>> find_phase(np.array([0, 1, 0, 0, 0]), np.array([0, 0, 0, 1, 0]))
     (2,)
     """
 
@@ -48,8 +51,8 @@ def find_phase(signal_1=None, signal_2=None,
 
     corr = ifft(fft_1 * -fft_2.conjugate())
 
-    corr = numpy.absolute(corr)
-    the_max = numpy.argmax(corr)
+    corr = np.absolute(corr)
+    the_max = np.argmax(corr)
     # if the_max > 2 and the_max < (len(corr) - 2):
     #    sur = corr[the_max-1:the_max+2]
     #    the_max += -0.5*sur[0] + 0.5*sur[2]
@@ -94,7 +97,7 @@ def find_extrema_and_prominence(signal, order=5):
     :return: an ExtremeAndProminence object with various information members
     :rtype: ExtremeAndProminence
 
-    >>> result = find_extrema_and_prominence(numpy.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
+    >>> result = find_extrema_and_prominence(np.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
     >>> result = result._replace(max_spline=None, min_spline=None)  # just for doctests
     >>> result
     ExtremeAndProminence(maxima=array([2, 8]), minima=array([ 5, 10]), signal=array([  1,   2,   3,   2,   1,   0,   1,   2,  15,   2, -15,   2,   1]), order=2, max_spline=None, min_spline=None, xpts=array([  0.,   1.,   2.,   3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.,
@@ -109,7 +112,7 @@ def find_extrema_and_prominence(signal, order=5):
     """
     # we are FORCING some kind of result here, although it might be meaningless
 
-    maxima = numpy.array([numpy.argmax(signal)])
+    maxima = np.array([np.argmax(signal)])
     iorder = order
     while iorder > 0:
         try:
@@ -120,9 +123,9 @@ def find_extrema_and_prominence(signal, order=5):
         break
 
     if len(maxima) == 0:
-        maxima = numpy.array([numpy.argmax(signal)])
+        maxima = np.array([np.argmax(signal)])
 
-    minima = numpy.array([numpy.argmin(signal)])
+    minima = np.array([np.argmin(signal)])
     iorder = order
     while iorder > 0:
         try:
@@ -132,13 +135,13 @@ def find_extrema_and_prominence(signal, order=5):
             continue
         break
     if len(minima) == 0:
-        minima = numpy.array([numpy.argmin(signal)])
+        minima = np.array([np.argmin(signal)])
 
-    maximaintpx = numpy.zeros(len(maxima) + 2)
-    maximaintpy = numpy.copy(maximaintpx)
+    maximaintpx = np.zeros(len(maxima) + 2)
+    maximaintpy = np.copy(maximaintpx)
 
-    minimaintpx = numpy.zeros(len(minima) + 2)
-    minimaintpy = numpy.copy(minimaintpx)
+    minimaintpx = np.zeros(len(minima) + 2)
+    minimaintpy = np.copy(minimaintpx)
 
     maximaintpx[0] = 0
     maximaintpx[1:-1] = maxima[:]
@@ -166,7 +169,7 @@ def find_extrema_and_prominence(signal, order=5):
             :param arg:
             :return:
             """
-            arg = numpy.zeros_like(arg)
+            arg = np.zeros_like(arg)
             arg[:] = float('Inf')
             return arg
     else:
@@ -184,7 +187,7 @@ def find_extrema_and_prominence(signal, order=5):
             :param arg:
             :return:
             """
-            arg = numpy.zeros_like(arg)
+            arg = np.zeros_like(arg)
             arg[:] = float('-Inf')
             return arg
     else:
@@ -192,7 +195,7 @@ def find_extrema_and_prominence(signal, order=5):
             warnings.simplefilter('ignore')
             min_spline = scipy.interpolate.UnivariateSpline(minimaintpx, minimaintpy, bbox=[0, len(signal)], k=k)
 
-    xpts = numpy.linspace(0, len(signal) - 1, len(signal))
+    xpts = np.linspace(0, len(signal) - 1, len(signal))
 
     maxsy = max_spline(xpts)
     minsy = min_spline(xpts)
@@ -209,7 +212,7 @@ def simple_baseline_correction(signal, window_width=None):
     :param window_width: smoothing window width
     :return:
 
-    >>> simple_baseline_correction(numpy.array([10, 11, 12, 11, 10]))
+    >>> simple_baseline_correction(np.array([10, 11, 12, 11, 10]))
     array([-1.        ,  0.375     ,  1.        , -0.375     , -0.96428571])
     """
     if window_width is None or window_width > len(signal):
@@ -226,13 +229,13 @@ def vertical_mean(image):
     :param image:
     :return:
 
-    >>> vertical_mean(numpy.array([[ 1,  2,  3,  4],
+    >>> vertical_mean(np.array([[ 1,  2,  3,  4],
     ...                            [ 5,  6,  7,  8],
     ...                            [ 9, 10, 11, 12],
     ...                            [13, 14, 15, 16]]))
     array([  2.5,   6.5,  10.5,  14.5])
     """
-    return numpy.mean(image, axis=1)
+    return np.mean(image, axis=1)
 
 
 def horizontal_mean(image):
@@ -244,13 +247,13 @@ def horizontal_mean(image):
     :type image: numpy.ndarray
     :return:
 
-    >>> horizontal_mean(numpy.array([[ 1,  2,  3,  4],
+    >>> horizontal_mean(np.array([[ 1,  2,  3,  4],
     ...                            [ 5,  6,  7,  8],
     ...                            [ 9, 10, 11, 12],
     ...                            [13, 14, 15, 16]]))
     array([  7.,   8.,   9.,  10.])
     """
-    return numpy.mean(image, axis=0)
+    return np.mean(image, axis=0)
 
 
 def relative_maxima(signal, order=1):
@@ -260,7 +263,7 @@ def relative_maxima(signal, order=1):
     :param order:
     :return:
 
-    >>> relative_maxima(numpy.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
+    >>> relative_maxima(np.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
     array([2, 8])
     """
     value, = scipy.signal.argrelmax(signal, order=order)
@@ -274,7 +277,7 @@ def relative_minima(signal, order=1):
     :param order:
     :return:
 
-    >>> relative_minima(numpy.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
+    >>> relative_minima(np.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
     array([ 5, 10])
     """
     value, = scipy.signal.argrelmin(signal, order=order)
@@ -288,10 +291,10 @@ def normalize(data):
     :param data: input array
     :return: normalized array
 
-    >>> normalize(numpy.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+    >>> normalize(np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
     array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9,  1. ])
 
-    >>> normalize(numpy.array([10, 15, 20]))
+    >>> normalize(np.array([10, 15, 20]))
     array([ 0. ,  0.5,  1. ])
     """
     result = data.astype(float)
@@ -308,17 +311,17 @@ def fit_to_type(image, new_dtype):
     :param new_dtype:
     :return:
 
-    >>> fit_to_type(numpy.array([-7, 4, 18, 432]), numpy.uint8)
+    >>> fit_to_type(np.array([-7, 4, 18, 432]), np.uint8)
     array([  0,   6,  14, 255], dtype=uint8)
-    >>> fit_to_type(numpy.array([-7, 4, 18, 432]), numpy.int8)
+    >>> fit_to_type(np.array([-7, 4, 18, 432]), np.int8)
     array([-128, -121, -113,  127], dtype=int8)
-    >>> fit_to_type(numpy.array([-7, 4, 18, 432]), numpy.bool)
+    >>> fit_to_type(np.array([-7, 4, 18, 432]), np.bool)
     array([False, False, False,  True], dtype=bool)
-    >>> fit_to_type(numpy.array([-7, 4, 18, 432]), numpy.float32)
+    >>> fit_to_type(np.array([-7, 4, 18, 432]), np.float32)
     array([  -7.,    4.,   18.,  432.], dtype=float32)
     """
     scaled_img = normalize(image)
-    to_type = numpy.dtype(new_dtype)
+    to_type = np.dtype(new_dtype)
     if to_type.kind == 'f':
         return image.astype(to_type)
     elif to_type.kind == 'u':
@@ -341,13 +344,13 @@ def threshold_outliers(data, times_std=2.0):
     :param times_std:
     :return:
 
-    >>> threshold_outliers(numpy.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
+    >>> threshold_outliers(np.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
     array([10,  9, 11, 20,  8, 12, 14,  7])
     """
 
     data = data.copy()
-    median = numpy.median(data)
-    std = numpy.std(data)
+    median = np.median(data)
+    std = np.std(data)
     data[(data - median) > (times_std * std)] = median + (times_std * std)
     data[((data - median) < 0) & (abs(data - median) > times_std * std)] = median - (times_std * std)
     return data
@@ -360,11 +363,11 @@ def outliers(data, times_std=2.0):
     :param times_std:
     :return:
 
-    >>> outliers(numpy.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
+    >>> outliers(np.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
     array([False, False, False,  True, False, False, False, False], dtype=bool)
     """
 
-    return numpy.absolute(data - numpy.median(data)) > (times_std * numpy.std(data))
+    return np.absolute(data - np.median(data)) > (times_std * np.std(data))
 
 
 def remove_outliers(data, times_std=2.0):
@@ -374,7 +377,7 @@ def remove_outliers(data, times_std=2.0):
     :param times_std:
     :return:
 
-    >>> remove_outliers(numpy.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
+    >>> remove_outliers(np.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
     array([10,  9, 11,  8, 12, 14,  7])
     """
 
@@ -390,7 +393,7 @@ def find_insides(signal):
     :param signal:
     :return:
 
-    >>> find_insides(numpy.array([False, False, True, True, True, False, False, True, True, False, False]))
+    >>> find_insides(np.array([False, False, True, True, True, False, False, True, True, False, False]))
     array([[2, 5],
            [7, 9]])
     """
@@ -408,7 +411,7 @@ def find_insides(signal):
     if last_true:
         pairs.append([last_true, len(signal)-1])
 
-    return numpy.array(pairs)
+    return np.array(pairs)
 
 
 def one_every_n(length, n=1, shift=0):
@@ -427,9 +430,9 @@ def one_every_n(length, n=1, shift=0):
     array([ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.])
     """
     # major regression here?
-    # don't use numpy.arange(a,b,c, dtype=numpy.int32) !!!
-    signal = numpy.zeros(int(length))
-    indices = numpy.around(numpy.arange(shift % n, length, n)).astype(numpy.int32)
+    # don't use np.arange(a,b,c, dtype=np.int32) !!!
+    signal = np.zeros(int(length))
+    indices = np.around(np.arange(shift % n, length, n)).astype(np.int32)
     indices = indices[indices < signal.size]
     signal[indices] = 1
     return signal
@@ -443,7 +446,7 @@ def each_image_slice(image, steps, direction='vertical'):
     :param direction:
     :return:
 
-    >>> list(each_image_slice(numpy.ones((4, 4,)), 2, direction='vertical'))
+    >>> list(each_image_slice(np.ones((4, 4,)), 2, direction='vertical'))
     [(0, 2, array([[ 1.,  1.],
            [ 1.,  1.],
            [ 1.,  1.],

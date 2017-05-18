@@ -6,7 +6,7 @@ merely by subclassing the particular non-fluorescence-handling base classes.
 """
 from __future__ import division, unicode_literals, print_function
 
-import numpy
+import numpy as np
 from .image import Image
 from .cell_detection import Cell, Cells
 from .channel_detection import Channel, Channels
@@ -189,7 +189,7 @@ class FluorescentImage(Image):
 
                 fluorescence_image = self.image_fluorescences[i]
 
-                background_fluorescence_means = numpy.zeros((len(self.channels) - 1, 2), dtype=numpy.float64)
+                background_fluorescence_means = np.zeros((len(self.channels) - 1, 2), dtype=np.float64)
 
                 channel_iterator = iter(self.channels)
 
@@ -206,7 +206,7 @@ class FluorescentImage(Image):
                 background_fluorescence_means[:, 0] *= background_fluorescence_means[:, 1]
 
                 self.background_fluorescences[i] = \
-                    numpy.sum(background_fluorescence_means[:, 0]) / numpy.sum(background_fluorescence_means[:, 1])
+                    np.sum(background_fluorescence_means[:, 0]) / np.sum(background_fluorescence_means[:, 1])
 
     def flatten(self):
         """

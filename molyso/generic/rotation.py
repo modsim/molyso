@@ -6,7 +6,7 @@ fastest available library call, and various helper functions to calculate crop z
 
 from __future__ import division, unicode_literals, print_function
 import math
-import numpy
+import numpy as np
 
 from .signal import find_phase, vertical_mean, remove_outliers, each_image_slice, hamming_smooth
 from ..test import test_image
@@ -31,7 +31,7 @@ def find_rotation(image, steps=10, smoothing_signal_length=15):
     -1.5074357587749678
     """
 
-    shifts = numpy.zeros(steps)
+    shifts = np.zeros(steps)
 
     last_signal = None
     last_fft = None
@@ -45,7 +45,7 @@ def find_rotation(image, steps=10, smoothing_signal_length=15):
         profile = vertical_mean(image_slice)
 
         profile = hamming_smooth(profile, smoothing_signal_length)
-        profile = numpy.diff(profile)
+        profile = np.diff(profile)
 
         all_profiles.append(profile)
 
@@ -61,7 +61,7 @@ def find_rotation(image, steps=10, smoothing_signal_length=15):
 
     shifts = remove_outliers(shifts)
 
-    return math.atan(numpy.mean(shifts) / step) * 180.0 / math.pi
+    return math.atan(np.mean(shifts) / step) * 180.0 / math.pi
 
 
 try:
@@ -79,10 +79,10 @@ try:
         :rtype: numpy.ndarray
         :return: rotated image
 
-        >>> rotate_image(numpy.array([[1, 0, 0, 0],
-        ...                           [0, 1, 0, 0],
-        ...                           [0, 0, 1, 0],
-        ...                           [0, 0, 0, 1]], dtype=numpy.uint8), 45.0)
+        >>> rotate_image(np.array([[1, 0, 0, 0],
+        ...                        [0, 1, 0, 0],
+        ...                        [0, 0, 1, 0],
+        ...                        [0, 0, 0, 1]], dtype=np.uint8), 45.0)
         array([[0, 0, 0, 0],
                [0, 0, 0, 0],
                [1, 1, 1, 1],
@@ -119,7 +119,7 @@ def calculate_crop_for_angle(image, angle):
     :return: (vertical_crop, horizontal_crop)
     :rtype: tuple(int, int)
 
-    >>> calculate_crop_for_angle(numpy.zeros((32, 32,)), 45.0)
+    >>> calculate_crop_for_angle(np.zeros((32, 32,)), 45.0)
     (15, 15)
     """
     wd = (image.shape[0] * 0.5) * math.tan(angle / (180.0 / math.pi))
@@ -139,7 +139,7 @@ def apply_rotate_and_cleanup(image, angle):
     :return: the rotated and cropped image, the angle, the horizontal crop, the vertical crop
     :rtype: tuple(numpy.ndarray, float, int, int)
 
-    >>> apply_rotate_and_cleanup(numpy.zeros((32, 32,)), 45.0)
+    >>> apply_rotate_and_cleanup(np.zeros((32, 32,)), 45.0)
     (array([[ 0.,  0.],
            [ 0.,  0.]]), 45.0, 15, 15)
     """

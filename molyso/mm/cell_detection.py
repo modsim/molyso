@@ -4,7 +4,7 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
-import numpy
+import numpy as np
 
 from ..generic.otsu import threshold_otsu
 from ..generic.signal import hamming_smooth,  simple_baseline_correction, find_extrema_and_prominence, \
@@ -268,8 +268,8 @@ def find_cells_in_channel_classic(image):
 
     with DebugPlot('cell_detection', 'channel', 'graph') as p:
         p.title("Cell detection")
-        p.imshow(numpy.transpose(image), aspect='auto', extent=(0, image.shape[0], 10 * image.shape[1], 0))
-        p.imshow(numpy.transpose(binary_image), aspect='auto', extent=(0, image.shape[0], 0, -10 * image.shape[1]))
+        p.imshow(np.transpose(image), aspect='auto', extent=(0, image.shape[0], 10 * image.shape[1], 0))
+        p.imshow(np.transpose(binary_image), aspect='auto', extent=(0, image.shape[0], 0, -10 * image.shape[1]))
         p.plot(profile)
 
         p.plot(thresholded_profile)

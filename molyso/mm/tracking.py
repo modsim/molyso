@@ -5,6 +5,9 @@ documentation
 from __future__ import division, unicode_literals, print_function
 
 import logging
+
+import numpy as np
+
 from .tracking_infrastructure import CellTracker, CellCrossingCheckingGlobalDuoOptimizerQueue
 from ..generic.signal import find_extrema_and_prominence, hamming_smooth
 from ..generic.etc import ignorant_next, dummy_progress_indicator
@@ -163,14 +166,14 @@ class TrackedPosition(object):
         for channel_num in self.channel_accumulator.keys():
             cells_in_channel = self.cell_centroid_accumulator[channel_num]
             minpos = min(cells_in_channel.keys())
-            signal = numpy.zeros(max(cells_in_channel.keys()) + 1 - minpos)
+            signal = np.zeros(max(cells_in_channel.keys()) + 1 - minpos)
             for pos, times in cells_in_channel.items():
                 signal[pos - minpos] = times
 
             signal_len = len(signal)
 
             # noinspection PyTypeChecker
-            helper_parabola = numpy.linspace(-signal_len / 2, +signal_len / 2, signal_len) ** 2 / signal_len ** 2
+            helper_parabola = np.linspace(-signal_len / 2, +signal_len / 2, signal_len) ** 2 / signal_len ** 2
 
             signal = hamming_smooth(signal, 15)
             signal *= helper_parabola
@@ -179,9 +182,9 @@ class TrackedPosition(object):
                 extrema = find_extrema_and_prominence(signal)
                 maxy = extrema.signal[extrema.maxima]
 
-                centroid = numpy.sum(extrema.maxima * maxy) / numpy.sum(maxy)
+                centroid = np.sum(extrema.maxima * maxy) / numpy.sum(maxy)
 
-                # mean = numpy.mean(maxy)
+                # mean = np.mean(maxy)
                 result = 1 if centroid >= signal.size / 2 else -1
             except IndexError:
                 result = 0
@@ -295,8 +298,8 @@ def analyse_cell_fates(tracker, previous_cells, current_cells):
             trajectories = tracked_previous_cell.trajectories
             elongation_rates = tracked_previous_cell.elongation_rates
 
-            last_traj = numpy.mean(trajectories[-min(len(trajectories), 5):])
-            last_elo = numpy.mean(elongation_rates[-min(len(elongation_rates), 5):])
+            last_traj = np.mean(trajectories[-min(len(trajectories), 5):])
+            last_elo = np.mean(elongation_rates[-min(len(elongation_rates), 5):])
 
             time_delta = current_cell.channel.image.timepoint - previous_cell.channel.image.timepoint
 

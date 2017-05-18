@@ -5,12 +5,12 @@ mainly it abstracts the Fourier transform itself
 (currently just passing the calls through to the numpy functions)
 """
 
-import numpy
+import numpy as np
 from scipy.fftpack import next_fast_len
 
-fft = numpy.fft.fft
-ifft = numpy.fft.ifft
-fftfreq = numpy.fft.fftfreq
+fft = np.fft.fft
+ifft = np.fft.ifft
+fftfreq = np.fft.fftfreq
 
 
 def spectrum_fourier(signal):
@@ -74,7 +74,7 @@ def power_spectrum(signal):
     :rtype: tuple(numpy.array, numpy.array)
     """
     freqs, fourier = spectrum(signal)
-    return freqs, numpy.absolute(fourier)
+    return freqs, np.absolute(fourier)
 
 
 def hires_power_spectrum(signal, oversampling=1):
@@ -93,7 +93,7 @@ def hires_power_spectrum(signal, oversampling=1):
     arr_len = len(signal)
     fast_size = next_fast_len(oversampling * arr_len)
 
-    tmp_data = numpy.zeros(fast_size)
+    tmp_data = np.zeros(fast_size)
     tmp_data[:arr_len] = signal
 
     frequencies, fourier_values = power_spectrum(tmp_data)

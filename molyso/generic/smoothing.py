@@ -6,7 +6,7 @@ one currently used by external files, providing a simplified interface for smoot
 """
 from __future__ import division, unicode_literals, print_function
 
-import numpy
+import numpy as np
 
 
 def smooth(signal, kernel):
@@ -20,14 +20,14 @@ def smooth(signal, kernel):
     :return: The signal convolved with the kernel
     :rtype: numpy.ndarray
 
-    >>> smooth(numpy.array([0, 0, 0, 0, 1, 0, 0, 0, 0]), numpy.ones(3))
+    >>> smooth(np.array([0, 0, 0, 0, 1, 0, 0, 0, 0]), np.ones(3))
     array([ 0.        ,  0.        ,  0.        ,  0.        ,  0.33333333,
             0.33333333,  0.33333333,  0.        ,  0.        ])
     """
 
-    return numpy.convolve(
+    return np.convolve(
         kernel / kernel.sum(),
-        numpy.r_[signal[kernel.size - 1:0:-1], signal, signal[-1:-kernel.size:-1]],
+        np.r_[signal[kernel.size - 1:0:-1], signal, signal[-1:-kernel.size:-1]],
         mode='valid')[kernel.size // 2 - 1:-kernel.size // 2][0:len(signal)]
 
 
@@ -44,13 +44,13 @@ def hamming_smooth(signal, window_width, no_cache=False):
     :return: the smoothed signal
     :rtype: numpy.ndarray
 
-    >>> hamming_smooth(numpy.array([0, 0, 0, 0, 1, 0, 0, 0, 0]), 3)
+    >>> hamming_smooth(np.array([0, 0, 0, 0, 1, 0, 0, 0, 0]), 3)
     array([ 0.        ,  0.        ,  0.        ,  0.        ,  0.06896552,
             0.86206897,  0.06896552,  0.        ,  0.        ])
     """
     return smooth(signal,
-                  numpy.hamming(window_width) if no_cache
-                  else signals(numpy.hamming, window_width))
+                  np.hamming(window_width) if no_cache
+                  else signals(np.hamming, window_width))
 
 
 _signals = {}
@@ -69,7 +69,7 @@ def signals(function, parameters):
     :return: function(\*parameters)
     :rtype: dependent on function
 
-    >>> signals(numpy.ones, 3)
+    >>> signals(np.ones, 3)
     array([ 1.,  1.,  1.])
     """
     global _signals
@@ -80,7 +80,7 @@ def signals(function, parameters):
     sf = _signals[function]
     if parameters not in sf:
         result = function(*parameters)
-        result = result.astype(numpy.float64)
+        result = result.astype(np.float64)
         result.flags.writeable = False
         sf[parameters] = result
         return result

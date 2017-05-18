@@ -4,7 +4,7 @@ This module contains cell tracking infrastructure.
 """
 from __future__ import division, unicode_literals, print_function
 
-import numpy
+import numpy as np
 
 
 class CellTracker(object):
@@ -250,11 +250,11 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
         rows = len(self.data)
         cols = len(ordered_a) + len(ordered_b)
 
-        matrix = numpy.zeros((rows, cols,), dtype=bool)
+        matrix = np.zeros((rows, cols,), dtype=bool)
 
-        dependencies = numpy.zeros((rows, len_a, len_b,), dtype=int)
+        dependencies = np.zeros((rows, len_a, len_b,), dtype=int)
 
-        costs = numpy.zeros(rows)
+        costs = np.zeros(rows)
 
         data = sorted(self.data, key=lambda x: (x[0], x[1][0], x[1][1]))
 
@@ -286,7 +286,7 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
             last = -1
 
             for m in range(len_a):
-                non_zero_positions, = numpy.nonzero(summed_deps[m, :])
+                non_zero_positions, = np.nonzero(summed_deps[m, :])
                 if len(non_zero_positions) == 0:
                     continue
                 if non_zero_positions[0] > last:
@@ -295,8 +295,8 @@ class CellCrossingCheckingGlobalDuoOptimizerQueue(object):
                     return False
             return True
 
-        used = numpy.zeros(rows, dtype=bool)
-        collector = numpy.zeros(cols, dtype=bool)
+        used = np.zeros(rows, dtype=bool)
+        collector = np.zeros(cols, dtype=bool)
         cost_accumulator = 0.0
 
         for w in range(rows):

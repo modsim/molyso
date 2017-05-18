@@ -7,7 +7,7 @@ from __future__ import division, unicode_literals, print_function
 
 from .signal import find_phase, vertical_mean, horizontal_mean
 
-import numpy
+import numpy as np
 
 
 def translation_2x1d(image_a=None, image_b=None, ffts_a=(), ffts_b=(), return_a=False, return_b=False):
@@ -90,7 +90,7 @@ def shift_image(image, shift, background='input'):
     if background == 'input':
         new_image = image.copy()
     elif background == 'blank':
-        new_image = numpy.zeros_like(image)
+        new_image = np.zeros_like(image)
     else:
         raise ValueError("Unsupported background method passed. Use background or blank.")
 

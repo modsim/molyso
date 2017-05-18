@@ -5,11 +5,12 @@ etc.py contains various helper functions and classes, which are not directly rel
 from __future__ import division, unicode_literals, print_function
 import os
 import sys
-import numpy
 import hashlib
 import time
 import logging
 import sqlite3
+
+import numpy as np
 
 from io import BytesIO
 from ..debugging import DebugPlot
@@ -48,13 +49,13 @@ try:
         return clint.textui.progress.bar(iterable, width=50)
 except ImportError:
     def fancy_progress_bar(iterable):
-        times = numpy.zeros(len(iterable), dtype=float)
+        times = np.zeros(len(iterable), dtype=float)
         for n, i in enumerate(iterable):
             start_time = time.time()
             yield i
             stop_time = time.time()
             times[n] = stop_time - start_time
-            eta = " ETA %.2fs" % float(numpy.mean(times[:n + 1]) * (len(iterable) - (n + 1)))
+            eta = " ETA %.2fs" % float(np.mean(times[:n + 1]) * (len(iterable) - (n + 1)))
             logger.info("processed %d/%d [took %.3fs%s]" % (n + 1, len(iterable), times[n], eta))
 
 
@@ -149,7 +150,7 @@ class QuickTableDumper(object):
         :param obj:
         :return:
         """
-        if type(obj) in (float, numpy.float32, numpy.float64) and self.precision:
+        if type(obj) in (float, np.float32, np.float64) and self.precision:
             return str(round(obj, self.precision))
         else:
             return str(obj)
@@ -206,7 +207,7 @@ def debug_init():
 
     """
     DebugPlot.force_active = True
-    numpy.set_printoptions(threshold=numpy.nan)
+    np.set_printoptions(threshold=np.nan)
 
 
 def parse_range(s, maximum=0):
@@ -266,7 +267,7 @@ def prettify_numpy_array(arr, space_or_prefix):
     :return:
     """
     six_spaces = ' ' * 6
-    prepared = repr(numpy.array(arr)).replace(')', '').replace('array(', six_spaces)
+    prepared = repr(np.array(arr)).replace(')', '').replace('array(', six_spaces)
     if isinstance(space_or_prefix, int):
         return prepared.replace(six_spaces, ' ' * space_or_prefix)
     else:
@@ -283,9 +284,9 @@ def bits_to_numpy_type(bits):
     """
     # this is supposed to throw an error
     return {
-        8: numpy.uint8,
-        16: numpy.uint16,
-        32: numpy.float32
+        8: np.uint8,
+        16: np.uint16,
+        32: np.float32
     }[int(bits)]
 
 
@@ -545,7 +546,7 @@ class NotReallyATree(list):
         super(NotReallyATree, self).__init__(self)
         for i in iterable:
             self.append(i)
-        self.na = numpy.array(iterable)
+        self.na = np.array(iterable)
 
     def query(self, q):  # w_numpy
         """
@@ -563,7 +564,7 @@ class NotReallyATree(list):
         >>> t.query([2.3535533905932737622, 2.3535533905932737622])
         (0.50000000000000022, 1)
         """
-        distances = numpy.sqrt(numpy.sum(numpy.power(self.na - q, 2.0), 1))
-        pos = numpy.argmin(distances, 0)
+        distances = np.sqrt(np.sum(np.power(self.na - q, 2.0), 1))
+        pos = np.argmin(distances, 0)
         return distances[pos], pos
 

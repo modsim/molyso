@@ -10,13 +10,14 @@ from .. import __citation__
 import argparse
 import sys
 import os
-import numpy
 import itertools
 import codecs
 import json
 import multiprocessing
 import traceback
 import logging
+
+import numpy as np
 
 from ..debugging import DebugPlot
 from ..debugging.debugplot import inject_poly_drawing_helper
@@ -111,9 +112,9 @@ def create_argparser():
     argparser.add_argument('-cfi', '--channel-fluorescence-images', dest='keepfluorchan',
                            default=False, action='store_true')
     argparser.add_argument('-ccb', '--channel-image-channel-bits', dest='channel_bits',
-                           default=numpy.uint8, type=bits_to_numpy_type)
+                           default=np.uint8, type=bits_to_numpy_type)
     argparser.add_argument('-cfb', '--channel-image-fluorescence-bits', dest='channel_fluorescence_bits',
-                           default=numpy.float32, type=bits_to_numpy_type)
+                           default=np.float32, type=bits_to_numpy_type)
     argparser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true')
     argparser.add_argument('-nc', '--no-cache', dest='ignorecache', default='nothing',
                            const='everything', type=str, nargs='?')

@@ -6,7 +6,7 @@ from __future__ import division, unicode_literals, print_function
 
 from ..generic.tunable import tunable
 
-import numpy
+import numpy as np
 
 
 def iterate_over_cells(cells):
@@ -84,7 +84,7 @@ def plot_timeline(p, channels, cells,
 
     colors = list(matplotlib.colors.cnames.keys())
 
-    time_points = numpy.sort([cc.image.timepoint for cc in channels])
+    time_points = np.sort([cc.image.timepoint for cc in channels])
 
     channels_per_inch = 5.0
 
@@ -106,7 +106,7 @@ def plot_timeline(p, channels, cells,
 
     for cc in channels:
         time_point = cc.image.timepoint
-        bs = numpy.searchsorted(time_points, time_point, side='right')
+        bs = np.searchsorted(time_points, time_point, side='right')
 
         ne = time_points[bs] if 0 <= bs < len(time_points) else time_point
 
@@ -137,8 +137,8 @@ def plot_timeline(p, channels, cells,
     p.gca().set_autoscale_on(True)
 
     if show_overlay:
-        time_format_str = '#%0' + str(int(numpy.log10(len(time_points))) + 1) + 'd' + ' ' \
-                          + '%0' + str(int(numpy.log10(time_points[-1])) + 1) + '.2fs'
+        time_format_str = '#%0' + str(int(np.log10(len(time_points))) + 1) + 'd' + ' ' \
+                          + '%0' + str(int(np.log10(time_points[-1])) + 1) + '.2fs'
 
         for n, time_point in enumerate(time_points):
             p.text(time_point, -max_h * 0.25, time_format_str % (n + 1, time_point),
@@ -146,7 +146,7 @@ def plot_timeline(p, channels, cells,
 
     needed_length = sum(len(cell.seen_as) for cell in cells) + len(cells)
 
-    scatter_collector = numpy.zeros((needed_length, 5), dtype=numpy.float32)  # type, x, y, fluor, length
+    scatter_collector = np.zeros((needed_length, 5), dtype=numpy.float32)  # type, x, y, fluor, length
     scatter_used = 0
 
     # constants
@@ -155,8 +155,8 @@ def plot_timeline(p, channels, cells,
 
     type_nothing, type_start, type_stop, type_junction = 0.0, 1.0, 2.0, 3.0
 
-    numpy.random.seed(tunable('colors.visualization.track.random.seed', 3141592653,
-                              description="Random seed for tracking visualization."))
+    np.random.seed(tunable('colors.visualization.track.random.seed', 3141592653,
+                           description="Random seed for tracking visualization."))
 
     for cell in cells:
         old_scatter_used = scatter_used
@@ -198,7 +198,7 @@ def plot_timeline(p, channels, cells,
         color_alpha = tunable('colors.visualization.track.alpha', 0.3, description="Track alpha for visualization.")
 
         if tunable('colors.visualization.track.random', 1, description="Randomize tracking color palette?") == 1:
-            color = colors[numpy.random.randint(0, len(colors))]
+            color = colors[np.random.randint(0, len(colors))]
 
         if show_overlay:
             slice_of_interest = scatter_collector[old_scatter_used:scatter_used, :]

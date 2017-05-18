@@ -4,7 +4,7 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
-import numpy
+import numpy as np
 
 from ..debugging import DebugPlot
 from ..generic.signal import find_phase, find_extrema_and_prominence, spectrum_fourier, spectrum_bins_by_length,\
@@ -187,7 +187,7 @@ def horizontal_channel_detection(image):
     nothing_found = ([], 0, 0, 0, 0, -1, )
 
     profile = horizontal_mean(image)
-    profile_diff = numpy.diff(profile)
+    profile_diff = np.diff(profile)
 
     upper_profile = +(profile_diff * (profile_diff > 0))
     lower_profile = -(profile_diff * (profile_diff < 0))
@@ -225,7 +225,7 @@ def horizontal_channel_detection(image):
         """
         frequencies, fourier_value = hires_power_spectrum(the_profile, oversampling=n)
         fourier_value = hamming_smooth(fourier_value, 3)
-        return frequencies, fourier_value, frequencies[numpy.argmax(fourier_value)]
+        return frequencies, fourier_value, frequencies[np.argmax(fourier_value)]
 
     # get the power spectra of the two signals
     frequencies_upper, fourier_value_upper, mainfrequency_upper = calc_bins_freqs_main(upper_profile)
@@ -254,21 +254,21 @@ def horizontal_channel_detection(image):
         return nothing_found
 
     profile_diff_len = profile_diff.size
-    absolute_differentiated_profile = numpy.absolute(profile_diff)
+    absolute_differentiated_profile = np.absolute(profile_diff)
 
     width, = find_phase(upper_profile, lower_profile)
 
     if width > main_frequency:
         width = int(width % main_frequency)
     elif width < 0:
-        width = int(width + main_frequency * numpy.ceil(abs(width / main_frequency)))
+        width = int(width + main_frequency * np.ceil(abs(width / main_frequency)))
 
     main_frequency += (width / (profile_diff_len / main_frequency))
 
     preliminary_signal = \
         one_every_n(profile_diff_len, main_frequency) + one_every_n(profile_diff_len, main_frequency, shift=width)
 
-    temporary_signal = numpy.zeros_like(absolute_differentiated_profile)
+    temporary_signal = np.zeros_like(absolute_differentiated_profile)
 
     temporary_extrema = find_extrema_and_prominence(absolute_differentiated_profile, order=max(1, abs(width // 2)))
     temporary_signal[temporary_extrema.maxima] = 1
@@ -297,13 +297,13 @@ def horizontal_channel_detection(image):
         one_every_n(profile_diff_len, main_frequency, shift=remaining_phase_shift + phase + 1.5 * width)
 
     try:
-        left = numpy.where(help_signal)[0][0]
+        left = np.where(help_signal)[0][0]
     except IndexError:
         left = 0
 
     try:
         # noinspection PyUnresolvedReferences
-        right = help_signal.size - numpy.where(help_signal[::-1])[0][0]
+        right = help_signal.size - np.where(help_signal[::-1])[0][0]
     except IndexError:
         # noinspection PyUnresolvedReferences
         right = help_signal.size
@@ -313,7 +313,7 @@ def horizontal_channel_detection(image):
     new_signal[:left] = 0
     new_signal[right:] = 0
 
-    positions, = numpy.where(new_signal)
+    positions, = np.where(new_signal)
 
     if len(positions) % 2 == 1:
         # either there's an additional line on the left or on the right
@@ -358,7 +358,7 @@ def alternate_vertical_channel_region_detection(image):
         :param clean_width:
         :return:
         """
-        ft = numpy.absolute(spectrum_fourier(horizontal_mean(img_frag)))
+        ft = np.absolute(spectrum_fourier(horizontal_mean(img_frag)))
 
         ft /= 0.5 * ft[0]
         ft[0] = 0
@@ -366,31 +366,31 @@ def alternate_vertical_channel_region_detection(image):
         ft = hamming_smooth(ft, ft_h_s)
 
         if clean_around:
-            ft[numpy.absolute(f - clean_around) > clean_width] = 0.0
+            ft[np.absolute(f - clean_around) > clean_width] = 0.0
 
-        return ft.max(), f[numpy.argmax(ft)]
+        return ft.max(), f[np.argmax(ft)]
 
     split_factor = tunable('channels.vertical.alternate.split_factor', 60,
                            description="For channel detection (alternate, vertical), split factor.")
 
-    collector = numpy.zeros(image.shape[0])
+    collector = np.zeros(image.shape[0])
 
     for n, the_step, image_slice in each_image_slice(image, split_factor, direction='horizontal'):
         power_local_f, local_f = horizontal_mean_frequency(image_slice)
 
         collector[n*the_step:(n+1)*the_step] = local_f
 
-    numpy.set_printoptions(threshold=numpy.nan)
+    np.set_printoptions(threshold=np.nan)
     # print(collector)
-    int_collector = collector.astype(numpy.int32)
+    int_collector = collector.astype(np.int32)
 
-    bins = numpy.bincount(int_collector)
-    winner = numpy.argmax(bins[1:]) + 1
+    bins = np.bincount(int_collector)
+    winner = np.argmax(bins[1:]) + 1
 
     delta = tunable('channels.vertical.alternate.delta', 5,
                     description="For channel detection (alternate, vertical), acceptable delta.")
 
-    collector = (numpy.absolute(int_collector - winner) < delta) | (numpy.absolute(int_collector - 2*winner) < delta)
+    collector = (np.absolute(int_collector - winner) < delta) | (np.absolute(int_collector - 2*winner) < delta)
 
     return sorted(find_insides(collector), key=lambda pair: pair[1] - pair[0], reverse=True)[0]
 
@@ -417,7 +417,7 @@ def vertical_channel_region_detection(image):
         :param clean_width:
         :return:
         """
-        ft = numpy.absolute(spectrum_fourier(horizontal_mean(img_frag)))
+        ft = np.absolute(spectrum_fourier(horizontal_mean(img_frag)))
 
         ft /= 0.5 * ft[0]
 
@@ -426,9 +426,9 @@ def vertical_channel_region_detection(image):
         ft = hamming_smooth(ft, ft_h_s)
 
         if clean_around:
-            ft[numpy.absolute(f - clean_around) > clean_width] = 0.0
+            ft[np.absolute(f - clean_around) > clean_width] = 0.0
 
-        return ft.max(), f[numpy.argmax(ft)]
+        return ft.max(), f[np.argmax(ft)]
 
     power_overall_f, overall_f = horizontal_mean_frequency(image)
 
@@ -453,7 +453,7 @@ def vertical_channel_region_detection(image):
 
     height = image.shape[0]
 
-    collector = numpy.zeros(height)
+    collector = np.zeros(height)
 
     def recursive_check(top, bottom, orientation=FIRST_CALL):
         """
