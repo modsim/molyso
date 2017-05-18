@@ -80,8 +80,8 @@ def interactive_ground_truth_main(args, tracked_results):
             :return:
             """
             return {
-                'points': numpy.ma.array(numpy.zeros((1024, 3)), mask=False),
-                'points_empty': numpy.ma.array(numpy.zeros((1024, 3)), mask=False),
+                'points': numpy.ma.array(numpy.zeros((1024, 3))),
+                'points_empty': numpy.ma.array(numpy.zeros((1024, 3))),
                 'used': 0,
                 'last_point_x': None,
                 'last_point_y': None,
@@ -253,7 +253,7 @@ def interactive_ground_truth_main(args, tracked_results):
 
                 """
                 inner_times = env['points'][:env['used'], 2].compressed()
-                inner_times = inner_times.reshape(inner_times.size / 2, 2)
+                inner_times = inner_times.reshape(inner_times.size // 2, 2)
                 inner_deltas = inner_times[:, 1] - inner_times[:, 0]
                 inner_deltas /= 60.0 * 60.0
                 inner_mu = numpy.log(2) / inner_deltas
@@ -339,7 +339,7 @@ def interactive_ground_truth_main(args, tracked_results):
                     x_pos = list(tracked_results.keys())[t_pos]
                     x_chan = list(tracked_results[x_pos].channel_accumulator.keys())[t_chan]
                     times = t_env['points'][:t_env['used'], 2].compressed()
-                    times = times.reshape(times.size / 2, 2)
+                    times = times.reshape(times.size // 2, 2)
                     deltas = times[:, 1] - times[:, 0]
                     mu = numpy.log(2) / (deltas / (60.0 * 60.0))
 
