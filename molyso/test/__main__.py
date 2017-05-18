@@ -19,6 +19,8 @@ def main():
 
     import molyso.imageio.imagestack
     import molyso.imageio.imagestack_ometiff
+    import molyso.imageio.imagestack_czi
+    import molyso.imageio.imagestack_nd2
 
     import molyso.debugging.debugplot
 
@@ -48,6 +50,8 @@ def main():
 
     doctest.testmod(molyso.imageio.imagestack)
     doctest.testmod(molyso.imageio.imagestack_ometiff)
+    doctest.testmod(molyso.imageio.imagestack_czi)
+    doctest.testmod(molyso.imageio.imagestack_nd2)
 
     doctest.testmod(molyso.debugging.debugplot)
 
