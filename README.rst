@@ -9,6 +9,9 @@ molyso Readme
 .. image:: https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat
    :target: https://molyso.readthedocs.io/en/latest/
 
+.. image:: https://travis-ci.org/modsim/molyso.svg?branch=master
+   :target: https://travis-ci.org/modsim/molyso
+
 .. image:: https://img.shields.io/pypi/l/molyso.svg
    :target: https://opensource.org/licenses/BSD-2-Clause
 
