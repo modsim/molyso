@@ -146,7 +146,7 @@ def plot_timeline(p, channels, cells,
 
     needed_length = sum(len(cell.seen_as) for cell in cells) + len(cells)
 
-    scatter_collector = np.zeros((needed_length, 5), dtype=numpy.float32)  # type, x, y, fluor, length
+    scatter_collector = np.zeros((needed_length, 5), dtype=np.float32)  # type, x, y, fluor, length
     scatter_used = 0
 
     # constants

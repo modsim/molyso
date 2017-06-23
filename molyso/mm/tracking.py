@@ -182,7 +182,7 @@ class TrackedPosition(object):
                 extrema = find_extrema_and_prominence(signal)
                 maxy = extrema.signal[extrema.maxima]
 
-                centroid = np.sum(extrema.maxima * maxy) / numpy.sum(maxy)
+                centroid = np.sum(extrema.maxima * maxy) / np.sum(maxy)
 
                 # mean = np.mean(maxy)
                 result = 1 if centroid >= signal.size / 2 else -1
