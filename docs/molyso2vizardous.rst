@@ -10,13 +10,13 @@ You can convert *molyso*'s tabular output format to PhyloXML/MetaXML lineage tre
 
 You can download *Vizardous* at https://github.com/modsim/vizardous .
 
-The appropriate tool is located in the util/ folder (from source distribution or cloned from github).
+The appropriate tool is embedded in molyso in the molyso.util.molyso2vizardous package.
 
 .. code-block:: bash
 
-    > python util/molyso2vizardous.py
+    > python3 -m molyso.util.molyso2vizardous
 
-    usage: molyso2vizardous.py [-h] [-o OUTPUT] [-d MINIMUM_DEPTH] [-q] input
+    usage: __main__.py [-h] [-o OUTPUT] [-d MINIMUM_DEPTH] [-q] input
 
     molyso2vizardous molyso-tabular data format to Vizardous metaXML/phyloXML
     converter
@@ -35,7 +35,7 @@ The appropriate tool is located in the util/ folder (from source distribution or
 
 .. code-block:: bash
 
-    > python util/molyso2vizardous.py results.txt
+    > python3 -m molyso.util.molyso2vizardous results.txt
 
 
 The tool will then generate many individual files for each found track (you can filter out too short tracks by using
