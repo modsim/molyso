@@ -519,9 +519,10 @@ class Sqlite3Cache(BaseCache):
 
         if self.ignore_cache is not True:
             self.conn = sqlite3.connect('%s.sq3.cache' % (self.cache_token, ))
-            self.conn.isolation_level = 'DEFERRED'
+            self.conn.isolation_level = None
             self.conn.execute('PRAGMA journal_mode = WAL')
             self.conn.execute('PRAGMA synchronous = NORMAL')
+            self.conn.isolation_level = 'DEFERRED'
             self.conn.execute('CREATE TABLE IF NOT EXISTS entries (name TEXT, value BLOB)')
             self.conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS entries_name ON entries (name)')
 
