@@ -6,7 +6,15 @@
 import os
 import sys
 import argparse
-import pandas
+
+try:
+    # pandas is no molyso dependency, so try to fail gracefully
+    import pandas
+except ImportError:
+    pandas = None
+    print("molyso2vizardous does additionally need pandas to be installed!")
+    raise SystemExit
+
 import xml.etree.ElementTree as ET
 from collections import namedtuple
 from itertools import chain
@@ -14,7 +22,10 @@ from copy import deepcopy
 
 
 def create_argparser():
-    argparser = argparse.ArgumentParser(description="molyso2vizardous molyso-tabular data format to Vizardous metaXML/phyloXML converter")
+    argparser = argparse.ArgumentParser(
+        description=
+        "molyso2vizardous molyso-tabular data format to Vizardous metaXML/phyloXML converter"
+    )
 
     def _error(message=''):
         argparser.print_help()
@@ -35,7 +46,10 @@ def unit(value):
     return {'unit': value}
 
 
-def root_phyloXML():
+PHYLO_SUFFIX = 'phylo.xml'
+
+
+def root_phylo_xml():
     return ET.Element(
         'phyloxml', {
             'xmlns': 'http://www.phyloxml.org',
@@ -45,8 +59,10 @@ def root_phyloXML():
         }
     )
 
+META_SUFFIX = 'meta.xml'
 
-def root_metaXML():
+
+def root_meta_xml():
     return ET.Element(
         'metaInformation', {
             'xmlns': 'http://13cflux.net/static/schemas/metaXML/2',
@@ -56,24 +72,24 @@ def root_metaXML():
     )
 
 
-def empty_metaXML(project_name, duration_in_seconds):
-    metaXML = root_metaXML()
-    ET.SubElement(metaXML, 'projectName').text = project_name
-    ET.SubElement(metaXML, 'experimentDuration', unit('min')).text = str(duration_in_seconds / 60.0)
-    return metaXML
+def empty_meta_xml(project_name, duration_in_seconds):
+    meta_xml = root_meta_xml()
+    ET.SubElement(meta_xml, 'projectName').text = project_name
+    ET.SubElement(meta_xml, 'experimentDuration', unit('min')).text = str(duration_in_seconds / 60.0)
+    return meta_xml
 
 
-def empty_phyloXML(project_name):
-    phyloXML = root_phyloXML()
-    ET.SubElement(phyloXML, 'metaxml:projectName').text = project_name
-    return phyloXML
+def empty_phylo_xml(project_name):
+    phylo_xml = root_phylo_xml()
+    ET.SubElement(phylo_xml, 'metaxml:projectName').text = project_name
+    return phylo_xml
 
 
 def empty_trees(project_name, duration):
-    return empty_phyloXML(project_name), empty_metaXML(project_name, duration)
+    return empty_phylo_xml(project_name), empty_meta_xml(project_name, duration)
 
 
-def molyso2vizardous(data, phyloXML, metaXML):
+def molyso2vizardous(data, phylo_xml, meta_xml):
     def make_cell(cell):
         cell_element = ET.Element('cell', {'id': str(cell.uid_thiscell)})
 
@@ -96,17 +112,17 @@ def molyso2vizardous(data, phyloXML, metaXML):
         return cell_element
 
     def make_frame(frame_number, frame_time):
-        frame = ET.SubElement(metaXML, 'frame', {'id': str(frame_number - 1)})
+        frame = ET.SubElement(meta_xml, 'frame', {'id': str(frame_number - 1)})
         ET.SubElement(frame, 'elapsedTime', unit('min')).text = str(frame_time)
         return frame
 
     def make_clade(cell):
-        clade = ET.Element('clade')
-        ET.SubElement(clade, 'name').text = str(cell.uid_thiscell)
-        ET.SubElement(clade, 'branch_length').text = '1.0'
-        return clade
+        inner_clade = ET.Element('clade')
+        ET.SubElement(inner_clade, 'name').text = str(cell.uid_thiscell)
+        ET.SubElement(inner_clade, 'branch_length').text = '1.0'
+        return inner_clade
 
-    data = data.sort('timepoint')
+    data = data.sort_values(by=['timepoint'])
 
     timepoints = {
         the_frame_number: make_frame(the_frame_number, the_frame.timepoint / 60.0)
@@ -129,28 +145,32 @@ def molyso2vizardous(data, phyloXML, metaXML):
             current_positions[row.uid_cell].append(clade)
         else:
             if row.uid_parent == 0:
-                ET.SubElement(phyloXML, 'phylogeny', {'rooted': str('false')}).append(clade)
+                ET.SubElement(phylo_xml, 'phylogeny', {'rooted': str('false')}).append(clade)
                 current_positions[row.uid_cell] = [clade]
             else:
-                current_positions[row.uid_parent][-1].append(clade)
-                current_positions[row.uid_cell] = [clade]
+                try:
+                    current_positions[row.uid_parent][-1].append(clade)
+                    current_positions[row.uid_cell] = [clade]
+                except KeyError as e:
+                    # not sure if it's due to the data or some bug, but let's warn and skip
+                    print("KeyError, continuing:", e)
 
-    return phyloXML, metaXML
+    return phylo_xml, meta_xml
 
 
 def depth(element, num=0):
     return max(chain([num], (depth(child, num+1) for child in element)))
 
 
-def filter_trees(phyloXML, metaXML, keep=0):
+def filter_trees(phylo_xml, meta_xml, keep=0):
 
-    for n, phylogeny in enumerate(phyloXML.findall('phylogeny')):
+    for n, phylogeny in enumerate(phylo_xml.findall('phylogeny')):
         if n != keep:
-            phyloXML.remove(phylogeny)
+            phylo_xml.remove(phylogeny)
 
-    names_kept = set(p.text for p in phyloXML.findall('.//name'))
+    names_kept = set(p.text for p in phylo_xml.findall('.//name'))
 
-    for frame in metaXML.findall('.//frame'):
+    for frame in meta_xml.findall('.//frame'):
         for cell in frame:
             if cell.tag == 'cell':
                 if cell.attrib.get('id') not in names_kept:
@@ -166,20 +186,12 @@ def main():
     duration = data.timepoint.max()
     project_name = 'Mother Machine Experiment'
 
-
     for (multipoint, channel_in_multipoint), subset in data.groupby(by=['multipoint', 'channel_in_multipoint']):
-
-
-        phyloXML, metaXML = empty_trees(project_name, duration)
-
-        phyloXML, metaXML = molyso2vizardous(subset, phyloXML, metaXML)
+        phylo_xml, meta_xml = empty_trees(project_name, duration)
+        phylo_xml, meta_xml = molyso2vizardous(subset, phylo_xml, meta_xml)
 
         if args.output is None:
             args.output, _ = os.path.splitext(args.input)
-
-        PHYLO_SUFFIX = 'phylo.xml'
-        META_SUFFIX = 'meta.xml'
-
 
         def write_outputs(result_files):
             for file_suffix, tree in result_files.items():
@@ -188,7 +200,7 @@ def main():
 
         channel_identifier = 'mp.%d.channel.%d' % (multipoint, channel_in_multipoint,)
 
-        jobs = phyloXML.findall('phylogeny')
+        jobs = phylo_xml.findall('phylogeny')
 
         for n, phylogeny in enumerate(jobs):
             depth_of_phylogeny = depth(phylogeny)
@@ -196,14 +208,14 @@ def main():
             if depth_of_phylogeny < args.minimum_depth:
                 continue
 
-            copy_phyloXML = deepcopy(phyloXML)
-            copy_metaXML = deepcopy(metaXML)
+            copy_phylo_xml = deepcopy(phylo_xml)
+            copy_meta_xml = deepcopy(meta_xml)
 
-            filter_trees(copy_phyloXML, copy_metaXML, n)
+            filter_trees(copy_phylo_xml, copy_meta_xml, n)
 
             infix = '%s.%d.of.%d.depth.%d.' % (channel_identifier, n+1, len(jobs), depth_of_phylogeny)
 
-            write_outputs({infix + PHYLO_SUFFIX: copy_phyloXML, infix + META_SUFFIX: copy_metaXML})
+            write_outputs({infix + PHYLO_SUFFIX: copy_phylo_xml, infix + META_SUFFIX: copy_meta_xml})
 
 # write_outputs({PHYLO_SUFFIX: phyloXML, META_SUFFIX: metaXML})
 
