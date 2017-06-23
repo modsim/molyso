@@ -7,8 +7,8 @@ import os
 import sys
 import argparse
 
-from molyso.debugging.callserialization import CallSerialization
-from molyso.debugging.debugplot import inject_poly_drawing_helper
+from ...debugging.callserialization import CallSerialization
+from ...debugging.debugplot import inject_poly_drawing_helper
 from matplotlib import pylab
 
 
