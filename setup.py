@@ -16,7 +16,6 @@ setup(
     author_email='c.sachs@fz-juelich.de',
     url='https://github.com/modsim/molyso',
     packages=find_packages(),
-    scripts=['molyso.py'],
     install_requires=['numpy', 'scipy', 'matplotlib', 'nd2file', 'tifffile'],  # tested with tifffile=0.12.0
     extras_require={
         'fast_rotation': ['cv2'],
@@ -35,9 +34,8 @@ setup(
         'Operating System :: POSIX :: Linux',
         'Operating System :: MacOS :: MacOS X',   # lately no tests
         'Operating System :: Microsoft :: Windows',
-        'Programming Language :: Python :: 2.7',  # tests, not often
         'Programming Language :: Python :: 3',    #
-        'Programming Language :: Python :: 3.4',  # main focus
+        'Programming Language :: Python :: 3.5',  # main focus
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Topic :: Scientific/Engineering :: Image Recognition',
     ]
