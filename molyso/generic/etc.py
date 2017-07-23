@@ -15,6 +15,12 @@ import numpy as np
 from io import BytesIO
 from ..debugging import DebugPlot
 
+try:
+    import tqdm
+except ImportError:
+    tqdm = None
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,23 +38,27 @@ def silent_progress_bar(iterable):
     """
     return iter(iterable)
 
-try:
-    # noinspection PyPackageRequirements,PyUnresolvedReferences
-    import clint.textui
 
-    def fancy_progress_bar(iterable):
-        """
-        Returns in iterator which will show progress as well.
-        Will either use the clint module when available, or a simpler implementation.
+def fancy_progress_bar(iterable):
+    """
+    Returns in iterator which will show progress as well.
+    Will either use the tqdm module when available, or a simpler implementation.
 
-        :param iterable: the iterable to progress-ify
-        :type iterable: iterable
-        :rtype: iterable
-        :return: progress-ified iterable
-        """
-        return clint.textui.progress.bar(iterable, width=50)
-except ImportError:
-    def fancy_progress_bar(iterable):
+    :param iterable: the iterable to progress-ify
+    :type iterable: iterable
+    :rtype: iterable
+    :return: progress-ified iterable
+    """
+
+    if tqdm:
+        # weird bug: if the threading magic in tqdm is active, multiprocessing in molyso gets stuck!
+        # should be investigated further, but for now, let us just disable it ...
+
+        tqdm.tqdm.monitor_interval = 0
+
+        for item in tqdm.tqdm(iterable):
+            yield item
+    else:
         times = np.zeros(len(iterable), dtype=float)
         for n, i in enumerate(iterable):
             start_time = time.time()

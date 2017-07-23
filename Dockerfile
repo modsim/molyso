@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y gcc libgomp1 unzip libgl1-mesa-glx && \
     apt-get clean && \
     #conda install -y numpy scipy opencv matplotlib jupyter pandas && \
     conda install -y opencv && \
-    pip install "git+https://github.com/modsim/molyso#egg=molyso[progressbar]" && \
+    pip install "git+https://github.com/modsim/molyso#egg=molyso" && \
     adduser --disabled-password user && \
     mkdir /data /examples && \
     wget https://github.com/modsim/molyso/archive/master.zip -O /tmp/molyso.zip && \ 
