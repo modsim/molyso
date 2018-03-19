@@ -15,6 +15,9 @@ molyso Readme
 .. image:: https://img.shields.io/pypi/l/molyso.svg
    :target: https://opensource.org/licenses/BSD-2-Clause
 
+.. image:: https://img.shields.io/docker/build/modsim/molyso.svg
+   :target: https://hub.docker.com/r/modsim/molyso
+
 .. image:: https://zenodo.org/badge/doi/10.5281/zenodo.53764.svg
    :target: https://dx.doi.org/10.5281/zenodo.53764
 
