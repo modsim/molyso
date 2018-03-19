@@ -15,6 +15,19 @@
 
 import sys
 import os
+from unittest.mock import MagicMock
+
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, item):
+        return MagicMock()
+
+MOCK_MODULES = [
+    'scipy.fftpack'
+]
+
+sys.modules.update((module_name, Mock()) for module_name in MOCK_MODULES)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
