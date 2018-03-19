@@ -47,51 +47,36 @@ License
 
 Prerequisites
 -------------
-*molyso* needs Python 3, if you are using Windows, we recommend WinPython_, as it contains the necessary modules already. Pick a >=3.4 64 bit version.
-
-.. _WinPython: https://winpython.github.io
-
-If you are using Ubuntu, install the necessary packages via:
-
-.. code-block:: bash
-
-    > sudo apt-get install python3 python3-pip python3-numpy python3-scipy python3-matplotlib
-
+*molyso* needs Python 3, if you don't have a Python installation or are not familiar with installing packages from source, it is suggested
+that you use the `Anaconda <https://www.continuum.io/downloads>`_ Python distribution, available for Windows, Linux and macOS.
 
 Ways to install molyso
 ----------------------
 
-There are different ways to install molyso (although not always perfectly stable, usually the latest github version is the best choice):
+There are different ways to install molyso,
+for ease of use it is suggested to use the Anaconda Python distribution and the conda package manager.
+Alternatively, you can use molyso inside a Docker container, see the Docker_ section near the end.
 
-Via the Python Package Index (release version)
-##############################################
+With Anaconda
+#############
 
 .. code-block:: bash
 
-    > pip3 install --user molyso
+    > conda config --add channels conda-forge
+    > conda config --add channels bioconda
+    > conda config --add channels csachs
 
-Via the pip with the github Version
+    > conda install -y molyso
+
+
+Alternatively, manually from github
 ###################################
-
-.. code-block:: bash
-
-    > pip3 install --user git+https://github.com/modsim/molyso
-
-Via the pip with the github Version (alternate, e.g. for Windows, no git required)
-##################################################################################
-
-.. code-block:: bash
-
-    > pip3 install --user https://github.com/modsim/molyso/archive/master.zip
-
-From github
-###########
 
 .. code-block:: bash
 
     > git clone https://github.com/modsim/molyso
     > cd molyso
-    > python3 setup.py install --user
+    > python setup.py install --user
 
 First Steps
 -----------
@@ -99,7 +84,7 @@ First Steps
 
 .. code-block:: bash
 
-    > python3 -m molyso
+    > python -m molyso
 
 And you will be greeted by the help screen of molyso:
 
@@ -175,7 +160,7 @@ To start the interactive viewer, just call molyso without any other parameters:
 
 .. code-block:: bash
 
-    > python3 -m molyso dataset.ome.tiff
+    > python -m molyso dataset.ome.tiff
 
 To start batch processing, run molyso with the `-p` option. Give an output file for tabular output with `-o` and/or an output directory for individual tracked kymographs with `-ot`.
 
@@ -185,7 +170,7 @@ Example:
 
 .. code-block:: bash
 
-    > python3 -m molyso "filename.tif?interval=300,calibration=0.08"
+    > python -m molyso "filename.tif?interval=300,calibration=0.08"
 
 
 Supported are among others: the acquisition `interval` (seconds), and the pixel size `calibration` in um per pixel.
@@ -194,12 +179,32 @@ Don't forget to escape/quote the ? in the command line.
 
 .. code-block:: bash
 
-    > python3 -m molyso dataset.ome.tiff -p -o results.txt -ot dataset_tracking
+    > python -m molyso dataset.ome.tiff -p -o results.txt -ot dataset_tracking
 
 *molyso* writes cache files in the current directory which contain temporary analysis results. If you want to re-generate tabular output *e.g.*, those files will be read in and already performed analysis steps will be skipped. They are used as well, to show the kymograph for ground truth data mode. They can be kept if you plan any of the mentioned steps, if you are finished with an analysis, they can be deleted as well.
 
 Once *molyso* has run, you will need to post-process the data to extract the information you're interested in.
 Take a look at the Jupyter/IPython Notebooks.
+
+Docker
+------
+
+`Docker <https://www.docker.com/>`_ is a containerization platform allowing for applications to be run with bundled dependencies without explicit
+installation steps.
+
+You can use the following commands to run molyso in lieu of the aforementioned calls, e.g. for analysis:
+
+.. code-block:: bash
+
+   > docker run --tty --interactive --rm --volume `pwd`:/data --user `id -u` modsim/molyso -p <parameters ...>
+
+And to run interactive mode (display on local X11, under Linux):
+
+.. code-block:: bash
+
+   > docker run --tty --interactive --rm --volume `pwd`:/data --user `id -u` --env DISPLAY=$DISPLAY --volume /tmp/.X11-unix:/tmp/.X11-unix modsim/molyso <parameters ...>
+
+Docker usage has just been tested with Linux host systems.
 
 Third Party Licenses
 --------------------
