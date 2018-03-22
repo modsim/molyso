@@ -253,6 +253,17 @@ def horizontal_channel_detection(image):
     if main_frequency == 0.0:
         return nothing_found
 
+    maximum_channel_count = profile.size / main_frequency
+
+    allowed_maximum_channel_count = tunable('channels.horizontal.channel_count.max', 50,
+                                            description="For channel detection, maximum allowed channels to be detected.")
+
+    allowed_minimum_channel_count = tunable('channels.horizontal.channel_count.min', 3,
+                                            description="For channel detection, minimum allowed channels to be detected.")
+
+    if maximum_channel_count > allowed_maximum_channel_count or maximum_channel_count < allowed_minimum_channel_count:
+        return nothing_found
+
     profile_diff_len = profile_diff.size
     absolute_differentiated_profile = np.absolute(profile_diff)
 
