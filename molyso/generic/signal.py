@@ -86,6 +86,28 @@ class ExtremeAndProminence(namedtuple('ExtremeAndProminence', ['maxima', 'minima
     """
 
 
+def _dummy_max_spline(arg):
+    """
+
+    :param arg:
+    :return:
+    """
+    arg = np.zeros_like(arg)
+    arg[:] = float('Inf')
+    return arg
+
+
+def _dummy_min_spline(arg):
+    """
+
+    :param arg:
+    :return:
+    """
+    arg = np.zeros_like(arg)
+    arg[:] = float('-Inf')
+    return arg
+
+
 def find_extrema_and_prominence(signal, order=5):
     """
     Generates various extra information / signals.
@@ -125,6 +147,9 @@ def find_extrema_and_prominence(signal, order=5):
     if len(maxima) == 0:
         maxima = np.array([np.argmax(signal)])
 
+    if len(maxima) == 1 and (maxima[0] == 0 or maxima[0] == len(signal) - 1):
+        maxima = []
+
     minima = np.array([np.argmin(signal)])
     iorder = order
     while iorder > 0:
@@ -134,8 +159,12 @@ def find_extrema_and_prominence(signal, order=5):
             iorder -= 1
             continue
         break
+
     if len(minima) == 0:
         minima = np.array([np.argmin(signal)])
+
+    if len(minima) == 1 and (minima[0] == 0 or minima[0] == len(signal) - 1):
+        minima = []
 
     maximaintpx = np.zeros(len(maxima) + 2)
     maximaintpy = np.copy(maximaintpx)
@@ -147,31 +176,28 @@ def find_extrema_and_prominence(signal, order=5):
     maximaintpx[1:-1] = maxima[:]
     maximaintpx[-1] = len(signal) - 1
 
-    maximaintpy[0] = signal[maxima][0]
-    maximaintpy[1:-1] = signal[maxima][:]
-    maximaintpy[-1] = signal[maxima][-1]
+    signal_maxima = signal[maxima]
+    if len(signal_maxima) > 0:
+        maximaintpy[0] = signal_maxima[0]
+        maximaintpy[1:-1] = signal_maxima[:]
+        maximaintpy[-1] = signal_maxima[-1]
 
     minimaintpx[0] = 0
     minimaintpx[1:-1] = minima[:]
     minimaintpx[-1] = len(signal) - 1
 
-    minimaintpy[0] = signal[minima][0]
-    minimaintpy[1:-1] = signal[minima][:]
-    minimaintpy[-1] = signal[minima][-1]
+    signal_minima = signal[minima]
+
+    if len(signal_minima) > 0:
+        minimaintpy[0] = signal_minima[0]
+        minimaintpy[1:-1] = signal_minima [:]
+        minimaintpy[-1] = signal_minima[-1]
 
     k = 3
     if len(maximaintpy) <= 3:
         k = len(maximaintpy) - 1
     if k < 1:
-        def max_spline(arg):
-            """
-
-            :param arg:
-            :return:
-            """
-            arg = np.zeros_like(arg)
-            arg[:] = float('Inf')
-            return arg
+        max_spline = _dummy_max_spline
     else:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -181,15 +207,7 @@ def find_extrema_and_prominence(signal, order=5):
     if len(minimaintpy) <= 3:
         k = len(minimaintpy) - 1
     if k < 1:
-        def min_spline(arg):
-            """
-
-            :param arg:
-            :return:
-            """
-            arg = np.zeros_like(arg)
-            arg[:] = float('-Inf')
-            return arg
+        min_spline = _dummy_min_spline
     else:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
