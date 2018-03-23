@@ -59,6 +59,14 @@ class MultiImageStack(object):
         """
         image = self._get_image(*args, **kwargs)
 
+        if 'rotate' in self.parameters:
+            rotate = self.parameters['rotate']
+            rotation_times = {'0': 0, '90': 1, '180': 2, '270': 3, '360': 0}
+
+            assert rotate in rotation_times
+
+            image = np.rot90(image, rotation_times[rotate])
+
         if 'float' in kwargs and kwargs['float']:
             return image.astype(np.float32)
 
