@@ -119,6 +119,8 @@ class AutoRotationProvider(object):
         self.image, self.angle, self.crop_height, self.crop_width = \
             apply_rotate_and_cleanup(self.image, self.angle)
 
+        assert self.image.size > 0
+
 
 # noinspection PyUnresolvedReferences
 class AutoRegistrationProvider(object):
