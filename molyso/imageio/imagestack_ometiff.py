@@ -37,14 +37,14 @@ class OMETiffStack(MultiImageStack):
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self.tiff = TiffFile(self.parameters['filename'], fastij=False, is_ome=True)  # shouldn't be ij, but safe is safe
+            self.tiff = TiffFile(self.parameters['filename'], movie=True, is_ome=True)
 
         self.fp = self.tiff.pages[0]
         if not self.fp.is_ome:
             raise RuntimeError('Not an OMETiffStack')
         self.xml = None
         self.ns = ''
-        self.xml_str = self.fp.tags['image_description'].value
+        self.xml_str = self.fp.description
 
         self.images = self._parse_ome_xml(self.xml_str)
 
@@ -232,7 +232,7 @@ class PlainTiffStack(MultiImageStack):
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self.tiff = TiffFile(self.parameters['filename'], fastij=False)  # fastij breaks the current _get_image !
+            self.tiff = TiffFile(self.parameters['filename'], movie=True)
 
         self.fp = self.tiff.pages[0]
 
