@@ -190,7 +190,7 @@ def find_extrema_and_prominence(signal, order=5):
 
     if len(signal_minima) > 0:
         minimaintpy[0] = signal_minima[0]
-        minimaintpy[1:-1] = signal_minima [:]
+        minimaintpy[1:-1] = signal_minima[:]
         minimaintpy[-1] = signal_minima[-1]
 
     k = 3

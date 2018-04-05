@@ -99,6 +99,7 @@ class CallSerialization(object):
 
     def add_step(self, what):
         num = len(self.steps)
+        # noinspection PyProtectedMember
         self.steps.append(what._replace(num=num))
         return num
 

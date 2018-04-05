@@ -5,7 +5,8 @@ See README/and documentation for end user information. See :doc:`license` for li
 
 A short starting point to understanding *molyso*'s internal structure:
 
-The :py:mod:`molyso.mm` module contains the Mother Machine specific code, as well as the main function (see highlevel.py).
+The :py:mod:`molyso.mm` module contains the Mother Machine specific code,
+as well as the main function (see highlevel.py).
 Analysis code is basically split into two levels: an OOP representation of the data analyzed, as well as some
 core functions (functional) which perform individual processing step.
 
@@ -13,8 +14,8 @@ core functions (functional) which perform individual processing step.
 :py:func:`molyso.mm.cell_detection.find_cells_in_channel` function,
 which returns mere numbers, of which the class constructs :py:class:`molyso.mm.cell_detection.Cell` objects.
 
-:py:mod:`molyso.generic` contains a mix of library functions necessary to perform these tasks, coarsely these can be separated
-into signal processing etc. functionality, and general utility functions.
+:py:mod:`molyso.generic` contains a mix of library functions necessary to perform these tasks,
+coarsely these can be separated into signal processing etc. functionality, and general utility functions.
 
 molyso.debugging contains the DebugPlot class, a thin abstraction layer over matplotlib which allows for conditional,
 context manager based plot generation.

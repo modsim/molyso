@@ -51,7 +51,6 @@ def interactive_main(args):
 
     env = {'show': True, 'rotated': True, 'fluor_ind': False}
 
-
     def update(_):
         """
 

@@ -232,8 +232,8 @@ class DebugPlot(object):
                     DebugPlot.pp = self.__class__.pdfopener('debug.pdf')
 
     def __enter__(self):
-        #if self.active:
-        #    # noinspection PyPep8Naming,PyAttributeOutsideInit
+        # if self.active:
+        #     # noinspection PyPep8Naming,PyAttributeOutsideInit
 
         if self.active:
             return self.call_serialization.get_proxy()
@@ -252,7 +252,7 @@ class DebugPlot(object):
             p.rcParams.update(self.default_config)
             p.figure()
             p.text(0.01, 0.01, "%s\n%s\n%s" % (self.info, self.get_context(), self.filter_str),
-                      transform=p.gca().transAxes)
+                   transform=p.gca().transAxes)
 
             inject_poly_drawing_helper(p)
 

@@ -13,7 +13,8 @@ from matplotlib import pylab
 
 
 def create_argparser():
-    argparser = argparse.ArgumentParser(description="viewkymograph can view or convert molyso's pickled kymograph representation")
+    argparser = argparse.ArgumentParser(
+        description="viewkymograph can view or convert molyso's pickled kymograph representation")
 
     def _error(message=''):
         argparser.print_help()

@@ -107,7 +107,6 @@ class CziStack(MultiImageStack):
 
         self.positions = positions
 
-
     # noinspection PyProtectedMember
     def notify_fork(self):
         # noinspection PyProtectedMember
@@ -118,7 +117,6 @@ class CziStack(MultiImageStack):
         self.czi._fh.close()
         # noinspection PyProtectedMember
         self.czi._fh.open()
-
 
     def _get_image(self, **kwargs):
         subsampling_temporal = int(self.parameters['subsample_t'])
@@ -133,7 +131,8 @@ class CziStack(MultiImageStack):
         t = kwargs['t'] * subsampling_temporal
 
         pos = kwargs['pos']
-        return _get_image_from_subblock(self.frames[_normalize(dict(C=channel, S=pos, T=t))])[::subsampling_spatial, ::subsampling_spatial]
+        return _get_image_from_subblock(
+            self.frames[_normalize(dict(C=channel, S=pos, T=t))])[::subsampling_spatial, ::subsampling_spatial]
 
     def _get_meta(self, *args, **kwargs):
         what = args[0]

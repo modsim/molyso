@@ -306,10 +306,14 @@ class PlainTiffStack(MultiImageStack):
         return {
             'calibration': lambda: float(self.parameters['calibration']) * subsampling_spatial,
             'channels': lambda: self.series_array.shape[1] if len(self.series.axes) == 4 else 1,
-            'fluorescenceChannels': lambda: list(range(1, self.series_array.shape[1])) if len(self.series.axes) == 4 else [],
+            'fluorescenceChannels':
+                lambda: list(range(1, self.series_array.shape[1])) if len(self.series.axes) == 4 else [],
             'position': lambda: (0.0, 0.0, 0.0,),
             'time': lambda: float(self.parameters['interval']) * t * subsampling_temporal,
-            'timepoints': lambda: (self.series_array.shape[0] if len(self.series.axes) == 4 else len(self.tiff.pages)) // subsampling_temporal,
+            'timepoints':
+                lambda: (self.series_array.shape[0] if
+                         len(self.series.axes) == 4
+                         else len(self.tiff.pages)) // subsampling_temporal,
             'multipoints': lambda: 1
         }[what]()
 

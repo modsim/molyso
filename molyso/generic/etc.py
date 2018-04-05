@@ -84,6 +84,7 @@ def iter_time(iterable):
     stop_time = time.time()
     logger.info("whole step took %.3fs" % (stop_time - start_time,))
 
+
 _fancy_progress_bar = fancy_progress_bar
 
 
@@ -469,6 +470,7 @@ class FileCache(BaseCache):
         """
         with open(self.build_cache_filename(key), 'wb+') as fp:
             fp.write(value)
+
 
 Cache = FileCache
 

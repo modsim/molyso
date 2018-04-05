@@ -255,11 +255,13 @@ def horizontal_channel_detection(image):
 
     maximum_channel_count = profile.size / main_frequency
 
-    allowed_maximum_channel_count = tunable('channels.horizontal.channel_count.max', 50,
-                                            description="For channel detection, maximum allowed channels to be detected.")
+    allowed_maximum_channel_count = tunable(
+        'channels.horizontal.channel_count.max', 50,
+        description="For channel detection, maximum allowed channels to be detected.")
 
-    allowed_minimum_channel_count = tunable('channels.horizontal.channel_count.min', 3,
-                                            description="For channel detection, minimum allowed channels to be detected.")
+    allowed_minimum_channel_count = tunable(
+        'channels.horizontal.channel_count.min', 3,
+        description="For channel detection, minimum allowed channels to be detected.")
 
     if maximum_channel_count > allowed_maximum_channel_count or maximum_channel_count < allowed_minimum_channel_count:
         return nothing_found
@@ -404,6 +406,7 @@ def alternate_vertical_channel_region_detection(image):
     collector = (np.absolute(int_collector - winner) < delta) | (np.absolute(int_collector - 2*winner) < delta)
 
     return sorted(find_insides(collector), key=lambda pair: pair[1] - pair[0], reverse=True)[0]
+
 
 FIRST_CALL, FROM_TOP, FROM_BOTTOM = 0, -1, 1
 

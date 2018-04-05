@@ -120,7 +120,8 @@ def create_argparser():
                            const='everything', type=str, nargs='?')
     argparser.add_argument('-nt', '--no-tracking', dest='no_tracking', default=False, action='store_true')
     argparser.add_argument('-t', '--tunables', dest='tunables', type=str, default=None)
-    argparser.add_argument('-s', '--set-tunable', dest='tunable_list', type=list, nargs=2, default=None, action='append')
+    argparser.add_argument('-s', '--set-tunable', dest='tunable_list',
+                           type=list, nargs=2, default=None, action='append')
     argparser.add_argument('-pt', '--print-tunables', dest='print_tunables', default=False, action='store_true')
     argparser.add_argument('-rt', '--read-tunables', dest='read_tunables', type=str, default=None)
     argparser.add_argument('-wt', '--write-tunables', dest='write_tunables', type=str, default=None)
@@ -184,6 +185,7 @@ first_to_look_at = 0
 def check_or_get_first_frame(pos, args):
     """
 
+    :param args:
     :param pos:
     :return:
     """
@@ -207,6 +209,7 @@ def check_or_get_first_frame(pos, args):
 
             def _find_channels(im):
                 image._find_channels_positions = find_channels(im)
+                # noinspection PyProtectedMember
                 return image._find_channels_positions
 
             image.find_channels_function = _find_channels
@@ -227,6 +230,7 @@ def processing_frame(args, t, pos, clean=True):
     :param args:
     :param t:
     :param pos:
+    :param clean:
     :return:
     """
 
@@ -265,6 +269,7 @@ def processing_frame(args, t, pos, clean=True):
 
         image.shift = [0.0, 0.0]
 
+        # noinspection PyProtectedMember
         def _find_channels_function(im):
             return first._find_channels_positions
 
@@ -634,12 +639,6 @@ def main():
                     pylab.close('all')
 
                 del cs
-
-
-
-
-
-
 
     # ( Post-Tracking: Just write some tunables, if desired )###########################################################
 

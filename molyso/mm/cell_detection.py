@@ -178,7 +178,8 @@ def find_cells_in_channel_classic(image):
                 )
     )
 
-    if tunable('cells.empty_channel.skipping', False, description="For empty channel detection, whether it is enabled."):
+    if tunable('cells.empty_channel.skipping', False,
+               description="For empty channel detection, whether it is enabled."):
 
         # if active, a non-empty channel must have a certain dynamic range min/max
         if ((thresholded_profile.max() - thresholded_profile.min()) / thresholded_profile.max()) < \
@@ -189,12 +190,12 @@ def find_cells_in_channel_classic(image):
             return []
 
     # for cell detection, another intensity profile based on an Otsu binarization is used as well
-    binary_image = image > threshold_otsu(image) * \
-                           tunable(
+    binary_image = image > (threshold_otsu(image) *
+                            tunable(
                                'cells.otsu_bias',
                                1.0,
                                description="Bias factor for the cell detection Otsu image."
-                           )
+                           ))
 
     profile_of_binary_image = vertical_mean(binary_image.astype(float))
 

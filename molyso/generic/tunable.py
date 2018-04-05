@@ -44,7 +44,7 @@ class TunableManager(object):
         """
         Sets a description for a paremeter.
 
-        :param what: paramter to describe
+        :param what: parameter to describe
         :param description: description
         :return:
         """
@@ -142,6 +142,7 @@ def tunable(what, default, description=None):
     :param what: tunable to look up
     :type what: str or unicode
     :param default: default value
+    :param description: description
     :return: either the overridden tunable or the default value
     :rtype: type(default)
 

@@ -96,7 +96,8 @@ class BaseImage(object):
 
 class AutoRotationProvider(object):
     """
-    This mixin class adds automatic rotation (by :py:func:`molyso.generic.rotation.find_rotation`) functionality to the Image class.
+    This mixin class adds automatic rotation
+    (by :py:func:`molyso.generic.rotation.find_rotation`) functionality to the Image class.
     """
 
     def __init__(self):
@@ -112,8 +113,13 @@ class AutoRotationProvider(object):
         """
 
         if self.angle != self.angle:
-            self.angle = find_rotation(self.image, steps=
-            tunable('orientation-detection.strips', 10, description="Number of strips for orientation correction."))
+            self.angle = find_rotation(
+                self.image,
+                steps=tunable(
+                    'orientation-detection.strips', 10,
+                    description="Number of strips for orientation correction."
+                )
+            )
 
         # noinspection PyAttributeOutsideInit
         self.image, self.angle, self.crop_height, self.crop_width = \
@@ -125,7 +131,8 @@ class AutoRotationProvider(object):
 # noinspection PyUnresolvedReferences
 class AutoRegistrationProvider(object):
     """
-    This mixin class adds automatic registration (by :py:func:`molyso.generic.registration.translation_2x1d`) functionality to the Image class.
+    This mixin class adds automatic registration
+    (by :py:func:`molyso.generic.registration.translation_2x1d`) functionality to the Image class.
     """
 
     def __init__(self):
