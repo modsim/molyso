@@ -6,12 +6,7 @@ documentation
 from __future__ import division, unicode_literals, print_function
 
 import warnings
-from ..imageio.imagestack import MultiImageStack
-from ..imageio.imagestack_ometiff import OMETiffStack
 from ..debugging.debugplot import inject_poly_drawing_helper
-
-
-OMETiffStack = OMETiffStack
 
 
 def interactive_main(args):
@@ -68,7 +63,10 @@ def interactive_main(args):
         plt.sca(ax)
         plt.cla()
 
-        plt.suptitle('[left/right] timepoint [up/down] multipoint [h] hide analysis [r] toggle rotated (in raw mode)')
+        plt.suptitle("[left/right] timepoint [up/down] multipoint [h] hide analysis [r] toggle rotated (in raw mode)")
+
+        plt.xlabel("x [Pixel]")
+        plt.ylabel("y [Pixel]")
 
         i = processing_frame(args, t, pos, clean=False)
 

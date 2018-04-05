@@ -155,6 +155,11 @@ def interactive_ground_truth_main(args, tracked_results):
 
         plt.imshow(large_image)
 
+        plt.title("Ground Truth — Position %d, channel %d" % (pos, chan_num,))
+
+        plt.xlabel("x [Pixel]")
+        plt.ylabel("y [Pixel]")
+
         fig.tight_layout()
 
         o_scatter = ax.scatter(0, 0)

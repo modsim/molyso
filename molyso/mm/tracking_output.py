@@ -51,6 +51,18 @@ def s_to_h(s):
     return s / (60.0 * 60.0)
 
 
+# noinspection PyUnusedLocal
+def s_to_h_str(s, *args, **kwargs):
+    """
+    converts seconds to hours as a rounded string
+    :param s: seconds
+    :return: hours
+    :param s: seconds
+    :return: hours string
+    """
+    return ("%.2f" % (s_to_h(s),)).replace('.00', '')
+
+
 def catch_index_error(what, otherwise):
     """
     runs callable 'what' and catches IndexErrors, returning 'otherwise' if one occurred
@@ -102,6 +114,7 @@ def plot_timeline(p, channels, cells,
     if figure_presetup:
         figure_presetup(p)
 
+    min_h = float('inf')
     max_h = 0
 
     for cc in channels:
@@ -124,6 +137,9 @@ def plot_timeline(p, channels, cells,
         if cc.bottom > max_h:
             max_h = cc.bottom
 
+        if cc.top < min_h:
+            min_h = cc.top
+
         if show_overlay:
             for cell in cc.cells:
                 coords = [[left, cell.bottom], [right, cell.bottom],
@@ -131,10 +147,20 @@ def plot_timeline(p, channels, cells,
                 poly_drawing_helper(p, coords,
                                     lw=0, edgecolor='r', facecolor='white', fill=True, alpha=0.25, zorder=1.2)
 
-    p.xlim(time_points[0], time_points[-1])
-    p.ylim(0, max_h)
+    p.gca().xaxis.set_major_formatter(p.FuncFormatter(s_to_h_str))
+    p.gca().xaxis.set_major_locator(p.MultipleLocator(60.0 * 60.0 * 1))
+    p.gca().xaxis.set_minor_locator(p.MultipleLocator(60.0 * 60.0 * 0.25))
+
+    p.xlabel("Experiment Time [h]")
+    p.ylabel("y [Pixel]")
+
     p.gca().set_aspect('auto')
     p.gca().set_autoscale_on(True)
+
+    p.xlim(time_points[0], time_points[-1])
+    p.ylim(min_h, max_h)
+
+    p.tight_layout()
 
     if show_overlay:
         time_format_str = '#%0' + str(int(np.log10(len(time_points))) + 1) + 'd' + ' ' \
