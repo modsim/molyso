@@ -133,6 +133,7 @@ class AutoRotationProvider(object):
                 RuntimeWarning
             )
 
+            # noinspection PyAttributeOutsideInit
             self.image = self.original_image.copy()
             self.angle = 0.0
             self.crop_height = self.crop_width = 0
