@@ -4,6 +4,8 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
+import warnings
+
 import numpy as np
 
 from ..debugging import DebugPlot
@@ -396,6 +398,13 @@ def alternate_vertical_channel_region_detection(image):
     np.set_printoptions(threshold=np.nan)
     # print(collector)
     int_collector = collector.astype(np.int32)
+
+    if (int_collector == 0).all():
+        warnings.warn(
+            "Apparently no channel region was detectable. If the images are flipped, try filename?rotate=<90|270>",
+            RuntimeWarning
+        )
+        return 0, len(int_collector)
 
     bins = np.bincount(int_collector)
     winner = np.argmax(bins[1:]) + 1
