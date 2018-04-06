@@ -7,6 +7,8 @@
 from __future__ import division, unicode_literals, print_function
 
 import math
+import warnings
+
 from ..generic.signal import fit_to_type
 from ..generic.rotation import find_rotation, apply_rotate_and_cleanup
 from ..generic.registration import translation_2x1d
@@ -125,7 +127,15 @@ class AutoRotationProvider(object):
         self.image, self.angle, self.crop_height, self.crop_width = \
             apply_rotate_and_cleanup(self.image, self.angle)
 
-        assert self.image.size > 0
+        if self.image.size == 0:
+            warnings.warn(
+                "Autorotation failed. This likely means that the image is unsuitable for use with molyso.",
+                RuntimeWarning
+            )
+
+            self.image = self.original_image.copy()
+            self.angle = 0.0
+            self.crop_height = self.crop_width = 0
 
 
 # noinspection PyUnresolvedReferences
