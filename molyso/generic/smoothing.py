@@ -48,6 +48,14 @@ def hamming_smooth(signal, window_width, no_cache=False):
     array([ 0.        ,  0.        ,  0.        ,  0.        ,  0.06896552,
             0.86206897,  0.06896552,  0.        ,  0.        ])
     """
+
+    if len(signal) == 1:
+        return signal
+
+    if len(signal) < window_width:
+        window_width = len(signal)
+        no_cache = True
+
     return smooth(signal,
                   np.hamming(window_width) if no_cache
                   else signals(np.hamming, window_width))
