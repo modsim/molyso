@@ -218,7 +218,7 @@ def debug_init():
 
     """
     DebugPlot.force_active = True
-    np.set_printoptions(threshold=np.nan)
+    np.set_printoptions(threshold=sys.maxsize)
 
 
 def parse_range(s, maximum=0):

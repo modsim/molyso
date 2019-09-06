@@ -4,6 +4,7 @@ documentation
 """
 from __future__ import division, unicode_literals, print_function
 
+import sys
 import warnings
 
 import numpy as np
@@ -395,7 +396,7 @@ def alternate_vertical_channel_region_detection(image):
 
         collector[n*the_step:(n+1)*the_step] = local_f
 
-    np.set_printoptions(threshold=np.nan)
+    np.set_printoptions(threshold=sys.maxsize)
     # print(collector)
     int_collector = collector.astype(np.int32)
 
