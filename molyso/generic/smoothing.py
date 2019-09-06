@@ -21,8 +21,8 @@ def smooth(signal, kernel):
     :rtype: numpy.ndarray
 
     >>> smooth(np.array([0, 0, 0, 0, 1, 0, 0, 0, 0]), np.ones(3))
-    array([ 0.        ,  0.        ,  0.        ,  0.        ,  0.33333333,
-            0.33333333,  0.33333333,  0.        ,  0.        ])
+    array([0.        , 0.        , 0.        , 0.        , 0.33333333,
+           0.33333333, 0.33333333, 0.        , 0.        ])
     """
 
     return np.convolve(
@@ -45,8 +45,8 @@ def hamming_smooth(signal, window_width, no_cache=False):
     :rtype: numpy.ndarray
 
     >>> hamming_smooth(np.array([0, 0, 0, 0, 1, 0, 0, 0, 0]), 3)
-    array([ 0.        ,  0.        ,  0.        ,  0.        ,  0.06896552,
-            0.86206897,  0.06896552,  0.        ,  0.        ])
+    array([0.        , 0.        , 0.        , 0.        , 0.06896552,
+           0.86206897, 0.06896552, 0.        , 0.        ])
     """
 
     if len(signal) == 1:
@@ -78,7 +78,7 @@ def signals(function, parameters):
     :rtype: dependent on function
 
     >>> signals(np.ones, 3)
-    array([ 1.,  1.,  1.])
+    array([1., 1., 1.])
     """
     global _signals
     if function not in _signals:

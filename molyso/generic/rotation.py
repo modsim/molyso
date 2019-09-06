@@ -140,8 +140,8 @@ def apply_rotate_and_cleanup(image, angle):
     :rtype: tuple(numpy.ndarray, float, int, int)
 
     >>> apply_rotate_and_cleanup(np.zeros((32, 32,)), 45.0)
-    (array([[ 0.,  0.],
-           [ 0.,  0.]]), 45.0, 15, 15)
+    (array([[0., 0.],
+           [0., 0.]]), 45.0, 15, 15)
     """
     new_image = rotate_image(image, angle)
     h, w = calculate_crop_for_angle(image, angle)

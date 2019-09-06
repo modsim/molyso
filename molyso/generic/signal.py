@@ -122,15 +122,13 @@ def find_extrema_and_prominence(signal, order=5):
     >>> result = find_extrema_and_prominence(np.array([1, 2, 3, 2, 1, 0, 1, 2, 15, 2, -15, 2, 1]), 2)
     >>> result = result._replace(max_spline=None, min_spline=None)  # just for doctests
     >>> result
-    ExtremeAndProminence(maxima=array([2, 8]), minima=array([ 5, 10]), signal=array([  1,   2,   3,   2,   1,   0,   1,   2,  15,   2, -15,   2,   1]), order=2, max_spline=None, min_spline=None, xpts=array([  0.,   1.,   2.,   3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.,
-            11.,  12.]), max_spline_points=array([  3.    ,   2.4875,   3.    ,   4.3125,   6.2   ,   8.4375,
-            10.8   ,  13.0625,  15.    ,  16.3875,  17.    ,  16.6125,  15.    ]), min_spline_points=array([ -9.73055091e-16,   3.38571429e+00,   4.71428571e+00,
-             4.35000000e+00,   2.65714286e+00,   5.21804822e-15,
-            -3.25714286e+00,  -6.75000000e+00,  -1.01142857e+01,
-            -1.29857143e+01,  -1.50000000e+01,  -1.57928571e+01,
-            -1.50000000e+01]), prominence=array([  3.        ,  -0.89821429,  -1.71428571,  -0.0375    ,
-             3.54285714,   8.4375    ,  14.05714286,  19.8125    ,
-            25.11428571,  29.37321429,  32.        ,  32.40535714,  30.        ]))
+    ExtremeAndProminence(maxima=array([2, 8]), minima=array([ 5, 10]), signal=array([  1,   2,   3,   2,   1,   0,   1,   2,  15,   2, -15,   2,   1]), order=2, max_spline=None, min_spline=None, xpts=array([ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9., 10., 11., 12.]), max_spline_points=array([ 3.    ,  2.4875,  3.    ,  4.3125,  6.2   ,  8.4375, 10.8   ,
+           13.0625, 15.    , 16.3875, 17.    , 16.6125, 15.    ]), min_spline_points=array([-9.73055091e-16,  3.38571429e+00,  4.71428571e+00,  4.35000000e+00,
+            2.65714286e+00,  5.21804822e-15, -3.25714286e+00, -6.75000000e+00,
+           -1.01142857e+01, -1.29857143e+01, -1.50000000e+01, -1.57928571e+01,
+           -1.50000000e+01]), prominence=array([ 3.        , -0.89821429, -1.71428571, -0.0375    ,  3.54285714,
+            8.4375    , 14.05714286, 19.8125    , 25.11428571, 29.37321429,
+           32.        , 32.40535714, 30.        ]))
     """
     # we are FORCING some kind of result here, although it might be meaningless
 
@@ -251,7 +249,7 @@ def vertical_mean(image):
     ...                            [ 5,  6,  7,  8],
     ...                            [ 9, 10, 11, 12],
     ...                            [13, 14, 15, 16]]))
-    array([  2.5,   6.5,  10.5,  14.5])
+    array([ 2.5,  6.5, 10.5, 14.5])
     """
     return np.mean(image, axis=1)
 
@@ -269,7 +267,7 @@ def horizontal_mean(image):
     ...                            [ 5,  6,  7,  8],
     ...                            [ 9, 10, 11, 12],
     ...                            [13, 14, 15, 16]]))
-    array([  7.,   8.,   9.,  10.])
+    array([ 7.,  8.,  9., 10.])
     """
     return np.mean(image, axis=0)
 
@@ -310,10 +308,10 @@ def normalize(data):
     :return: normalized array
 
     >>> normalize(np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
-    array([ 0. ,  0.1,  0.2,  0.3,  0.4,  0.5,  0.6,  0.7,  0.8,  0.9,  1. ])
+    array([0. , 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ])
 
     >>> normalize(np.array([10, 15, 20]))
-    array([ 0. ,  0.5,  1. ])
+    array([0. , 0.5, 1. ])
     """
     result = data.astype(float)
     result -= result.min()
@@ -334,9 +332,9 @@ def fit_to_type(image, new_dtype):
     >>> fit_to_type(np.array([-7, 4, 18, 432]), np.int8)
     array([-128, -121, -113,  127], dtype=int8)
     >>> fit_to_type(np.array([-7, 4, 18, 432]), np.bool)
-    array([False, False, False,  True], dtype=bool)
+    array([False, False, False,  True])
     >>> fit_to_type(np.array([-7, 4, 18, 432]), np.float32)
-    array([  -7.,    4.,   18.,  432.], dtype=float32)
+    array([ -7.,   4.,  18., 432.], dtype=float32)
     """
     scaled_img = normalize(image)
     to_type = np.dtype(new_dtype)
@@ -382,7 +380,7 @@ def outliers(data, times_std=2.0):
     :return:
 
     >>> outliers(np.array([10, 9, 11, 40, 8, 12, 14, 7]), times_std=1.0)
-    array([False, False, False,  True, False, False, False, False], dtype=bool)
+    array([False, False, False,  True, False, False, False, False])
     """
 
     return np.absolute(data - np.median(data)) > (times_std * np.std(data))
@@ -441,11 +439,11 @@ def one_every_n(length, n=1, shift=0):
     :return:
 
     >>> one_every_n(10, n=2, shift=0)
-    array([ 1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.])
+    array([1., 0., 1., 0., 1., 0., 1., 0., 1., 0.])
     >>> one_every_n(10, n=2, shift=1)
-    array([ 0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.])
+    array([0., 1., 0., 1., 0., 1., 0., 1., 0., 1.])
     >>> one_every_n(10, n=1, shift=0)
-    array([ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.])
+    array([1., 1., 1., 1., 1., 1., 1., 1., 1., 1.])
     """
     # major regression here?
     # don't use np.arange(a,b,c, dtype=np.int32) !!!
@@ -465,17 +463,17 @@ def each_image_slice(image, steps, direction='vertical'):
     :return:
 
     >>> list(each_image_slice(np.ones((4, 4,)), 2, direction='vertical'))
-    [(0, 2, array([[ 1.,  1.],
-           [ 1.,  1.],
-           [ 1.,  1.],
-           [ 1.,  1.]])), (1, 2, array([[ 1.,  1.],
-           [ 1.,  1.],
-           [ 1.,  1.],
-           [ 1.,  1.]]))]
+    [(0, 2, array([[1., 1.],
+           [1., 1.],
+           [1., 1.],
+           [1., 1.]])), (1, 2, array([[1., 1.],
+           [1., 1.],
+           [1., 1.],
+           [1., 1.]]))]
     >>> list(each_image_slice(np.ones((4, 4,)), 2, direction='horizontal'))
-    [(0, 2, array([[ 1.,  1.,  1.,  1.],
-           [ 1.,  1.,  1.,  1.]])), (1, 2, array([[ 1.,  1.,  1.,  1.],
-           [ 1.,  1.,  1.,  1.]]))]
+    [(0, 2, array([[1., 1., 1., 1.],
+           [1., 1., 1., 1.]])), (1, 2, array([[1., 1., 1., 1.],
+           [1., 1., 1., 1.]]))]
     """
     if direction == 'vertical':
         step = image.shape[1] // steps
