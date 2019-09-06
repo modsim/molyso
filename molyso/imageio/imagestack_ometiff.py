@@ -13,7 +13,13 @@ import warnings
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     # code tend to throw warnings because of missing C extensions
-    from tifffile import TiffFile
+    try:
+        from tiffile import TiffFile
+    except ImportError:
+        try:
+            from tifffile import TiffFile
+        except ImportError:
+            raise
 
 
 class OMETiffStack(MultiImageStack):
