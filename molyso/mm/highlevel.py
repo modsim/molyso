@@ -412,6 +412,12 @@ def main():
         hook(args)
 
     if not args.process:
+        try:
+            import matplotlib
+            matplotlib.use('TkAgg')
+        except ImportError:
+            raise RuntimeError("matplotlib could not be imported. Interactive mode requires matplotlib.")
+
         return interactive_main(args)
 
     try:
@@ -549,6 +555,14 @@ def main():
         # ( Diversion into ground truth processing, if applicable )
 
         if args.ground_truth:
+            try:
+                import matplotlib
+                matplotlib.use('TkAgg')
+            except ImportError:
+                raise RuntimeError(
+                    "matplotlib could not be imported. Interactive ground truth mode requires matplotlib."
+                )
+
             interactive_ground_truth_main(args, tracked_results)
             return
 
