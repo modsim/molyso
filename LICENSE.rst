@@ -1,10 +1,4 @@
-License
-=======
-
-The 2-clause BSD License
-------------------------
-
-Copyright (c) 2013-2019 Christian C. Sachs, Forschungszentrum Jülich GmbH.
+Copyright (c) 2013-2019 Christian C. Sachs, Forschungszentrum Jülich GmbH
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
