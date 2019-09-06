@@ -1,24 +1,31 @@
-FROM continuumio/anaconda3
+FROM continuumio/miniconda3:4.7.10-alpine
 LABEL maintainer c.sachs@fz-juelich.de
-RUN apt-get update && apt-get install -y gcc libgomp1 unzip libgl1-mesa-glx && \
-    # opengl for qt...
-    apt-get clean && \
-    #conda install -y numpy scipy opencv matplotlib jupyter pandas && \
-    conda install -y opencv && \
-    pip install "git+https://github.com/modsim/molyso#egg=molyso" && \
-    adduser --disabled-password user && \
-    mkdir /data /examples && \
-    wget https://github.com/modsim/molyso/archive/master.zip -O /tmp/molyso.zip && \ 
-    unzip -j /tmp/molyso.zip 'molyso-master/examples/*' -d /examples && \
-    rm /tmp/molyso.zip && \
-    apt-get remove -y gcc unzip && \
-    apt-get autoremove -y && \
-    rm -rf /var/lib/apt/lists/* && \
+
+USER root
+
+ENV PATH "$PATH:/opt/conda/bin:/bin/sbin:/usr/bin"
+
+# we could copy the files from the current directory, but that would create an additional layer ...
+# COPY . /tmp/package
+
+RUN conda config --add channels conda-forge --add channels bioconda --add channels csachs && \
+    conda install -y molyso jupyter pandas && \
+    pip uninstall -y molyso && \
+    # missing libGL causes cv2 to fail in a very pecuilar way ... although it just throws an ImportError
+    # molyso will randomly crash later when importing matplotlib.pyplot
+    apk add --no-cache mesa-gl && \
+    wget https://github.com/modsim/molyso/archive/master.tar.gz -O - | tar zx -C /tmp && mv /tmp/molyso-master /tmp/package && \
+    pip install /tmp/package && \
+    mv /tmp/package/examples / && \
+    rm -rf /tmp/package && \
+    busybox adduser --disabled-password user && \
     ln -s /examples /home/user && \
-    chown -R user:user /data /examples /home/user && \
-    runuser user -s /bin/sh "-c jupyter notebook --generate-config" && \
+    mkdir /data && \
+    chown -R user:users /data /examples /home/user && \
+    su -s /bin/sh user -c "jupyter notebook --generate-config" && \
     echo "c.NotebookApp.ip = '0.0.0.0'" >> /home/user/.jupyter/jupyter_notebook_config.py && \
-    echo "c.NotebookApp.notebook_dir = '/home/user'" >> /home/user/.jupyter/jupyter_notebook_config.py && \   
+    echo "c.NotebookApp.notebook_dir = '/home/user'" >> /home/user/.jupyter/jupyter_notebook_config.py && \
+    conda clean -afy || true && \
     echo Done
 
 USER user
