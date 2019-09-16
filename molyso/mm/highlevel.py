@@ -16,6 +16,7 @@ import json
 import multiprocessing
 import traceback
 import logging
+import platform
 
 import numpy as np
 
@@ -44,6 +45,30 @@ from .highlevel_interactive_ground_truth import interactive_ground_truth_main
 OMETiffStack = OMETiffStack
 CziStack = CziStack
 ND2Stack = ND2Stack
+
+
+def setup_matplotlib(throw=True, interactive=True, log=None):
+    try:
+        import matplotlib
+    except ImportError:
+        if throw:
+            raise RuntimeError("matplotlib could not be imported. The requested functionality requires matplotlib.")
+        else:
+            if log:
+                log.warning("matplotlib could not be imported.")
+            return False
+
+    if interactive:
+        if platform.system() == 'Darwin':
+            backend = 'MacOSX'
+        else:
+            backend = 'TkAgg'
+    else:
+        backend = 'PDF'
+
+    matplotlib.use(backend)
+
+    return True
 
 
 class Hooks(object):
@@ -412,11 +437,7 @@ def main():
         hook(args)
 
     if not args.process:
-        try:
-            import matplotlib
-            matplotlib.use('TkAgg')
-        except ImportError:
-            raise RuntimeError("matplotlib could not be imported. Interactive mode requires matplotlib.")
+        setup_matplotlib(log=log)
 
         return interactive_main(args)
 
@@ -428,8 +449,7 @@ def main():
             matplotlib.use('PDF')
     except ImportError:
         if args.debug:
-            log.warning("matplotlib could not be imported. Debugging was disabled.")
-            args.debug = False
+            args.debug = setup_matplotlib(throw=False, interactive=False, log=log)
 
     if args.debug:
         debug_init()
@@ -555,16 +575,9 @@ def main():
         # ( Diversion into ground truth processing, if applicable )
 
         if args.ground_truth:
-            try:
-                import matplotlib
-                matplotlib.use('TkAgg')
-            except ImportError:
-                raise RuntimeError(
-                    "matplotlib could not be imported. Interactive ground truth mode requires matplotlib."
-                )
+            setup_matplotlib(log=log)
 
-            interactive_ground_truth_main(args, tracked_results)
-            return
+            return interactive_ground_truth_main(args, tracked_results)
 
         # ( Output of textual results: )################################################################################
 
@@ -605,15 +618,11 @@ def main():
 
         if args.tracking_output is not None:
 
-            try:
-                # noinspection PyUnresolvedReferences
-                import matplotlib
-                # noinspection PyUnresolvedReferences
-                import matplotlib.pylab
-            except ImportError:
-                log.warning("Tracking output enabled but matplotlib not found! Cannot proceed.")
-                log.warning("Please install matplotlib ...")
-                raise
+            setup_matplotlib(interactive=False, log=log)
+            # noinspection PyUnresolvedReferences
+            import matplotlib
+            # noinspection PyUnresolvedReferences
+            import matplotlib.pylab
 
             log.info("Outputting graphical tracking data ...")
 
