@@ -227,7 +227,8 @@ def horizontal_channel_detection(image):
         :return:
         """
         frequencies, fourier_value = hires_power_spectrum(the_profile, oversampling=n)
-        fourier_value = hamming_smooth(fourier_value, 3)
+        fourier_value = hamming_smooth(fourier_value, tunable('channels.horizontal.fourier_smoothing', 3,
+                                           description="For channel detection, smoothing width for the spectrum."))
         return frequencies, fourier_value, frequencies[np.argmax(fourier_value)]
 
     # get the power spectra of the two signals
