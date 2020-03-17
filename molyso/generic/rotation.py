@@ -12,7 +12,7 @@ from .signal import find_phase, vertical_mean, remove_outliers, each_image_slice
 from ..test import test_image
 
 
-def find_rotation(image, steps=10, smoothing_signal_length=15):
+def find_rotation(image, steps=10, smoothing_signal_length=15, maximum_angle=45.0):
     """
     Tries to detect the rotation by pairwise cross-correlation of vertical mean profiles of the image.
     The image is split into ``steps`` slices. Smoothing of intermediate signals is performed with a
@@ -20,10 +20,12 @@ def find_rotation(image, steps=10, smoothing_signal_length=15):
 
     :param image: input image
     :param steps: step count
-    :param smoothing_signal_length: int
+    :param smoothing_signal_length: length of smoothing window
+    :param maximum_angle: the maximum angle expected
     :type image: numpy.ndarray
     :type steps: int
     :type smoothing_signal_length: int
+    :type maximum_angle: float
     :return: angle: float
     :rtype: float
 
@@ -59,9 +61,13 @@ def find_rotation(image, steps=10, smoothing_signal_length=15):
 
         shifts[n] = shift
 
+    maximum_shift = np.tan(np.deg2rad(maximum_angle)) * step
+
+    shifts = shifts[(shifts < maximum_shift) & (shifts > -maximum_shift)]
+
     shifts = remove_outliers(shifts)
 
-    return math.atan(np.mean(shifts) / step) * 180.0 / math.pi
+    return np.rad2deg(math.atan(np.mean(shifts) / step))
 
 
 try:
