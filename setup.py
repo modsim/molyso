@@ -16,7 +16,7 @@ setup(
     author_email='c.sachs@fz-juelich.de',
     url='https://github.com/modsim/molyso',
     packages=find_packages(),
-    install_requires=['numpy', 'scipy', 'matplotlib', 'nd2file', 'tifffile', 'tqdm'],
+    install_requires=['numpy', 'scipy', 'matplotlib', 'nd2file', 'tifffile', 'tqdm', 'jsonpickle'],
     package_data={
         'molyso': ['test/example-frame.tif'],
     },

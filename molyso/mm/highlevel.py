@@ -41,6 +41,7 @@ from .tracking import TrackedPosition, analyze_tracking, plot_timeline, tracker_
 
 from .highlevel_interactive_viewer import interactive_main
 from .highlevel_interactive_ground_truth import interactive_ground_truth_main
+from .highlevel_interactive_advanced_ground_truth import interactive_advanced_ground_truth_main
 
 OMETiffStack = OMETiffStack
 CziStack = CziStack
@@ -121,6 +122,7 @@ def create_argparser():
     argparser.add_argument('-m', '--module', dest='modules', type=str, default=None, action='append')
     argparser.add_argument('-p', '--process', dest='process', default=False, action='store_true')
     argparser.add_argument('-gt', '--ground-truth', dest='ground_truth', type=str, default=None)
+    argparser.add_argument('-agt', '--advanced-ground-truth', dest='advanced_ground_truth', type=str, default=None)
     argparser.add_argument('-ct', '--cache-token', dest='cache_token', type=str, default=None)
     argparser.add_argument('-tp', '--timepoints', dest='timepoints', default='0-', type=str)
     argparser.add_argument('-mp', '--multipoints', dest='multipoints', default='0-', type=str)
@@ -406,7 +408,7 @@ def main():
 
     args = argparser.parse_args()
 
-    if args.ground_truth:
+    if args.ground_truth or args.advanced_ground_truth:
         args.process = True
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)-15s.%(msecs)03d %(name)s %(levelname)s %(message)s",
@@ -457,7 +459,7 @@ def main():
             log.warning("Debugging enabled, concurrent processing disabled!")
             args.mp = 0
 
-    if args.ground_truth:
+    if args.ground_truth or args.advanced_ground_truth:
         args.debug = False
 
     cache = Cache(args.input, ignore_cache=args.ignorecache, cache_token=args.cache_token)
@@ -578,6 +580,11 @@ def main():
             setup_matplotlib(log=log)
 
             return interactive_ground_truth_main(args, tracked_results)
+
+        if args.advanced_ground_truth:
+            setup_matplotlib(log=log)
+
+            return interactive_advanced_ground_truth_main(args, tracked_results)
 
         # ( Output of textual results: )################################################################################
 
