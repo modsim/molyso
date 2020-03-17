@@ -192,7 +192,7 @@ def interactive_ground_truth_main(args, tracked_results):
             d       delete last division event
             n/N     next/previous multipoint
             m/M     next/previous channel
-            o       output tabular data
+            o/O     output tabular data to console/file
             w       write data
                     (to previously specified filename)
             i       start interactive python console
@@ -340,10 +340,15 @@ def interactive_ground_truth_main(args, tracked_results):
                 try_new_poschan(0, 1)
             elif event.key == 'M':
                 try_new_poschan(0, -1)
-            elif event.key == 'o':
-                # output
+            elif event.key == 'o' or event.key == 'O':
+                recipient = None
 
-                out = QuickTableDumper()
+                if event.key == 'O':
+                    print("Please enter file name for tabular output [will be overwritten if exists]:")
+                    file_name = input()
+                    recipient = open(file_name, 'w+')
+
+                out = QuickTableDumper(recipient=recipient)
 
                 for (t_pos, t_chan), t_env in all_envs.items():
                     x_pos = list(tracked_results.keys())[t_pos]
@@ -364,6 +369,10 @@ def interactive_ground_truth_main(args, tracked_results):
                             'growth_start': s_to_h(times[num, 0]),
                             'growth_end': s_to_h(times[num, 1]),
                         })
+
+                if event.key == 'O':
+                    recipient.close()
+                    print("File written.")
 
             elif event.key == 'w':
                 save_data()
