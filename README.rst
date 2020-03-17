@@ -95,7 +95,7 @@ And you will be greeted by the help screen of molyso:
 
 
          \   /\  /\  /                             -------------------------
-          | | |O| | |    molyso                    Developed  2013 - 2019 by
+          | | |O| | |    molyso                    Developed  2013 - 2020 by
           | | | | |O|                              Christian   C.  Sachs  at
           |O| |O| |O|    MOther    machine         ModSim / Microscale Group
           \_/ \_/ \_/    anaLYsis SOftware         Research  Center  Juelich
