@@ -213,9 +213,6 @@ Third Party Licenses
 --------------------
 Note that this software contains the following portions from other authors, under the following licenses (all BSD-flavoured):
 
-molyso/imageio/czifile.py:
-    czifile.py by Christoph Gohlke, licensed BSD (see file head).
-        Copyright (c) 2013-2015, Christoph Gohlke, 2013-2015, The Regents of the University of California
 molyso/generic/otsu.py:
     functions threshold_otsu and histogram by the scikit-image team, licensed BSD (see file head).
         Copyright (C) 2011, the scikit-image team

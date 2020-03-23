@@ -6,15 +6,9 @@ from __future__ import division, unicode_literals, print_function
 
 from .imagestack import MultiImageStack
 
-from xml.etree import cElementTree as ElementTree
-
 import warnings
 
-with warnings.catch_warnings():
-    warnings.simplefilter('ignore')
-    # code tend to throw warnings because of missing C extensions
-    from .czifile import CziFile, TimeStamps, etree as czifile_etree
-
+from czifile import CziFile
 
 def _is_dimension_oi(d):
     return d in {'T', 'C', 'S'}
@@ -70,15 +64,17 @@ class CziStack(MultiImageStack):
 
         self.size = _dim_shape_to_dict(self.czi.axes, self.czi.shape)
 
-        self.metadata = ElementTree.fromstring(czifile_etree.tostring(self.czi.metadata))
+        self.metadata = self.czi.metadata(raw=False)
+
+        scaling = self.metadata['ImageDocument']['Metadata']['Scaling']['Items']['Distance']
 
         # /ImageDocument
         calibration_x = float(
-            self.metadata.find("./Metadata/Scaling/Items/Distance[@Id='X']/Value").text
+            next(iter([scale for scale in scaling if scale['Id'] == 'X']))['Value']
         ) * 1E6
 
         calibration_y = float(
-            self.metadata.find("./Metadata/Scaling/Items/Distance[@Id='Y']/Value").text
+            next(iter([scale for scale in scaling if scale['Id'] == 'Y']))['Value']
         ) * 1E6
 
         assert calibration_x == calibration_y
@@ -88,9 +84,8 @@ class CziStack(MultiImageStack):
         timestamps = None
 
         for entry in self.czi.attachment_directory:
-            entry_data = entry.data_segment().data()
-            if isinstance(entry_data, TimeStamps):
-                timestamps = entry_data
+            if entry.name == 'TimeStamps':
+                timestamps = entry.data_segment().data()
                 break
         assert timestamps is not None
 
@@ -98,11 +93,10 @@ class CziStack(MultiImageStack):
 
         positions = []
 
-        for scene in sorted(
-                self.metadata.findall("./Metadata/Information/Image/Dimensions/S/Scenes/Scene"),
-                key=lambda scene: int(scene.attrib['Index'])):
-            center_position = next(child.text for child in scene.getchildren() if child.tag == "CenterPosition")
-            x, y = center_position.split(',')
+        for scene in sorted(self.metadata['ImageDocument'
+                            ]['Metadata']['Information']['Image']['Dimensions']['S']['Scenes']['Scene'],
+                key=lambda scene: int(scene['Index'])):
+            x, y = scene['CenterPosition'].split(',')
             positions.append((float(x), float(y)))
 
         self.positions = positions
