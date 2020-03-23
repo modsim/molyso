@@ -559,7 +559,7 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
             elif event.key == 'p':
                 show_stats()
             elif event.key == 'd':
-                lm.delete(*lm.line_segments[:-2])
+                lm.delete(*lm.line_segments[-2:])
                 lm.draw(ax)
                 show_stats()
                 refresh()
