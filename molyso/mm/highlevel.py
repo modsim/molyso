@@ -20,20 +20,21 @@ import platform
 
 import numpy as np
 
+from pilyso_io.imagestack import ImageStack, Dimensions, FloatFilter
+from pilyso_io.imagestack.readers import *
+
+from pilyso_io.imagestack.util import parse_range, prettify_numpy_array
+
 from ..debugging import DebugPlot
 from ..debugging.debugplot import inject_poly_drawing_helper
 from ..debugging.callserialization import CallSerialization
 from ..generic.tunable import TunableManager, tunable
 
-from ..generic.etc import parse_range, correct_windows_signal_handlers, debug_init, QuickTableDumper, \
-    silent_progress_bar, fancy_progress_bar, prettify_numpy_array, bits_to_numpy_type
+from ..generic.etc import correct_windows_signal_handlers, debug_init, QuickTableDumper, \
+    silent_progress_bar, fancy_progress_bar, bits_to_numpy_type
 
 from ..generic.etc import Sqlite3Cache as Cache
 
-from ..imageio.imagestack import MultiImageStack
-from ..imageio.imagestack_ometiff import OMETiffStack
-from ..imageio.imagestack_czi import CziStack
-from ..imageio.imagestack_nd2 import ND2Stack
 from .image import Image
 from .fluorescence import FluorescentImage
 
@@ -42,10 +43,6 @@ from .tracking import TrackedPosition, analyze_tracking, plot_timeline, tracker_
 from .highlevel_interactive_viewer import interactive_main
 from .highlevel_interactive_ground_truth import interactive_ground_truth_main
 from .highlevel_interactive_advanced_ground_truth import interactive_advanced_ground_truth_main
-
-OMETiffStack = OMETiffStack
-CziStack = CziStack
-ND2Stack = ND2Stack
 
 
 def setup_matplotlib(throw=True, interactive=True, log=None):
@@ -164,7 +161,8 @@ def setup_image(i, local_ims, t, pos):
     :param t:
     :param pos:
     """
-    image = local_ims.get_image(t=t, pos=pos, channel=local_ims.__class__.Phase_Contrast, float=True)
+
+    image = local_ims[pos, t, 0]
 
     left, right, top, bottom = (
         tunable('preprocess.crop.left', 0, description="Cropping, left border."),
@@ -177,19 +175,21 @@ def setup_image(i, local_ims, t, pos):
 
     i.setup_image(image[top:bottom, left:right])
 
-    if getattr(i, 'setup_add_fluorescence', False) and local_ims.get_meta('channels') > 1:
-        for channel in local_ims.get_meta('fluorescenceChannels'):
-            fimg = local_ims.get_image(t=t, pos=pos, channel=channel, float=True)
+    if getattr(i, 'setup_add_fluorescence', False) and local_ims.size[Dimensions.Channel] > 1:
+        for channel in range(1, local_ims.size[Dimensions.Channel]):
+            fimg = local_ims[pos, t, channel]
             i.setup_add_fluorescence(fimg[top:bottom, left:right])
 
     i.multipoint = int(pos)
     i.timepoint_num = int(t)
 
-    i.timepoint = local_ims.get_meta('time', t=t, pos=pos)
+    meta = local_ims.meta[pos, t, 0]
 
-    i.calibration_px_to_mu = local_ims.get_meta('calibration', t=t, pos=pos)
+    i.timepoint = meta.time
 
-    i.metadata['x'], i.metadata['y'], i.metadata['z'] = local_ims.get_meta('position', t=t, pos=pos)
+    i.calibration_px_to_mu = meta.calibration
+
+    i.metadata['x'], i.metadata['y'], i.metadata['z'] = meta.position
 
     i.metadata['time'] = i.timepoint
     i.metadata['timepoint'] = i.timepoint_num
@@ -221,7 +221,7 @@ def check_or_get_first_frame(pos, args):
     if pos in first_frame_cache:
         return first_frame_cache[pos]
     else:
-        if ims.get_meta('channels') > 1:
+        if ims.size[Dimensions.Channel] > 1:
             image = FluorescentImage()
         else:
             image = Image()
@@ -263,7 +263,7 @@ def processing_frame(args, t, pos, clean=True):
 
     first = check_or_get_first_frame(pos, args)
 
-    if ims.get_meta('channels') > 1:
+    if ims.size[Dimensions.Channel] > 1:
         image = FluorescentImage()
     else:
         image = Image()
@@ -373,15 +373,13 @@ def processing_setup(args):
     setup_tunables(args)
 
     if ims is None:
-        ims = MultiImageStack.open(args.input)
-    else:
-        ims.notify_fork()
+        ims = ImageStack(args.input).view(Dimensions.PositionXY, Dimensions.Time, Dimensions.Channel).filter(FloatFilter)
 
     if isinstance(args.multipoints, str):
-        args.multipoints = parse_range(args.multipoints, maximum=ims.get_meta('multipoints'))
+        args.multipoints = parse_range(args.multipoints, maximum=ims.size[Dimensions.PositionXY])
 
     if isinstance(args.timepoints, str):
-        args.timepoints = parse_range(args.timepoints, maximum=ims.get_meta('timepoints'))
+        args.timepoints = parse_range(args.timepoints, maximum=ims.size[Dimensions.Time])
 
     first_to_look_at = args.timepoints[0]
 
@@ -469,10 +467,10 @@ def main():
         if 'imageanalysis' in cache:
             results = cache['imageanalysis']
         else:
-            ims = MultiImageStack.open(args.input)
+            ims = ImageStack(args.input).view(Dimensions.PositionXY, Dimensions.Time, Dimensions.Channel).filter(FloatFilter)
 
-            args.multipoints = parse_range(args.multipoints, maximum=ims.get_meta('multipoints'))
-            args.timepoints = parse_range(args.timepoints, maximum=ims.get_meta('timepoints'))
+            args.multipoints = parse_range(args.multipoints, maximum=ims.size[Dimensions.PositionXY])
+            args.timepoints = parse_range(args.timepoints, maximum=ims.size[Dimensions.Time])
 
             positions_to_process = args.multipoints
             timepoints_to_process = args.timepoints

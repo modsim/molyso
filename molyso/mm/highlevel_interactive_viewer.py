@@ -23,12 +23,12 @@ def interactive_main(args):
 
     processing_setup(args)
 
-    from .highlevel import ims
+    from .highlevel import ims, Dimensions
 
-    mp_max = ims.get_meta('multipoints') - 1
-    tp_max = ims.get_meta('timepoints') - 1
+    mp_max = ims.size[Dimensions.PositionXY] - 1
+    tp_max = ims.size[Dimensions.Time] - 1
 
-    fluor_chan = list(range(len(ims.get_meta('fluorescenceChannels'))))
+    fluor_chan = list(range(1, ims.size[Dimensions.Channel]))
 
     fig, ax = plt.subplots()
 
