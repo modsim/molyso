@@ -11,6 +11,8 @@ import time
 from .tracking_output import s_to_h
 from ..generic.etc import QuickTableDumper
 
+from .fluorescence import FluorescentChannel
+
 import json
 import jsonpickle
 import jsonpickle.ext.numpy as jsonpickle_numpy
@@ -310,7 +312,8 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
 
         n_timepoint, n_width, n_height, n_top, n_bottom, n_width_cumsum = 0, 1, 2, 3, 4, 5
 
-        some_channel_image = None
+        some_fluorescence_channel_image = some_channel_image = None
+        fluorescence_count = 0
 
         for n, cc in enumerate(channels):
             data[n, n_timepoint] = cc.image.timepoint
@@ -319,6 +322,13 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
             data[n, n_top] = cc.top
             data[n, n_bottom] = cc.bottom
             some_channel_image = cc.channel_image
+            if isinstance(cc, FluorescentChannel):
+                fluorescence_count = len(cc.fluorescences_channel_image)
+                some_fluorescence_channel_image = cc.fluorescences_channel_image[0]
+
+        if some_fluorescence_channel_image is None:
+            print("File generated from fluorescence data, but no fluorescence channel information in cache.")
+            print("Rerun analysis with -cfi/--channel-fluorescence-images option")
 
         data[:, n_width_cumsum] = np.cumsum(data[:, n_width])
 
@@ -328,6 +338,13 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
         low, high = int(np.floor(min_top)), int(np.ceil(max_bottom))
 
         large_image = np.zeros((high - low, int(data[-1, n_width_cumsum])), dtype=some_channel_image.dtype)
+        large_fluorescences_image = np.zeros(
+            (fluorescence_count, high - low, int(data[-1, n_width_cumsum])),
+            dtype=some_fluorescence_channel_image.dtype)
+
+        large_image_min_max = [float('+Inf'), float('-Inf')]
+
+        large_fluorescence_image_min_max = [[float('+Inf'), float('-Inf')]] * fluorescence_count
 
         for n, cc in enumerate(channels):
             lower_border = int(np.floor(data[n, n_top] - low))
@@ -335,6 +352,23 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                 lower_border:int(lower_border + data[n, n_height]),
                 int(data[n, n_width_cumsum] - data[n, n_width]):int(data[n, n_width_cumsum])
             ] = cc.channel_image
+
+            large_image_min_max = [min(cc.channel_image.min(), large_image_min_max[0]),
+                                   max(cc.channel_image.max(), large_image_min_max[1])]
+
+            if isinstance(cc, FluorescentChannel):
+                for fluorescence_c in range(fluorescence_count):
+                    if cc.fluorescences_channel_image[fluorescence_c] is not None:
+                        large_fluorescences_image[
+                            fluorescence_c,
+                            lower_border:int(lower_border + data[n, n_height]),
+                            int(data[n, n_width_cumsum] - data[n, n_width]):int(data[n, n_width_cumsum])
+                        ] = cc.fluorescences_channel_image[fluorescence_c]
+
+                        large_fluorescence_image_min_max[fluorescence_c] = [
+                            min(cc.fluorescences_channel_image[fluorescence_c].min(), large_fluorescence_image_min_max[fluorescence_c][0]),
+                            max(cc.fluorescences_channel_image[fluorescence_c].max(), large_fluorescence_image_min_max[fluorescence_c][1])
+                        ]
 
         import matplotlib.pyplot as plt
 
@@ -355,7 +389,9 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
 
         plt.rcParams['image.cmap'] = 'gray'
 
-        plt.imshow(large_image)
+        axes_image = plt.imshow(large_image)
+        axes_image.set_clim(vmin=large_image_min_max[0], vmax=large_image_min_max[1])
+        axes_image._molyso_image_shown = -1  # yes, that's bad
 
         plt.title("Ground Truth — Position %d, channel %d" % (pos, chan_num,))
 
@@ -441,6 +477,7 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
             d       delete last division event
             n/N     next/previous multipoint
             m/M     next/previous channel
+            F       show/cycle fluorescence/brightfield
             o/O     output tabular data to console/file
             w       write data
                     (to previously specified filename)
@@ -573,6 +610,25 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                 try_new_poschan(0, 1)
             elif event.key == 'M':
                 try_new_poschan(0, -1)
+            elif event.key == 'F':
+                if axes_image._molyso_image_shown < fluorescence_count:
+                    axes_image._molyso_image_shown += 1  # TODO: Test with more than one fluorescence channels
+                if axes_image._molyso_image_shown == fluorescence_count:
+                    axes_image._molyso_image_shown = -1
+
+                if axes_image._molyso_image_shown == -1:
+                    axes_image.set_data(large_image)
+                    # axes_image.autoscale()
+                    axes_image.set_clim(vmin=large_image_min_max[0],
+                                        vmax=large_image_min_max[1])
+                else:
+                    fluorescence_c = axes_image._molyso_image_shown
+                    axes_image.set_data(large_fluorescences_image[fluorescence_c])
+                    # axes_image.autoscale()
+                    axes_image.set_clim(vmin=large_fluorescence_image_min_max[fluorescence_c][0],
+                                        vmax=large_fluorescence_image_min_max[fluorescence_c][1])
+
+                refresh()
             elif event.key == 'o' or event.key == 'O':
                 # output
 
@@ -598,9 +654,7 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                     inner_elo = [res['average_elongation'] for res in p_results]
                     mean_inner_elo = np.mean(inner_elo)
 
-
                     for resultlet in p_results:
-
                         out.add({
                             'position': x_pos,
                             'channel': x_chan,
