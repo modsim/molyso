@@ -76,6 +76,19 @@ def catch_index_error(what, otherwise):
         return otherwise
 
 
+def catch_attribute_error(what, otherwise):
+    """
+    runs callable 'what' and catches AttributeError, returning 'otherwise' if one occurred
+    :param what: callable
+    :param otherwise: alternate result in case of IndexError
+    :return: result of 'what' or 'otherwise' in case of IndexError
+    """
+    try:
+        return what()
+    except AttributeError:
+        return otherwise
+
+
 def plot_timeline(p, channels, cells,
                   figure_presetup=None, figure_finished=None,
                   show_images=True, show_overlay=True,
@@ -336,6 +349,9 @@ def analyze_tracking(cells, receptor, meta=None):
                 tmp['fluorescence_' + str(f)] = sa.fluorescences[f]
                 tmp['fluorescence_raw_' + str(f)] = sa.fluorescences_raw[f]
                 tmp['fluorescence_std_' + str(f)] = sa.fluorescences_std[f]
+                tmp['fluorescence_raw_min_' + str(f)] = catch_attribute_error(lambda: sa.fluorescences_min[f], float('NaN'))
+                tmp['fluorescence_raw_max_' + str(f)] = catch_attribute_error(lambda: sa.fluorescences_max[f], float('NaN'))
+                tmp['fluorescence_raw_median_' + str(f)] = catch_attribute_error(lambda: sa.fluorescences_median[f], float('NaN'))
                 tmp['fluorescence_background_' + str(f)] = sa.channel.image.background_fluorescences[f]
 
             receptor(tmp)
