@@ -417,7 +417,6 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                     for timepoint in timepoints
                 ])
 
-
             env['polyline_results'] = {}
 
             p_results = env['polyline_results']
@@ -425,14 +424,27 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
             for polyline_num, (upper, lower) in enumerate(env['paired_polylines']):
                 assert len(lower.points) == len(upper.points)
 
-                height_deltas = upper.points[:, 1] - lower.points[:, 1]
-
-                height_deltas *= calibration_px_to_mu  # important
-
                 x = lower.points[:, 0]
+
+                u_y = upper.points[:, 1]
+                l_y = lower.points[:, 1]
+
+                if x[0] > x[-1]:  # the line is reversed!
+                    x, u_y, l_y = x[::-1], u_y[::-1], l_y[::-1]
+
                 timepoints = pixels_to_timepoints(x)
 
+                t_deltas = timepoints[1:] - timepoints[:-1]
+                indices_to_keep = np.r_[[True], t_deltas != 0]
+
+                x, u_y, l_y = x[indices_to_keep], u_y[indices_to_keep], l_y[indices_to_keep]
+
+                timepoints = pixels_to_timepoints(x)
                 times = timepoints_to_time(timepoints)
+
+                height_deltas = u_y - l_y
+
+                height_deltas *= calibration_px_to_mu  # important
 
                 height_development = np.c_[s_to_h(times), height_deltas]
                 height_development = height_development[1:, :] - height_development[:-1, :]
