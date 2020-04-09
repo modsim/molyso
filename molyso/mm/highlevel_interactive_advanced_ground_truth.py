@@ -346,6 +346,8 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
 
         large_fluorescence_image_min_max = [[float('+Inf'), float('-Inf')]] * fluorescence_count
 
+        fluorescence_backgrounds = [dict() for _ in range(fluorescence_count)]
+
         for n, cc in enumerate(channels):
             lower_border = int(np.floor(data[n, n_top] - low))
             large_image[
@@ -369,6 +371,8 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                             min(cc.fluorescences_channel_image[fluorescence_c].min(), large_fluorescence_image_min_max[fluorescence_c][0]),
                             max(cc.fluorescences_channel_image[fluorescence_c].max(), large_fluorescence_image_min_max[fluorescence_c][1])
                         ]
+
+                        fluorescence_backgrounds[fluorescence_c][n] = cc.image.background_fluorescences[fluorescence_c]
 
         import matplotlib.pyplot as plt
 
@@ -418,8 +422,10 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                 ])
 
             env['polyline_results'] = {}
+            env['polyline_results_timestepwise'] = {}
 
             p_results = env['polyline_results']
+            p_results_timestepwise = env['polyline_results_timestepwise']
 
             for polyline_num, (upper, lower) in enumerate(env['paired_polylines']):
                 assert len(lower.points) == len(upper.points)
@@ -460,6 +466,57 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                     'average_elongation': np.average(changes, weights=height_development[:, 0])
                 }
 
+                # tricky: for every timepoint in between
+
+                def interp(x1, x2, y1, y2, new_x):
+                    return (((y2 - y1) / (x2 - x1)) * (new_x - x1)) + y1
+
+                p_results_timestepwise[polyline_num] = []
+
+                for n_t, t in enumerate(range(timepoints[0], timepoints[-1]+1)):
+                    left_t = np.searchsorted(timepoints, t, side='left')
+
+                    if left_t == 0:
+                        left_t, right_t = left_t, left_t + 1
+                    else:
+                        left_t, right_t = left_t - 1, left_t
+
+                    x_centered = data[t, n_width_cumsum] - data[t, n_width] / 2.0
+
+                    new_upper = interp(x[left_t], x[right_t], u_y[left_t], u_y[right_t], x_centered)
+                    new_lower = interp(x[left_t], x[right_t], l_y[left_t], l_y[right_t], x_centered)
+
+                    # plt.plot([x_centered, x_centered], [new_upper, new_lower])
+
+                    inner_results = {
+                        'timepoint_num': t,
+                        'timepoint': s_to_h(timepoints_to_time([t])[0]),
+                        'length': (new_upper - new_lower) * calibration_px_to_mu
+                    }
+
+                    for fluorescence_c in range(fluorescence_count):
+                        fimg = large_fluorescences_image[fluorescence_c,
+                               int(new_lower):int(new_upper),
+                               int(data[t, n_width_cumsum] - data[t, n_width]):int(data[t, n_width_cumsum])
+                        ]
+
+                        jobs = dict(min=lambda a: a.min(),
+                                    max=lambda a: a.max(),
+                                    mean=lambda a: a.mean(),
+                                    std=lambda a: a.std(),
+                                    median=lambda a: np.median(a))
+
+                        for fun_name, fun_lambda in jobs.items():
+                            inner_results['fluorescence_%s_raw_%d' % (fun_name, fluorescence_c)] = fun_lambda(fimg)
+
+                        inner_results['fluorescence_background_%d' % (fluorescence_c)] = fluorescence_backgrounds[
+                            fluorescence_c][t]
+
+                    p_results_timestepwise[polyline_num].append(inner_results)
+
+
+
+
         lm.update_callback = update_callback
         lm.update_callback()
 
@@ -491,6 +548,7 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
             m/M     next/previous channel
             F       show/cycle fluorescence/brightfield
             o/O     output tabular data to console/file
+            u/U     output tabular single cell data to console/file
             w       write data
                     (to previously specified filename)
             i       start interactive python console
@@ -680,6 +738,39 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                         })
 
                 if event.key == 'O':
+                    recipient.close()
+                    print("File written.")
+
+            elif event.key == 'u' or event.key == 'U':
+                # output
+
+                recipient = None
+
+                if event.key == 'U':
+                    print("Please enter file name for tabular output [will be overwritten if exists]:")
+                    file_name = input()
+                    recipient = open(file_name, 'w+')
+
+                out = QuickTableDumper(recipient=recipient)
+
+                for key, t_env in all_envs.items():
+                    t_pos, t_chan = map(int, key[1:-1].replace(' ', '').split(','))
+                    x_pos = list(tracked_results.keys())[t_pos]
+                    x_chan = list(tracked_results[x_pos].channel_accumulator.keys())[t_chan]
+
+                    for line_num, rows_timestepwise in t_env['polyline_results_timestepwise'].items():
+                        for row in rows_timestepwise:
+                            result = row.copy()
+
+                            result.update({
+                                'position': x_pos,
+                                'channel': x_chan,
+                                'line_num': line_num,
+                            })
+
+                            out.add(result)
+
+                if event.key == 'U':
                     recipient.close()
                     print("File written.")
 
