@@ -1,0 +1,7 @@
+.git/
+local/
+dist/
+*.egg-info/
+docs/
+build/
+.idea/
