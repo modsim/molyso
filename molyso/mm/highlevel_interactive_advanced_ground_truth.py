@@ -326,7 +326,7 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                 fluorescence_count = len(cc.fluorescences_channel_image)
                 some_fluorescence_channel_image = cc.fluorescences_channel_image[0]
 
-        if some_fluorescence_channel_image is None:
+        if fluorescence_count > 0 and some_fluorescence_channel_image is None:
             print("File generated from fluorescence data, but no fluorescence channel information in cache.")
             print("Rerun analysis with -cfi/--channel-fluorescence-images option")
 
@@ -339,7 +339,7 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
 
         large_image = np.zeros((high - low, int(data[-1, n_width_cumsum])), dtype=some_channel_image.dtype)
         large_fluorescences_image = None
-        if fluorescence_count:
+        if fluorescence_count and some_fluorescence_channel_image is not None:
             large_fluorescences_image = np.zeros(
                 (fluorescence_count, high - low, int(data[-1, n_width_cumsum])),
                 dtype=some_fluorescence_channel_image.dtype)
