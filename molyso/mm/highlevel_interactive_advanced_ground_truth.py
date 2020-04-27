@@ -338,9 +338,11 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
         low, high = int(np.floor(min_top)), int(np.ceil(max_bottom))
 
         large_image = np.zeros((high - low, int(data[-1, n_width_cumsum])), dtype=some_channel_image.dtype)
-        large_fluorescences_image = np.zeros(
-            (fluorescence_count, high - low, int(data[-1, n_width_cumsum])),
-            dtype=some_fluorescence_channel_image.dtype)
+        large_fluorescences_image = None
+        if fluorescence_count:
+            large_fluorescences_image = np.zeros(
+                (fluorescence_count, high - low, int(data[-1, n_width_cumsum])),
+                dtype=some_fluorescence_channel_image.dtype)
 
         large_image_min_max = [float('+Inf'), float('-Inf')]
 
