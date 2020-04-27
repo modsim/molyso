@@ -460,12 +460,17 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                 changes = height_development.copy()
                 changes = changes[:, 1] / changes[:, 0]
 
+                try:
+                    average_elongation = np.average(changes, weights=height_development[:, 0])
+                except ZeroDivisionError:
+                    average_elongation = float('NaN')
+
                 p_results[polyline_num] = {
                     'growth_start': s_to_h(times[0]),
                     'growth_end':  s_to_h(times[-1]),
                     'division_age': s_to_h(times[-1] - times[0]),
                     'growth_rate': np.log(2) / s_to_h(times[-1] - times[0]),
-                    'average_elongation': np.average(changes, weights=height_development[:, 0])
+                    'average_elongation': average_elongation
                 }
 
                 # tricky: for every timepoint in between
@@ -509,7 +514,13 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                                     median=lambda a: np.median(a))
 
                         for fun_name, fun_lambda in jobs.items():
-                            inner_results['fluorescence_%s_raw_%d' % (fun_name, fluorescence_c)] = fun_lambda(fimg)
+
+                            try:
+                                value = fun_lambda(fimg)
+                            except ValueError:
+                                value = float('NaN')
+
+                            inner_results['fluorescence_%s_raw_%d' % (fun_name, fluorescence_c)] = value
 
                         inner_results['fluorescence_background_%d' % (fluorescence_c)] = fluorescence_backgrounds[
                             fluorescence_c][t]
@@ -721,10 +732,10 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                     p_results = [ab[1] for ab in sorted(t_env['polyline_results'].items(), key=lambda ab: ab[0])]
 
                     inner_mu = [res['growth_rate'] for res in p_results]
-                    mean_inner_mu = np.mean(inner_mu)
+                    mean_inner_mu = np.nanmean(inner_mu)
 
                     inner_elo = [res['average_elongation'] for res in p_results]
-                    mean_inner_elo = np.mean(inner_elo)
+                    mean_inner_elo = np.nanmean(inner_elo)
 
                     for resultlet in p_results:
                         out.add({
