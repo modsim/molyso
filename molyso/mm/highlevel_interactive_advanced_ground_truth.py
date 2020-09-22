@@ -11,6 +11,8 @@ import time
 from .tracking_output import s_to_h
 from ..generic.etc import QuickTableDumper
 
+from .fluorescence import FluorescentChannel
+
 import json
 import jsonpickle
 import jsonpickle.ext.numpy as jsonpickle_numpy
@@ -310,7 +312,8 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
 
         n_timepoint, n_width, n_height, n_top, n_bottom, n_width_cumsum = 0, 1, 2, 3, 4, 5
 
-        some_channel_image = None
+        some_fluorescence_channel_image = some_channel_image = None
+        fluorescence_count = 0
 
         for n, cc in enumerate(channels):
             data[n, n_timepoint] = cc.image.timepoint
@@ -319,6 +322,13 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
             data[n, n_top] = cc.top
             data[n, n_bottom] = cc.bottom
             some_channel_image = cc.channel_image
+            if isinstance(cc, FluorescentChannel):
+                fluorescence_count = len(cc.fluorescences_channel_image)
+                some_fluorescence_channel_image = cc.fluorescences_channel_image[0]
+
+        if fluorescence_count > 0 and some_fluorescence_channel_image is None:
+            print("File generated from fluorescence data, but no fluorescence channel information in cache.")
+            print("Rerun analysis with -cfi/--channel-fluorescence-images option")
 
         data[:, n_width_cumsum] = np.cumsum(data[:, n_width])
 
@@ -328,6 +338,17 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
         low, high = int(np.floor(min_top)), int(np.ceil(max_bottom))
 
         large_image = np.zeros((high - low, int(data[-1, n_width_cumsum])), dtype=some_channel_image.dtype)
+        large_fluorescences_image = None
+        if fluorescence_count and some_fluorescence_channel_image is not None:
+            large_fluorescences_image = np.zeros(
+                (fluorescence_count, high - low, int(data[-1, n_width_cumsum])),
+                dtype=some_fluorescence_channel_image.dtype)
+
+        large_image_min_max = [float('+Inf'), float('-Inf')]
+
+        large_fluorescence_image_min_max = [[float('+Inf'), float('-Inf')]] * fluorescence_count
+
+        fluorescence_backgrounds = [dict() for _ in range(fluorescence_count)]
 
         for n, cc in enumerate(channels):
             lower_border = int(np.floor(data[n, n_top] - low))
@@ -335,6 +356,25 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                 lower_border:int(lower_border + data[n, n_height]),
                 int(data[n, n_width_cumsum] - data[n, n_width]):int(data[n, n_width_cumsum])
             ] = cc.channel_image
+
+            large_image_min_max = [min(cc.channel_image.min(), large_image_min_max[0]),
+                                   max(cc.channel_image.max(), large_image_min_max[1])]
+
+            if isinstance(cc, FluorescentChannel):
+                for fluorescence_c in range(fluorescence_count):
+                    if cc.fluorescences_channel_image[fluorescence_c] is not None:
+                        large_fluorescences_image[
+                            fluorescence_c,
+                            lower_border:int(lower_border + data[n, n_height]),
+                            int(data[n, n_width_cumsum] - data[n, n_width]):int(data[n, n_width_cumsum])
+                        ] = cc.fluorescences_channel_image[fluorescence_c]
+
+                        large_fluorescence_image_min_max[fluorescence_c] = [
+                            min(cc.fluorescences_channel_image[fluorescence_c].min(), large_fluorescence_image_min_max[fluorescence_c][0]),
+                            max(cc.fluorescences_channel_image[fluorescence_c].max(), large_fluorescence_image_min_max[fluorescence_c][1])
+                        ]
+
+                        fluorescence_backgrounds[fluorescence_c][n] = cc.image.background_fluorescences[fluorescence_c]
 
         import matplotlib.pyplot as plt
 
@@ -355,7 +395,9 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
 
         plt.rcParams['image.cmap'] = 'gray'
 
-        plt.imshow(large_image)
+        axes_image = plt.imshow(large_image)
+        axes_image.set_clim(vmin=large_image_min_max[0], vmax=large_image_min_max[1])
+        axes_image._molyso_image_shown = -1  # yes, that's bad
 
         plt.title("Ground Truth — Position %d, channel %d" % (pos, chan_num,))
 
@@ -381,22 +423,36 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                     for timepoint in timepoints
                 ])
 
-
             env['polyline_results'] = {}
+            env['polyline_results_timestepwise'] = {}
 
             p_results = env['polyline_results']
+            p_results_timestepwise = env['polyline_results_timestepwise']
 
             for polyline_num, (upper, lower) in enumerate(env['paired_polylines']):
                 assert len(lower.points) == len(upper.points)
 
-                height_deltas = upper.points[:, 1] - lower.points[:, 1]
-
-                height_deltas *= calibration_px_to_mu  # important
-
                 x = lower.points[:, 0]
+
+                u_y = upper.points[:, 1]
+                l_y = lower.points[:, 1]
+
+                if x[0] > x[-1]:  # the line is reversed!
+                    x, u_y, l_y = x[::-1], u_y[::-1], l_y[::-1]
+
                 timepoints = pixels_to_timepoints(x)
 
+                t_deltas = timepoints[1:] - timepoints[:-1]
+                indices_to_keep = np.r_[[True], t_deltas != 0]
+
+                x, u_y, l_y = x[indices_to_keep], u_y[indices_to_keep], l_y[indices_to_keep]
+
+                timepoints = pixels_to_timepoints(x)
                 times = timepoints_to_time(timepoints)
+
+                height_deltas = u_y - l_y
+
+                height_deltas *= calibration_px_to_mu  # important
 
                 height_development = np.c_[s_to_h(times), height_deltas]
                 height_development = height_development[1:, :] - height_development[:-1, :]
@@ -404,13 +460,75 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                 changes = height_development.copy()
                 changes = changes[:, 1] / changes[:, 0]
 
+                try:
+                    average_elongation = np.average(changes, weights=height_development[:, 0])
+                except ZeroDivisionError:
+                    average_elongation = float('NaN')
+
                 p_results[polyline_num] = {
                     'growth_start': s_to_h(times[0]),
                     'growth_end':  s_to_h(times[-1]),
                     'division_age': s_to_h(times[-1] - times[0]),
                     'growth_rate': np.log(2) / s_to_h(times[-1] - times[0]),
-                    'average_elongation': np.average(changes, weights=height_development[:, 0])
+                    'average_elongation': average_elongation
                 }
+
+                # tricky: for every timepoint in between
+
+                def interp(x1, x2, y1, y2, new_x):
+                    return (((y2 - y1) / (x2 - x1)) * (new_x - x1)) + y1
+
+                p_results_timestepwise[polyline_num] = []
+
+                for n_t, t in enumerate(range(timepoints[0], timepoints[-1]+1)):
+                    left_t = np.searchsorted(timepoints, t, side='left')
+
+                    if left_t == 0:
+                        left_t, right_t = left_t, left_t + 1
+                    else:
+                        left_t, right_t = left_t - 1, left_t
+
+                    x_centered = data[t, n_width_cumsum] - data[t, n_width] / 2.0
+
+                    new_upper = interp(x[left_t], x[right_t], u_y[left_t], u_y[right_t], x_centered)
+                    new_lower = interp(x[left_t], x[right_t], l_y[left_t], l_y[right_t], x_centered)
+
+                    # plt.plot([x_centered, x_centered], [new_upper, new_lower])
+
+                    inner_results = {
+                        'timepoint_num': t,
+                        'timepoint': s_to_h(timepoints_to_time([t])[0]),
+                        'length': (new_upper - new_lower) * calibration_px_to_mu
+                    }
+
+                    for fluorescence_c in range(fluorescence_count):
+                        fimg = large_fluorescences_image[fluorescence_c,
+                               int(new_lower):int(new_upper),
+                               int(data[t, n_width_cumsum] - data[t, n_width]):int(data[t, n_width_cumsum])
+                        ]
+
+                        jobs = dict(min=lambda a: a.min(),
+                                    max=lambda a: a.max(),
+                                    mean=lambda a: a.mean(),
+                                    std=lambda a: a.std(),
+                                    median=lambda a: np.median(a))
+
+                        for fun_name, fun_lambda in jobs.items():
+
+                            try:
+                                value = fun_lambda(fimg)
+                            except ValueError:
+                                value = float('NaN')
+
+                            inner_results['fluorescence_%s_raw_%d' % (fun_name, fluorescence_c)] = value
+
+                        inner_results['fluorescence_background_%d' % (fluorescence_c)] = fluorescence_backgrounds[
+                            fluorescence_c][t]
+
+                    p_results_timestepwise[polyline_num].append(inner_results)
+
+
+
 
         lm.update_callback = update_callback
         lm.update_callback()
@@ -441,7 +559,9 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
             d       delete last division event
             n/N     next/previous multipoint
             m/M     next/previous channel
+            F       show/cycle fluorescence/brightfield
             o/O     output tabular data to console/file
+            u/U     output tabular single cell data to console/file
             w       write data
                     (to previously specified filename)
             i       start interactive python console
@@ -573,6 +693,25 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                 try_new_poschan(0, 1)
             elif event.key == 'M':
                 try_new_poschan(0, -1)
+            elif event.key == 'F':
+                if axes_image._molyso_image_shown < fluorescence_count:
+                    axes_image._molyso_image_shown += 1  # TODO: Test with more than one fluorescence channels
+                if axes_image._molyso_image_shown == fluorescence_count:
+                    axes_image._molyso_image_shown = -1
+
+                if axes_image._molyso_image_shown == -1:
+                    axes_image.set_data(large_image)
+                    # axes_image.autoscale()
+                    axes_image.set_clim(vmin=large_image_min_max[0],
+                                        vmax=large_image_min_max[1])
+                else:
+                    fluorescence_c = axes_image._molyso_image_shown
+                    axes_image.set_data(large_fluorescences_image[fluorescence_c])
+                    # axes_image.autoscale()
+                    axes_image.set_clim(vmin=large_fluorescence_image_min_max[fluorescence_c][0],
+                                        vmax=large_fluorescence_image_min_max[fluorescence_c][1])
+
+                refresh()
             elif event.key == 'o' or event.key == 'O':
                 # output
 
@@ -593,14 +732,12 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                     p_results = [ab[1] for ab in sorted(t_env['polyline_results'].items(), key=lambda ab: ab[0])]
 
                     inner_mu = [res['growth_rate'] for res in p_results]
-                    mean_inner_mu = np.mean(inner_mu)
+                    mean_inner_mu = np.nanmean(inner_mu)
 
                     inner_elo = [res['average_elongation'] for res in p_results]
-                    mean_inner_elo = np.mean(inner_elo)
-
+                    mean_inner_elo = np.nanmean(inner_elo)
 
                     for resultlet in p_results:
-
                         out.add({
                             'position': x_pos,
                             'channel': x_chan,
@@ -614,6 +751,39 @@ def interactive_advanced_ground_truth_main(args, tracked_results):
                         })
 
                 if event.key == 'O':
+                    recipient.close()
+                    print("File written.")
+
+            elif event.key == 'u' or event.key == 'U':
+                # output
+
+                recipient = None
+
+                if event.key == 'U':
+                    print("Please enter file name for tabular output [will be overwritten if exists]:")
+                    file_name = input()
+                    recipient = open(file_name, 'w+')
+
+                out = QuickTableDumper(recipient=recipient)
+
+                for key, t_env in all_envs.items():
+                    t_pos, t_chan = map(int, key[1:-1].replace(' ', '').split(','))
+                    x_pos = list(tracked_results.keys())[t_pos]
+                    x_chan = list(tracked_results[x_pos].channel_accumulator.keys())[t_chan]
+
+                    for line_num, rows_timestepwise in t_env['polyline_results_timestepwise'].items():
+                        for row in rows_timestepwise:
+                            result = row.copy()
+
+                            result.update({
+                                'position': x_pos,
+                                'channel': x_chan,
+                                'line_num': line_num,
+                            })
+
+                            out.add(result)
+
+                if event.key == 'U':
                     recipient.close()
                     print("File written.")
 

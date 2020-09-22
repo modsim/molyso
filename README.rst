@@ -165,9 +165,9 @@ To start the interactive viewer, just call molyso without any other parameters:
 
     > python -m molyso dataset.ome.tiff
 
-To start batch processing, run molyso with the `-p` option. Give an output file for tabular output with `-o` and/or an output directory for individual tracked kymographs with `-ot`.
+To start batch processing, run molyso with the :code:`-p` option. Give an output file for tabular output with :code:`-o` and/or an output directory for individual tracked kymographs with :code:`-ot`.
 
-Note: While OME-TIFF file contain calibration of time and voxel size, simple `.tif` files may not,
+Note: While OME-TIFF file contain calibration of time and voxel size, simple :code:`.tif` files may not,
 you can tell molyso manually about the calibration by adding comma-delimited parameters after the file name (followed by a question mark):
 Example:
 
@@ -176,7 +176,7 @@ Example:
     > python -m molyso "filename.tif?interval=300,calibration=0.08"
 
 
-Supported are among others: the acquisition `interval` (seconds), and the pixel size `calibration` in um per pixel.
+Supported are among others: the acquisition :code:`interval` (seconds), and the pixel size :code:`calibration` in um per pixel.
 Don't forget to escape/quote the ? in the command line.
 
 
@@ -199,13 +199,13 @@ You can use the following commands to run molyso in lieu of the aforementioned c
 
 .. code-block:: bash
 
-   > docker run --tty --interactive --rm --volume `pwd`:/data --user `id -u` modsim/molyso -p <parameters ...>
+   > docker run --tty --interactive --rm --volume "`pwd`:/data" --user `id -u` modsim/molyso -p <parameters ...>
 
 And to run interactive mode (display on local X11, under Linux):
 
 .. code-block:: bash
 
-   > docker run --tty --interactive --rm --volume `pwd`:/data --user `id -u` --env DISPLAY=$DISPLAY --volume /tmp/.X11-unix:/tmp/.X11-unix modsim/molyso <parameters ...>
+   > docker run --tty --interactive --rm --volume "`pwd`:/data" --user `id -u` --env DISPLAY=$DISPLAY --volume /tmp/.X11-unix:/tmp/.X11-unix modsim/molyso <parameters ...>
 
 Docker usage has just been tested with Linux host systems.
 

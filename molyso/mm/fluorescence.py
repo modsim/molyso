@@ -20,7 +20,8 @@ class FluorescentCell(Cell):
     :param args:
     :param kwargs:
     """
-    __slots__ = ['fluorescences_mean', 'fluorescences_std']
+    __slots__ = ['fluorescences_mean', 'fluorescences_std', 'fluorescences_min', 'fluorescences_max',
+                 'fluorescences_median']
 
     def __init__(self, *args, **kwargs):
         super(FluorescentCell, self).__init__(*args, **kwargs)
@@ -29,6 +30,9 @@ class FluorescentCell(Cell):
 
         self.fluorescences_mean = [float('nan')] * fluorescences_count
         self.fluorescences_std = [float('nan')] * fluorescences_count
+        self.fluorescences_min = [float('nan')] * fluorescences_count
+        self.fluorescences_max = [float('nan')] * fluorescences_count
+        self.fluorescences_median = [float('nan')] * fluorescences_count
 
         try:
             # reconstitution from flattened state will fail
@@ -43,6 +47,9 @@ class FluorescentCell(Cell):
 
                 self.fluorescences_mean[f] = float(fluorescence_cell_image.mean())
                 self.fluorescences_std[f] = float(fluorescence_cell_image.std())
+                self.fluorescences_min[f] = float(fluorescence_cell_image.min())
+                self.fluorescences_max[f] = float(fluorescence_cell_image.max())
+                self.fluorescences_median[f] = float(np.median(fluorescence_cell_image))
 
         except (AttributeError, TypeError):
             pass
@@ -138,6 +145,9 @@ class FluorescentImage(Image):
 
         self.channels_cells_fluorescences_mean = None
         self.channels_cells_fluorescences_std = None
+        self.channels_cells_fluorescences_min = None
+        self.channels_cells_fluorescences_max = None
+        self.channels_cells_fluorescences_median = None
 
         self.channel_fluorescences_images = None
 
@@ -215,7 +225,7 @@ class FluorescentImage(Image):
 
         It can as well be helpful, if serialized single frame data should be transferred over the wire.
 
-         Warning, dependent on inner structure of dependent classes.
+        Warning, dependent on inner structure of dependent classes.
 
         :return:
         """
@@ -229,6 +239,18 @@ class FluorescentImage(Image):
         ]
         self.channels_cells_fluorescences_std = [
             [[cc.fluorescences_std[f] for cc in c.cells] for c in channels]
+            for f in range(fluorescences_count)
+        ]
+        self.channels_cells_fluorescences_min = [
+            [[cc.fluorescences_min[f] for cc in c.cells] for c in channels]
+            for f in range(fluorescences_count)
+        ]
+        self.channels_cells_fluorescences_max = [
+            [[cc.fluorescences_max[f] for cc in c.cells] for c in channels]
+            for f in range(fluorescences_count)
+        ]
+        self.channels_cells_fluorescences_median = [
+            [[cc.fluorescences_median[f] for cc in c.cells] for c in channels]
             for f in range(fluorescences_count)
         ]
 
@@ -265,6 +287,15 @@ class FluorescentImage(Image):
                 ]
                 cell.fluorescences_std = [
                     self.channels_cells_fluorescences_std[f][n][cn] for f in range(fluorescences_count)
+                ]
+                cell.fluorescences_min = [
+                    self.channels_cells_fluorescences_min[f][n][cn] for f in range(fluorescences_count)
+                ]
+                cell.fluorescences_max = [
+                    self.channels_cells_fluorescences_max[f][n][cn] for f in range(fluorescences_count)
+                ]
+                cell.fluorescences_median = [
+                    self.channels_cells_fluorescences_median[f][n][cn] for f in range(fluorescences_count)
                 ]
         self.channels_cells_fluorescences_mean = None
         self.channels_cells_fluorescences_std = None
