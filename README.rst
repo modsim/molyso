@@ -66,8 +66,7 @@ With Anaconda
 .. code-block:: bash
 
     > conda config --add channels conda-forge
-    > conda config --add channels bioconda
-    > conda config --add channels csachs
+    > conda config --add channels modsim
 
     > conda install -y molyso
 
