@@ -37,7 +37,7 @@ from __future__ import division, unicode_literals, print_function
 from .generic.tunable import tunable, TunableManager
 
 __license__ = """
-Copyright (c) 2013-2020 Christian C. Sachs, Forschungszentrum Jülich GmbH.
+Copyright (c) 2013-2021 Christian C. Sachs, Forschungszentrum Jülich GmbH.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -63,7 +63,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = "Christian C. Sachs"
 
-__version__ = '1.1.0.dev1'
+__version__ = '1.0.6'
 
 __citation__ = \
     """
