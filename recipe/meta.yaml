@@ -1,6 +1,6 @@
 {% set name = "molyso" %}
-{% set version = "1.0.5" %}
-{% set sha256 = "02f9cdf1986a848e35b46d6e2ad64cc98c536bdb6fcaf36da6a0902df8a8c1ad" %}
+{% set version = "1.0.6" %}
+#{% set sha256 = "02f9cdf1986a848e35b46d6e2ad64cc98c536bdb6fcaf36da6a0902df8a8c1ad" %}
 
 package:
   name: {{ name|lower }}
@@ -25,9 +25,7 @@ requirements:
     - numpy
     - scipy
     - matplotlib
-    - tifffile
-    - nd2file
-    - czifile
+    - pilyso-io
     - jsonpickle
     - tqdm
     - opencv

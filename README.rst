@@ -177,6 +177,7 @@ Example:
 
 
 Supported are among others: the acquisition :code:`interval` (seconds), and the pixel size :code:`calibration` in um per pixel.
+Some older files may have incorrectly labeled axes, since molyso expects the time axis to be correctly labeled, it might be necessary to reorder the axes, this can be done on the fly, by passing e.g. :code:`?swap_axes=Z..T`.
 Don't forget to escape/quote the ? in the command line.
 
 

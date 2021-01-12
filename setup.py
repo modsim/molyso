@@ -28,10 +28,9 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: POSIX',
         'Operating System :: POSIX :: Linux',
-        'Operating System :: MacOS :: MacOS X',   # lately no tests
+        'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
-        'Programming Language :: Python :: 3',    #
-        'Programming Language :: Python :: 3.5',  # main focus
+        'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Topic :: Scientific/Engineering :: Image Recognition',
     ]
