@@ -28,7 +28,7 @@ def interactive_main(args):
     mp_max = ims.size[Dimensions.PositionXY] - 1
     tp_max = ims.size[Dimensions.Time] - 1
 
-    fluor_chan = list(range(1, ims.size[Dimensions.Channel]))
+    fluor_chan = list(range(ims.size[Dimensions.Channel] - 1))
 
     fig, ax = plt.subplots()
 
